@@ -1,203 +1,127 @@
-# Развёртывание P.S. Portal на VPS
+# Развёртывание P.S. Portal на VPS (Docker)
 
-Инструкция для Ubuntu 22.04. Предполагается чистый сервер с доменом.
+Ubuntu 22.04 + Docker + Nginx (внутри контейнера фронтенда).
 
 ---
 
-## 1. Первичная настройка сервера
+## Архитектура
+
+```
+Интернет :443
+     │
+  Certbot/Nginx (хостовый, только для TLS)
+     │
+  frontend-контейнер :80  (Nginx внутри)
+     ├── /          → React SPA (статика)
+     └── /api/*     → backend-контейнер :8080
+                            │
+                       db-контейнер :5432
+                       (PostgreSQL 16)
+```
+
+---
+
+## 1. Установка Docker
 
 ```bash
-# Обновить пакеты
 apt update && apt upgrade -y
 
-# Создать пользователя (не работать под root)
-adduser deploy
-usermod -aG sudo deploy
-su - deploy
+curl -fsSL https://get.docker.com | sh
+
+# Добавить пользователя в группу docker (без sudo)
+usermod -aG docker $USER
+newgrp docker
+
+docker --version
+docker compose version
 ```
 
 ---
 
-## 2. Установка зависимостей
-
-### Java 21
-```bash
-sudo apt install -y openjdk-21-jdk
-java -version
-```
-
-### Node.js 20
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-node -v && npm -v
-```
-
-### PostgreSQL
-```bash
-sudo apt install -y postgresql postgresql-contrib
-sudo systemctl enable postgresql
-sudo systemctl start postgresql
-```
-
-### Nginx
-```bash
-sudo apt install -y nginx
-sudo systemctl enable nginx
-```
-
----
-
-## 3. База данных PostgreSQL
+## 2. Клонирование репозиториев
 
 ```bash
-sudo -u postgres psql
-```
+mkdir -p /opt/ps-portal && cd /opt/ps-portal
 
-```sql
-CREATE USER psportal WITH PASSWORD 'ВАШ_ПАРОЛЬ_БД';
-CREATE DATABASE psportal OWNER psportal;
-GRANT ALL PRIVILEGES ON DATABASE psportal TO psportal;
-\q
-```
-
----
-
-## 4. Клонирование репозиториев
-
-```bash
-cd /opt
-sudo mkdir ps-portal && sudo chown deploy:deploy ps-portal
-cd ps-portal
-
-git clone https://github.com/KaRToSHoW/PostScriptum-backend.git backend
 git clone https://github.com/KaRToSHoW/PostScriptum-portal.git frontend
+git clone https://github.com/KaRToSHoW/PostScriptum-backend.git backend
 ```
+
+> `docker-compose.yml` лежит в `frontend/`, он ссылается на `../backend/` при сборке.
 
 ---
 
-## 5. Настройка бэкенда
-
-```bash
-cd /opt/ps-portal/backend
-
-# Создать конфиг из шаблона
-cp src/main/resources/application-example.yml src/main/resources/application.yml
-nano src/main/resources/application.yml
-```
-
-Заменить содержимое на продакшн-конфиг:
-
-```yaml
-server:
-  port: 8080
-
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/psportal
-    username: psportal
-    password: ВАШ_ПАРОЛЬ_БД
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-  h2:
-    console:
-      enabled: false
-
-app:
-  jwt:
-    secret: ВАШ_СЕКРЕТ_МИН_32_СИМВОЛА_СЛУЧАЙНЫЙ
-    expiration-ms: 86400000
-
-cors:
-  allowed-origins: https://ВАШ_ДОМЕН
-```
-
-```bash
-# Собрать jar
-./mvnw clean package -DskipTests
-
-# Проверить что собралось
-ls target/*.jar
-```
-
-### Systemd-сервис для бэкенда
-
-```bash
-sudo nano /etc/systemd/system/psportal-backend.service
-```
-
-```ini
-[Unit]
-Description=P.S. Portal Backend
-After=network.target postgresql.service
-
-[Service]
-User=deploy
-WorkingDirectory=/opt/ps-portal/backend
-ExecStart=/usr/bin/java -jar /opt/ps-portal/backend/target/portal-0.0.1-SNAPSHOT.jar
-Restart=on-failure
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable psportal-backend
-sudo systemctl start psportal-backend
-
-# Проверить статус
-sudo systemctl status psportal-backend
-sudo journalctl -u psportal-backend -f
-```
-
----
-
-## 6. Сборка фронтенда
+## 3. Переменные окружения
 
 ```bash
 cd /opt/ps-portal/frontend
 
-# Создать .env с адресом API
-echo "VITE_API_URL=https://ВАШ_ДОМЕН" > .env
+cp .env.example .env
+nano .env
+```
 
-npm install
-npm run build
+Заполнить:
 
-# Статика собрана в dist/
-ls dist/
+```env
+POSTGRES_DB=psportal
+POSTGRES_USER=psportal
+POSTGRES_PASSWORD=сгенерируй_пароль
+
+JWT_SECRET=сгенерируй_строку_мин_32_символа
+
+FRONTEND_URL=https://твой-домен.ru
+```
+
+Сгенерировать секреты можно так:
+```bash
+openssl rand -base64 32
 ```
 
 ---
 
-## 7. Nginx
+## 4. Запуск
 
 ```bash
-sudo nano /etc/nginx/sites-available/psportal
+cd /opt/ps-portal/frontend
+
+docker compose up -d --build
+```
+
+Что произойдёт:
+1. Соберётся jar бэкенда (Maven внутри Docker)
+2. Соберётся статика фронтенда (Node внутри Docker)
+3. Поднимутся 3 контейнера: `db`, `backend`, `frontend`
+4. Сайт будет доступен на `http://IP_СЕРВЕРА`
+
+Проверить статус:
+```bash
+docker compose ps
+docker compose logs -f backend
+```
+
+---
+
+## 5. HTTPS через Let's Encrypt
+
+Установить Nginx и Certbot на хост (только для TLS-терминации):
+
+```bash
+apt install -y nginx certbot python3-certbot-nginx
+```
+
+Создать конфиг:
+
+```bash
+nano /etc/nginx/sites-available/psportal
 ```
 
 ```nginx
 server {
     listen 80;
-    server_name ВАШ_ДОМЕН www.ВАШ_ДОМЕН;
-
-    # Фронтенд (статика)
-    root /opt/ps-portal/frontend/dist;
-    index index.html;
+    server_name твой-домен.ru www.твой-домен.ru;
 
     location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # API → бэкенд
-    location /api/ {
-        proxy_pass         http://127.0.0.1:8080;
+        proxy_pass         http://127.0.0.1:80;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -207,76 +131,75 @@ server {
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/psportal /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+ln -s /etc/nginx/sites-available/psportal /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+
+# Получить сертификат
+certbot --nginx -d твой-домен.ru -d www.твой-домен.ru
+```
+
+После этого Certbot сам добавит HTTPS-блок в конфиг.
+
+---
+
+## 6. Firewall
+
+```bash
+ufw allow 22
+ufw allow 80
+ufw allow 443
+ufw enable
 ```
 
 ---
 
-## 8. HTTPS (Let's Encrypt)
+## 7. Деплой новой версии
 
 ```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d ВАШ_ДОМЕН -d www.ВАШ_ДОМЕН
+cd /opt/ps-portal/frontend && git pull
+cd /opt/ps-portal/backend  && git pull
 
-# Автообновление уже настроено certbot-ом, проверить:
-sudo systemctl status certbot.timer
-```
-
----
-
-## 9. Деплой новой версии
-
-### Бэкенд
-```bash
-cd /opt/ps-portal/backend
-git pull
-./mvnw clean package -DskipTests
-sudo systemctl restart psportal-backend
-```
-
-### Фронтенд
-```bash
 cd /opt/ps-portal/frontend
-git pull
-npm install
-npm run build
-# nginx отдаёт файлы напрямую из dist/ — перезапуск не нужен
+docker compose up -d --build
 ```
+
+Docker пересоберёт только изменившиеся образы, БД не тронет.
 
 ---
 
-## 10. Полезные команды
+## 8. Полезные команды
 
 ```bash
-# Логи бэкенда live
-sudo journalctl -u psportal-backend -f
+# Логи всех контейнеров
+docker compose logs -f
 
-# Статус всех сервисов
-sudo systemctl status psportal-backend nginx postgresql
+# Логи конкретного сервиса
+docker compose logs -f backend
 
-# Перезапустить всё
-sudo systemctl restart psportal-backend nginx
+# Перезапустить один сервис без пересборки
+docker compose restart backend
 
-# Открыть порты в firewall (если ufw включён)
-sudo ufw allow 22
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw enable
+# Остановить всё
+docker compose down
+
+# Остановить и удалить данные БД (осторожно!)
+docker compose down -v
+
+# Подключиться к PostgreSQL внутри контейнера
+docker compose exec db psql -U psportal psportal
+
+# Войти в контейнер бэкенда
+docker compose exec backend sh
 ```
 
 ---
 
-## Итоговая архитектура
+## Файлы в репозитории
 
-```
-Интернет
-   │  443 (HTTPS)
-   ▼
- Nginx
-   ├── /        → dist/ (статика React)
-   └── /api/*   → localhost:8080 (Spring Boot)
-                       │
-                  PostgreSQL :5432
-```
+| Файл | Назначение |
+|---|---|
+| `Dockerfile` | Сборка фронтенда (Node → Nginx) |
+| `nginx.conf` | Конфиг Nginx внутри контейнера |
+| `docker-compose.yml` | Оркестрация всех сервисов |
+| `.env.example` | Шаблон переменных окружения |
+| `../backend/Dockerfile` | Сборка бэкенда (Maven → JRE) |
