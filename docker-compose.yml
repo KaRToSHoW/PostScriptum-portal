@@ -15,19 +15,19 @@ services:
       timeout: 5s
       retries: 5
       
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin_cont
-    restart: always
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@admin.com  # Логин для входа в панель
-      - PGADMIN_DEFAULT_PASSWORD=admin         # Пароль для входа в панель
-    ports:
-      - "5050:80"                              # Будет доступен на порту 5050
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin          # Чтобы настройки серверов не слетали
-    depends_on:
-      - postgres
+pgadmin:
+  image: dpage/pgadmin4:latest
+  container_name: pgadmin_cont
+  restart: always
+  environment:
+    - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+    - PGADMIN_DEFAULT_PASSWORD=admin
+  ports:
+    - "5050:80"
+  volumes:
+    - pgadmin_data:/var/lib/pgadmin
+  depends_on:
+    - db
 
   backend:
     build:
@@ -67,3 +67,4 @@ services:
 
 volumes:
   db_data:
+  pgadmin_data:
