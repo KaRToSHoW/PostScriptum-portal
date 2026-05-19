@@ -1,10 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AppProvider, useApp } from './context/AppContext'
-import LoginPage        from './pages/LoginPage'
-import DashboardPage    from './pages/DashboardPage'
-import AdminFinancePage from './pages/AdminFinancePage'
-import AdminRolesPage   from './pages/AdminRolesPage'
-import CalendarPage     from './pages/CalendarPage'
+import LoginPage          from './pages/LoginPage'
+import DashboardPage      from './pages/DashboardPage'
+import AdminFinancePage   from './pages/AdminFinancePage'
+import AdminRolesPage     from './pages/AdminRolesPage'
+import CalendarPage       from './pages/CalendarPage'
+import HomeworkPage       from './pages/HomeworkPage'
+import SubscriptionsPage  from './pages/SubscriptionsPage'
+import ProfilePage        from './pages/ProfilePage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
 function Protected({ children }) {
@@ -30,6 +33,15 @@ function AppRoutes() {
       } />
       <Route path="/admin/roles" element={
         <Protected><AdminRolesPage /></Protected>
+      } />
+      <Route path="/homework" element={
+        <Protected><HomeworkPage /></Protected>
+      } />
+      <Route path="/billing" element={
+        <Protected><SubscriptionsPage /></Protected>
+      } />
+      <Route path="/profile" element={
+        <Protected><ProfilePage /></Protected>
       } />
 
       <Route path="*" element={<Navigate to="/login" replace />} />

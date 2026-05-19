@@ -8,6 +8,9 @@ const ROUTE_MAP = {
   calendar:  '/calendar',
   finance:   '/admin/finance',
   roles:     '/admin/roles',
+  homework:  '/homework',
+  billing:   '/billing',
+  profile:   '/profile',
 }
 
 /* ── id пункта по текущему маршруту ────────────────────────── */
@@ -16,6 +19,9 @@ function routeToItem(pathname) {
   if (pathname === '/calendar')      return 'calendar'
   if (pathname === '/admin/finance') return 'finance'
   if (pathname === '/admin/roles')   return 'roles'
+  if (pathname === '/homework')      return 'homework'
+  if (pathname === '/billing')       return 'billing'
+  if (pathname === '/profile')       return 'profile'
   return 'home'
 }
 
