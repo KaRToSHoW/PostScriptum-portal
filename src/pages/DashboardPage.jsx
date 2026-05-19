@@ -348,7 +348,7 @@ function DashTeacher({ t }) {
 const DASH_TITLE = { student: 'Главная', teacher: 'Главная', parent: 'Главная', admin: 'Дашборд' }
 
 export default function DashboardPage() {
-  const { role, setRole, sideRole } = useApp()
+  const { role, setRole, sideRole, t } = useApp()
 
   // apiData заменит захардкоженные данные в DashStudent/DashTeacher когда бэкенд готов
   const { error } = useApi(
@@ -365,13 +365,13 @@ export default function DashboardPage() {
 
         {/* Переключатель ролей */}
         <div style={{ padding: '16px 28px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <RoleSwitcher role={role} onChange={setRole} />
+          <RoleSwitcher role={role} onChange={setRole} t={t} />
           {error && <ApiError message={error} />}
         </div>
 
         {/* Контент по роли */}
-        {(role === 'student' || role === 'parent') && <DashStudent />}
-        {(role === 'teacher' || role === 'admin')  && <DashTeacher />}
+        {(role === 'student' || role === 'parent') && <DashStudent t={t} />}
+        {(role === 'teacher' || role === 'admin')  && <DashTeacher t={t} />}
       </main>
     </div>
   )
