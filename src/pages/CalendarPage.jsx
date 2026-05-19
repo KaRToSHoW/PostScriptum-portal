@@ -124,9 +124,6 @@ function CalendarStudent() {
             </span>
           ))}
         </div>
-        <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 600 }}>
-          Уроки назначает преподаватель
-        </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
