@@ -34,7 +34,6 @@ const NAV = {
     { sec: 'обучение', items: [
       { id: 'home',     label: 'Главная',         icon: 'home'     },
       { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
-      { id: 'courses',  label: 'Мои курсы',        icon: 'book'     },
       { id: 'homework', label: 'Домашние задания', icon: 'file', badge: 2 },
     ]},
     { sec: 'общение', items: [
