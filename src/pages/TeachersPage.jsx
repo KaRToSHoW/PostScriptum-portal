@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
@@ -242,9 +243,15 @@ function TeacherDrawer({ t, onClose }) {
 
 export default function TeachersPage() {
   const { sideRole } = useApp()
+  const location = useLocation()
   const [langFilter, setLangFilter] = useState('all')
   const [selected, setSelected]     = useState(null)
   const [onlyMine, setOnlyMine]     = useState(false)
+
+  useEffect(() => {
+    const id = location.state?.teacherId
+    if (id) setSelected(TEACHERS.find(t => t.id === id) ?? null)
+  }, [location.state])
 
   const filtered = TEACHERS
     .filter(t => onlyMine ? t.myTeacher : true)

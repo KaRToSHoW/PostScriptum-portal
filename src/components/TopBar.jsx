@@ -11,11 +11,11 @@ const INDEX = [
   { type: 'page',    label: 'Преподаватели',         sub: 'Раздел',                  icon: 'users',    route: '/teachers'  },
   { type: 'page',    label: 'Абонементы',            sub: 'Раздел',                  icon: 'wallet',   route: '/billing'   },
   { type: 'page',    label: 'Профиль',               sub: 'Раздел',                  icon: 'user',     route: '/profile'   },
-  { type: 'teacher', label: 'Софья Фролова',         sub: 'Преподаватель · Французский', icon: 'user', route: '/teachers' },
-  { type: 'teacher', label: 'Татьяна Кравченко',     sub: 'Преподаватель · Английский',  icon: 'user', route: '/teachers' },
-  { type: 'teacher', label: 'Pierre Bouchard',       sub: 'Носитель · Французский',      icon: 'user', route: '/teachers' },
-  { type: 'teacher', label: 'Лаура Мартин',          sub: 'Преподаватель · Испанский',   icon: 'user', route: '/teachers' },
-  { type: 'teacher', label: 'Иван Шульц',            sub: 'Преподаватель · Немецкий',    icon: 'user', route: '/teachers' },
+  { type: 'teacher', label: 'Софья Фролова',         sub: 'Преподаватель · Французский', icon: 'user', route: '/teachers', teacherId: 1 },
+  { type: 'teacher', label: 'Татьяна Кравченко',     sub: 'Преподаватель · Английский',  icon: 'user', route: '/teachers', teacherId: 2 },
+  { type: 'teacher', label: 'Pierre Bouchard',       sub: 'Носитель · Французский',      icon: 'user', route: '/teachers', teacherId: 3 },
+  { type: 'teacher', label: 'Лаура Мартин',          sub: 'Преподаватель · Испанский',   icon: 'user', route: '/teachers', teacherId: 4 },
+  { type: 'teacher', label: 'Иван Шульц',            sub: 'Преподаватель · Немецкий',    icon: 'user', route: '/teachers', teacherId: 5 },
   { type: 'hw',      label: 'Эссе «Mes rêves»',      sub: 'ДЗ · до пт',              icon: 'file',     route: '/homework'  },
   { type: 'hw',      label: 'Listening · BBC News',  sub: 'ДЗ · до ср',              icon: 'file',     route: '/homework'  },
   { type: 'hw',      label: 'Лексика модуля 4',      sub: 'ДЗ · Сдано',              icon: 'file',     route: '/homework'  },
@@ -93,7 +93,7 @@ export default function TopBar({ title }) {
   }
 
   function go(item) {
-    navigate(item.route)
+    navigate(item.route, item.teacherId ? { state: { teacherId: item.teacherId } } : undefined)
     setOpen(false)
     setQuery('')
   }
