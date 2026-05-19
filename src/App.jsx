@@ -8,6 +8,8 @@ import CalendarPage       from './pages/CalendarPage'
 import HomeworkPage       from './pages/HomeworkPage'
 import SubscriptionsPage  from './pages/SubscriptionsPage'
 import ProfilePage        from './pages/ProfilePage'
+import MessagesPage       from './pages/MessagesPage'
+import TeachersPage       from './pages/TeachersPage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
 function Protected({ children }) {
@@ -42,6 +44,12 @@ function AppRoutes() {
       } />
       <Route path="/profile" element={
         <Protected><ProfilePage /></Protected>
+      } />
+      <Route path="/messages" element={
+        <Protected><MessagesPage /></Protected>
+      } />
+      <Route path="/teachers" element={
+        <Protected><TeachersPage /></Protected>
       } />
 
       <Route path="*" element={<Navigate to="/login" replace />} />

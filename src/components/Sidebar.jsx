@@ -11,6 +11,8 @@ const ROUTE_MAP = {
   homework:  '/homework',
   billing:   '/billing',
   profile:   '/profile',
+  chat:      '/messages',
+  teachers:  '/teachers',
 }
 
 /* ── id пункта по текущему маршруту ────────────────────────── */
@@ -22,6 +24,8 @@ function routeToItem(pathname) {
   if (pathname === '/homework')      return 'homework'
   if (pathname === '/billing')       return 'billing'
   if (pathname === '/profile')       return 'profile'
+  if (pathname === '/messages')      return 'chat'
+  if (pathname === '/teachers')      return 'teachers'
   return 'home'
 }
 
