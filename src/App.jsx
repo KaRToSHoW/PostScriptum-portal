@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AppProvider, useApp } from './context/AppContext'
+import ToastProvider from './components/Toast'
 import LoginPage          from './pages/LoginPage'
 import DashboardPage      from './pages/DashboardPage'
 import AdminFinancePage   from './pages/AdminFinancePage'
@@ -62,6 +63,7 @@ export default function App() {
     <AppProvider>
       <BrowserRouter>
         <AppRoutes />
+        <ToastProvider />
       </BrowserRouter>
     </AppProvider>
   )

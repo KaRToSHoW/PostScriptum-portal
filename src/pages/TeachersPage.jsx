@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
+import { toast } from '../components/Toast'
 
 const TEACHERS = [
   {
@@ -143,7 +144,7 @@ function TeacherCard({ t, onSelect }) {
   )
 }
 
-function TeacherDrawer({ t, onClose }) {
+function TeacherDrawer({ t, onClose, onMessage, onBook }) {
   if (!t) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex' }}>
@@ -228,10 +229,10 @@ function TeacherDrawer({ t, onClose }) {
 
           {/* Действия */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto' }}>
-            <button className="ps-btn ps-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }}>
+            <button className="ps-btn ps-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }} onClick={() => onBook(t)}>
               <Icon name="calendar" size={15} /> Записаться на урок
             </button>
-            <button className="ps-btn ps-btn-outline" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }}>
+            <button className="ps-btn ps-btn-outline" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }} onClick={() => onMessage(t)}>
               <Icon name="chat" size={15} /> Написать сообщение
             </button>
           </div>
@@ -244,6 +245,7 @@ function TeacherDrawer({ t, onClose }) {
 export default function TeachersPage() {
   const { sideRole } = useApp()
   const location = useLocation()
+  const navigate = useNavigate()
   const [langFilter, setLangFilter] = useState('all')
   const [selected, setSelected]     = useState(null)
   const [onlyMine, setOnlyMine]     = useState(false)
@@ -252,6 +254,15 @@ export default function TeachersPage() {
     const id = location.state?.teacherId
     if (id) setSelected(TEACHERS.find(t => t.id === id) ?? null)
   }, [location.state])
+
+  function handleMessage(t) {
+    navigate('/messages', { state: { teacherName: t.name } })
+  }
+
+  function handleBook(t) {
+    toast(`Запись к ${t.name.split(' ')[0]} — выберите время в расписании`)
+    navigate('/calendar')
+  }
 
   const filtered = TEACHERS
     .filter(t => onlyMine ? t.myTeacher : true)
@@ -326,7 +337,7 @@ export default function TeachersPage() {
         </div>
       </main>
 
-      <TeacherDrawer t={selected} onClose={() => setSelected(null)} />
+      <TeacherDrawer t={selected} onClose={() => setSelected(null)} onMessage={handleMessage} onBook={handleBook} />
     </div>
   )
 }

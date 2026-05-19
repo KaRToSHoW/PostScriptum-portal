@@ -1,25 +1,27 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar   from '../components/Sidebar'
 import TopBar    from '../components/TopBar'
 import Icon      from '../components/Icon'
 import { useApp } from '../context/AppContext'
+import { toast } from '../components/Toast'
 
-const ALL = [
-  { id: 1, title: 'Эссе «Mes rêves» (200 слов)',       course: 'Французский B1', teacher: 'Софья Ф.',   lang: 'fr', due: '23.05',  dueLabel: 'до пт',    state: 'progress', grade: null,  comment: null },
-  { id: 2, title: 'Listening · BBC News A2',            course: 'Английский A2+', teacher: 'Татьяна К.', lang: 'en', due: '21.05',  dueLabel: 'до ср',    state: 'new',      grade: null,  comment: null },
-  { id: 3, title: 'Лексика модуля 4 — Quizlet',         course: 'Французский B1', teacher: 'Софья Ф.',   lang: 'fr', due: '19.05',  dueLabel: 'сегодня',  state: 'done',     grade: 9,     comment: 'Отлично! Все слова усвоены.' },
-  { id: 4, title: 'Аудирование «Au café» + транскрипт', course: 'Французский B1', teacher: 'Софья Ф.',   lang: 'fr', due: '16.05',  dueLabel: 'пт',       state: 'done',     grade: 8,     comment: 'Хорошая работа, пара неточностей в транскрипте.' },
-  { id: 5, title: 'Грамматика: Past Perfect (упр 1–20)',course: 'Английский A2+', teacher: 'Татьяна К.', lang: 'en', due: '14.05',  dueLabel: 'ср',       state: 'overdue',  grade: null,  comment: null },
-  { id: 6, title: 'Перевод текста «La ville»',          course: 'Французский B1', teacher: 'Софья Ф.',   lang: 'fr', due: '12.05',  dueLabel: 'пн',       state: 'overdue',  grade: null,  comment: null },
-  { id: 7, title: 'Диалог: знакомство (запись аудио)',   course: 'Английский A2+', teacher: 'Татьяна К.', lang: 'en', due: '09.05',  dueLabel: 'пт',       state: 'done',     grade: 10,    comment: 'Прекрасное произношение! Зачтено.' },
+const INITIAL = [
+  { id: 1, title: 'Эссе «Mes rêves» (200 слов)',       course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '23.05', dueLabel: 'до пт',   state: 'progress', grade: null, comment: null },
+  { id: 2, title: 'Listening · BBC News A2',            course: 'Английский A2+', teacher: 'Татьяна Кравченко', teacherId: 2, lang: 'en', due: '21.05', dueLabel: 'до ср',   state: 'new',      grade: null, comment: null },
+  { id: 3, title: 'Лексика модуля 4 — Quizlet',         course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '19.05', dueLabel: 'сегодня', state: 'done',     grade: 9,   comment: 'Отлично! Все слова усвоены.' },
+  { id: 4, title: 'Аудирование «Au café» + транскрипт', course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '16.05', dueLabel: 'пт',      state: 'done',     grade: 8,   comment: 'Хорошая работа, пара неточностей в транскрипте.' },
+  { id: 5, title: 'Грамматика: Past Perfect (упр 1–20)',course: 'Английский A2+', teacher: 'Татьяна Кравченко', teacherId: 2, lang: 'en', due: '14.05', dueLabel: 'ср',      state: 'overdue',  grade: null, comment: null },
+  { id: 6, title: 'Перевод текста «La ville»',          course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '12.05', dueLabel: 'пн',      state: 'overdue',  grade: null, comment: null },
+  { id: 7, title: 'Диалог: знакомство (запись аудио)',   course: 'Английский A2+', teacher: 'Татьяна Кравченко', teacherId: 2, lang: 'en', due: '09.05', dueLabel: 'пт',      state: 'done',     grade: 10,  comment: 'Прекрасное произношение! Зачтено.' },
 ]
 
 const TABS = [
-  { id: 'all',      label: 'Все',       filter: () => true },
-  { id: 'new',      label: 'Новые',     filter: h => h.state === 'new' },
-  { id: 'progress', label: 'В работе',  filter: h => h.state === 'progress' },
-  { id: 'done',     label: 'Сдано',     filter: h => h.state === 'done' },
-  { id: 'overdue',  label: 'Просрочено',filter: h => h.state === 'overdue' },
+  { id: 'all',      label: 'Все',        filter: () => true },
+  { id: 'new',      label: 'Новые',      filter: h => h.state === 'new' },
+  { id: 'progress', label: 'В работе',   filter: h => h.state === 'progress' },
+  { id: 'done',     label: 'Сдано',      filter: h => h.state === 'done' },
+  { id: 'overdue',  label: 'Просрочено', filter: h => h.state === 'overdue' },
 ]
 
 const STATE_CFG = {
@@ -38,7 +40,68 @@ function GradeCircle({ grade }) {
   )
 }
 
-function HwRow({ hw, expanded, onToggle }) {
+function SubmitModal({ hw, onClose, onSubmit }) {
+  const [text, setText] = useState('')
+  const [link, setLink] = useState('')
+
+  function handleSubmit() {
+    if (!text.trim() && !link.trim()) {
+      toast('Добавьте комментарий или ссылку на работу', 'warning')
+      return
+    }
+    onSubmit(hw.id, text || link)
+    onClose()
+    toast('Задание отправлено на проверку ✓')
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 520, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>сдать задание</span>
+              <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>{hw.title}</h3>
+            </div>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
+              <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} />
+            </button>
+          </div>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Комментарий к работе</label>
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder="Напишите что сделали, какие были трудности..."
+              rows={4}
+              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', resize: 'none', outline: 'none', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Ссылка на работу (Google Docs, Notion...)</label>
+            <input
+              value={link}
+              onChange={e => setLink(e.target.value)}
+              placeholder="https://..."
+              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+            <button className="ps-btn ps-btn-primary" onClick={handleSubmit} style={{ flex: 1, justifyContent: 'center' }}>
+              <Icon name="upload" size={14} /> Отправить на проверку
+            </button>
+            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
   const cfg = STATE_CFG[hw.state]
   return (
     <div style={{ borderRadius: 16, border: '1px solid var(--border-soft)', overflow: 'hidden', background: '#fff' }}>
@@ -79,16 +142,17 @@ function HwRow({ hw, expanded, onToggle }) {
 
           <div style={{ display: 'flex', gap: 10 }}>
             {(hw.state === 'new' || hw.state === 'progress' || hw.state === 'overdue') && (
-              <button className="ps-btn ps-btn-primary ps-btn-sm">
+              <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => onSubmit(hw)}>
                 <Icon name="upload" size={13} /> Сдать задание
               </button>
             )}
             {hw.state === 'done' && (
-              <button className="ps-btn ps-btn-sm" style={{ background: 'var(--success-soft)', color: 'var(--success)', border: 'none' }}>
+              <button className="ps-btn ps-btn-sm" style={{ background: 'var(--success-soft)', color: 'var(--success)', border: 'none' }}
+                onClick={() => toast(`Оценка: ${hw.grade}/10 · ${hw.comment || 'Работа принята'}`)}>
                 <Icon name="check" size={13} /> Просмотреть работу
               </button>
             )}
-            <button className="ps-btn ps-btn-ghost ps-btn-sm">
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => onMessage(hw)}>
               <Icon name="chat" size={13} /> Написать преподавателю
             </button>
           </div>
@@ -100,15 +164,32 @@ function HwRow({ hw, expanded, onToggle }) {
 
 export default function HomeworkPage() {
   const { sideRole } = useApp()
+  const navigate = useNavigate()
   const [tab, setTab]         = useState('all')
   const [expanded, setExpanded] = useState(null)
+  const [hwList, setHwList]   = useState(INITIAL)
+  const [submitHw, setSubmitHw] = useState(null)
 
-  const items = ALL.filter(TABS.find(t => t.id === tab).filter)
+  const items = hwList.filter(TABS.find(t => t.id === tab).filter)
 
-  const total   = ALL.length
-  const done    = ALL.filter(h => h.state === 'done').length
-  const overdue = ALL.filter(h => h.state === 'overdue').length
-  const avgGrade = (ALL.filter(h => h.grade).reduce((s, h) => s + h.grade, 0) / ALL.filter(h => h.grade).length).toFixed(1)
+  const total   = hwList.length
+  const done    = hwList.filter(h => h.state === 'done').length
+  const overdue = hwList.filter(h => h.state === 'overdue').length
+  const avgGrade = (() => {
+    const graded = hwList.filter(h => h.grade)
+    return graded.length ? (graded.reduce((s, h) => s + h.grade, 0) / graded.length).toFixed(1) : '—'
+  })()
+
+  function handleSubmit(id, comment) {
+    setHwList(prev => prev.map(h => h.id === id
+      ? { ...h, state: 'done', comment: 'На проверке у преподавателя' }
+      : h
+    ))
+  }
+
+  function handleMessage(hw) {
+    navigate('/messages', { state: { teacherName: hw.teacher } })
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -145,7 +226,6 @@ export default function HomeworkPage() {
             <div className="ps-card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                 <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Задания</h3>
-                {/* Tabs */}
                 <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
                   {TABS.map(t => (
                     <button
@@ -174,6 +254,8 @@ export default function HomeworkPage() {
                     hw={hw}
                     expanded={expanded === hw.id}
                     onToggle={() => setExpanded(expanded === hw.id ? null : hw.id)}
+                    onSubmit={setSubmitHw}
+                    onMessage={handleMessage}
                   />
                 ))}
               </div>
@@ -182,7 +264,6 @@ export default function HomeworkPage() {
             {/* Правая колонка */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-              {/* Прогресс */}
               <div className="ps-card-purple" style={{ padding: 22 }}>
                 <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>прогресс</span>
                 <h3 className="ps-display ps-display-purple" style={{ fontSize: 20, margin: '6px 0 18px' }}>
@@ -196,12 +277,11 @@ export default function HomeworkPage() {
                 </div>
               </div>
 
-              {/* Ближайшие дедлайны */}
               <div className="ps-card" style={{ padding: 20 }}>
                 <span className="ps-eyebrow">дедлайны</span>
                 <h3 className="ps-display" style={{ fontSize: 18, margin: '6px 0 14px' }}>Скоро сдавать</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {ALL.filter(h => h.state !== 'done').slice(0, 3).map(h => (
+                  {hwList.filter(h => h.state !== 'done').slice(0, 3).map(h => (
                     <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span className={`ps-flag ps-flag-${h.lang}`} style={{ flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -213,12 +293,11 @@ export default function HomeworkPage() {
                 </div>
               </div>
 
-              {/* Оценки */}
               <div className="ps-card" style={{ padding: 20 }}>
                 <span className="ps-eyebrow">оценки</span>
                 <h3 className="ps-display" style={{ fontSize: 18, margin: '6px 0 14px' }}>Последние</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {ALL.filter(h => h.grade).slice(0, 3).map(h => (
+                  {hwList.filter(h => h.grade).slice(0, 3).map(h => (
                     <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <GradeCircle grade={h.grade} />
                       <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -233,6 +312,14 @@ export default function HomeworkPage() {
           </div>
         </div>
       </main>
+
+      {submitHw && (
+        <SubmitModal
+          hw={submitHw}
+          onClose={() => setSubmitHw(null)}
+          onSubmit={handleSubmit}
+        />
+      )}
     </div>
   )
 }

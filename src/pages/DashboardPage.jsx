@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
@@ -5,6 +6,7 @@ import { useApp } from '../context/AppContext'
 import { useApi } from '../hooks/useApi'
 import { dashboardApi } from '../api/dashboard'
 import ApiError from '../components/ApiError'
+import { toast } from '../components/Toast'
 
 /* ── Прогресс-кольцо ──────────────────────────────────────── */
 function ProgressRing({ value = 65, size = 56, color = 'var(--purple)' }) {
@@ -58,6 +60,7 @@ function RoleSwitcher({ role, onChange }) {
    ДАШБОРД УЧЕНИКА
    ================================================================ */
 function DashStudent() {
+  const navigate = useNavigate()
   return (
     <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
@@ -76,10 +79,10 @@ function DashStudent() {
             <i>«Conditionnel présent — мечтаем по-французски»</i>.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
-            <button className="ps-btn ps-btn-primary">
+            <button className="ps-btn ps-btn-primary" onClick={() => toast('Открываем Zoom... (ссылка придёт на email)', 'success')}>
               <Icon name="play" size={14} /> Войти в Zoom
             </button>
-            <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+            <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/homework')}>
               <Icon name="file" size={14} /> Подготовиться
             </button>
           </div>
@@ -115,7 +118,7 @@ function DashStudent() {
                 <div style={{ height: '100%', width: '62%', background: 'var(--purple)', borderRadius: 3 }} />
               </div>
             </div>
-            <button className="ps-btn ps-btn-sm ps-btn-outline" style={{ flexShrink: 0 }}>Продлить</button>
+            <button className="ps-btn ps-btn-sm ps-btn-outline" style={{ flexShrink: 0 }} onClick={() => navigate('/billing')}>Продлить</button>
           </div>
         </div>
       </div>
@@ -130,7 +133,7 @@ function DashStudent() {
               <span className="ps-eyebrow">мои курсы</span>
               <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Прогресс по языкам</h3>
             </div>
-            <button className="ps-btn ps-btn-ghost ps-btn-sm">Все курсы <Icon name="arrow" size={12} /></button>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/billing')}>Все курсы <Icon name="arrow" size={12} /></button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -175,7 +178,7 @@ function DashStudent() {
               <span className="ps-eyebrow">эта неделя</span>
               <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Расписание</h3>
             </div>
-            <button className="ps-btn ps-btn-ghost ps-btn-sm"><Icon name="calendar" size={12} /> Календарь</button>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}><Icon name="calendar" size={12} /> Календарь</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
             {[

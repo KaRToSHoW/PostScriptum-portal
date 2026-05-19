@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
@@ -5,109 +6,159 @@ import { useApp } from '../context/AppContext'
 import { useApi } from '../hooks/useApi'
 import { calendarApi } from '../api/calendar'
 import ApiError from '../components/ApiError'
+import { toast } from '../components/Toast'
 
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: '#9DC4A2', es: '#D7A87E', it: '#C9A0DC' }
 
-/* ── события мая (ученик) ──────────────────────────────────── */
+const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+const DAY_NAMES   = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС']
+
+/* события мая 2026 */
 const EVENTS_STUDENT = {
-  1:  [{ t:'10:00', title:'FR · Анна',      l:'fr', s:'done' }],
-  4:  [{ t:'18:30', title:'FR · Анна',      l:'fr', s:'done' }, { t:'19:00', title:'EN · Михаил', l:'en', s:'done' }],
-  5:  [{ t:'12:30', title:'FR · Лиза',      l:'fr', s:'done' }],
-  6:  [{ t:'15:00', title:'DE · Денис',     l:'de', s:'missed' }],
-  7:  [{ t:'10:00', title:'EN · Speaking',  l:'en', s:'done' }, { t:'19:00', title:'FR · Анна', l:'fr', s:'done' }],
-  8:  [{ t:'18:00', title:'IT · Олег',      l:'it', s:'done' }],
-  11: [{ t:'10:00', title:'FR · Анна',      l:'fr', s:'done' }, { t:'18:30', title:'FR · Лиза', l:'fr', s:'done' }],
-  12: [{ t:'10:00', title:'FR · Анна',      l:'fr', s:'today' }, { t:'15:00', title:'FR · пара', l:'fr', s:'now' }, { t:'18:30', title:'FR · Lecture', l:'fr', s:'today' }, { t:'20:00', title:'Speaking', l:'fr', s:'today' }],
-  13: [{ t:'12:00', title:'EN · Михаил',    l:'en', s:'planned' }, { t:'19:00', title:'ES · Лиза', l:'es', s:'planned' }],
-  14: [{ t:'19:00', title:'EN · Анна',      l:'en', s:'planned' }],
-  15: [{ t:'10:00', title:'FR · Кирилл',    l:'fr', s:'planned' }],
-  18: [{ t:'18:30', title:'FR · Анна',      l:'fr', s:'planned' }],
-  19: [{ t:'10:00', title:'DE · Денис',     l:'de', s:'planned' }, { t:'18:30', title:'FR · Анна', l:'fr', s:'planned' }],
-  21: [{ t:'19:00', title:'EN · Михаил',    l:'en', s:'planned' }],
-  22: [{ t:'12:00', title:'IT · Олег',      l:'it', s:'planned' }],
-  25: [{ t:'10:00', title:'FR · Анна',      l:'fr', s:'planned' }],
-  26: [{ t:'18:30', title:'FR · группа',    l:'fr', s:'planned' }],
-  27: [{ t:'16:00', title:'ES · Speaking',  l:'es', s:'planned' }],
-  28: [{ t:'19:00', title:'EN · Михаил',    l:'en', s:'planned' }],
-  30: [{ t:'12:00', title:'FR · Speaking',  l:'fr', s:'planned' }],
+  1:  [{ t:'10:00', title:'FR · Conditionnel', l:'fr', s:'done' }],
+  4:  [{ t:'18:30', title:'FR · Conjugaison',  l:'fr', s:'done' }, { t:'19:00', title:'EN · Speaking', l:'en', s:'done' }],
+  6:  [{ t:'15:00', title:'DE · Grammar',      l:'de', s:'missed' }],
+  7:  [{ t:'10:00', title:'EN · Speaking club',l:'en', s:'done' }, { t:'19:00', title:'FR · Dialogue', l:'fr', s:'done' }],
+  11: [{ t:'10:00', title:'FR · Lecture',      l:'fr', s:'done' }],
+  12: [{ t:'10:00', title:'FR · Conditionnel', l:'fr', s:'today' }, { t:'15:00', title:'FR · пара A2', l:'fr', s:'now' }, { t:'18:30', title:'FR · Conditionnel', l:'fr', s:'today' }, { t:'20:00', title:'Speaking Club', l:'fr', s:'today' }],
+  13: [{ t:'12:00', title:'EN · Grammar',      l:'en', s:'planned' }, { t:'19:00', title:'ES · Vocab', l:'es', s:'planned' }],
+  14: [{ t:'19:00', title:'EN · Татьяна К.',   l:'en', s:'planned' }],
+  15: [{ t:'10:00', title:'FR · Sofya',        l:'fr', s:'planned' }],
+  18: [{ t:'18:30', title:'FR · Conditionnel', l:'fr', s:'planned' }],
+  19: [{ t:'10:00', title:'DE · Шульц',        l:'de', s:'planned' }, { t:'18:30', title:'FR · Sofya', l:'fr', s:'planned' }],
+  21: [{ t:'19:00', title:'EN · Татьяна',      l:'en', s:'planned' }],
+  22: [{ t:'12:00', title:'FR · Speaking',     l:'fr', s:'planned' }],
+  25: [{ t:'10:00', title:'FR · Sofya',        l:'fr', s:'planned' }],
+  26: [{ t:'18:30', title:'FR · группа',       l:'fr', s:'planned' }],
+  28: [{ t:'19:00', title:'EN · Татьяна',      l:'en', s:'planned' }],
 }
 
-/* ── вспомогательные ──────────────────────────────────────── */
-function buildCells(startOffset = 4, daysInMonth = 31) {
-  const cells = []
-  for (let i = 0; i < startOffset; i++) cells.push({ blank: true })
-  for (let d = 1; d <= daysInMonth; d++) cells.push({ d })
-  while (cells.length % 7) cells.push({ blank: true })
+const STATE_LABEL = { done: 'Завершён', missed: 'Пропущен', now: 'Сейчас', today: 'Сегодня', planned: 'Запланирован' }
+
+function eventStyle(s) {
+  if (s === 'done')    return { bg: 'var(--success-soft)', color: '#2F5A3D',             strike: false }
+  if (s === 'missed')  return { bg: 'var(--danger-soft)',  color: '#7A322C',             strike: true  }
+  if (s === 'now')     return { bg: 'var(--orange)',       color: '#fff',                strike: false }
+  if (s === 'today')   return { bg: 'var(--orange-soft)',  color: 'var(--orange-deep)',  strike: false }
+  return                      { bg: 'var(--purple-soft)',  color: 'var(--purple-deep)',  strike: false }
+}
+
+function buildCells(year, month) {
+  const firstDay  = new Date(year, month - 1, 1)
+  const startOff  = (firstDay.getDay() + 6) % 7
+  const days      = new Date(year, month, 0).getDate()
+  const cells     = []
+  for (let i = 0; i < startOff; i++) cells.push({ blank: true })
+  for (let d = 1; d <= days; d++)    cells.push({ d })
+  while (cells.length % 7)           cells.push({ blank: true })
   return cells
 }
 
-function eventStyle(s) {
-  if (s === 'done')    return { bg: 'var(--success-soft)', color: '#2F5A3D',        strike: false }
-  if (s === 'missed')  return { bg: 'var(--danger-soft)',  color: '#7A322C',         strike: true  }
-  if (s === 'now')     return { bg: 'var(--orange)',       color: '#fff',            strike: false }
-  if (s === 'today')   return { bg: 'var(--orange-soft)',  color: 'var(--orange-deep)', strike: false }
-  return                      { bg: 'var(--purple-soft)',  color: 'var(--purple-deep)', strike: false }
-}
-
 /* ================================================================
-   ВАРИАНТ УЧЕНИКА/ПРЕПОДАВАТЕЛЯ
+   ВАРИАНТ УЧЕНИКА
    ================================================================ */
 function CalendarStudent() {
-  const cells = buildCells(4, 31)
+  const TODAY = { y: 2026, m: 5, d: 12 }
+  const [ym, setYm]             = useState({ y: TODAY.y, m: TODAY.m })
+  const [selectedDay, setSel]   = useState(TODAY.d)
+  const [langFilter, setLang]   = useState(new Set(['fr','en','de','es','it']))
+
+  const isToday = (d) => ym.y === TODAY.y && ym.m === TODAY.m && d === TODAY.d
+  const isPast  = (d) => ym.y < TODAY.y || (ym.y === TODAY.y && ym.m < TODAY.m) || (ym.y === TODAY.y && ym.m === TODAY.m && d < TODAY.d)
+  const isCurMo = ym.y === TODAY.y && ym.m === TODAY.m
+  const events  = isCurMo ? EVENTS_STUDENT : {}
+
+  const cells   = buildCells(ym.y, ym.m)
+  const selEvs  = (events[selectedDay] || []).filter(e => langFilter.has(e.l))
+
+  function prevMonth() {
+    setYm(p => p.m === 1 ? { y: p.y - 1, m: 12 } : { ...p, m: p.m - 1 })
+    setSel(null)
+  }
+  function nextMonth() {
+    setYm(p => p.m === 12 ? { y: p.y + 1, m: 1 } : { ...p, m: p.m + 1 })
+    setSel(null)
+  }
+  function goToday() {
+    setYm({ y: TODAY.y, m: TODAY.m })
+    setSel(TODAY.d)
+  }
+
+  function toggleLang(l) {
+    setLang(prev => {
+      const next = new Set(prev)
+      next.has(l) ? next.delete(l) : next.add(l)
+      return next
+    })
+  }
+
+  const selLabel = selectedDay
+    ? `${selectedDay} ${MONTH_NAMES[ym.m - 1].slice(0, 3).toLowerCase()}, ${DAY_NAMES[new Date(ym.y, ym.m - 1, selectedDay).getDay() === 0 ? 6 : new Date(ym.y, ym.m - 1, selectedDay).getDay() - 1]}`
+    : null
 
   return (
     <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, overflow: 'hidden' }}>
 
       {/* Тулбар */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h2 className="ps-display" style={{ fontSize: 30, margin: 0 }}>Май 2026</h2>
+        <h2 className="ps-display" style={{ fontSize: 30, margin: 0 }}>{MONTH_NAMES[ym.m - 1]} {ym.y}</h2>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }}>‹</button>
-          <button className="ps-btn ps-btn-outline ps-btn-sm">Сегодня</button>
-          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }}>›</button>
-        </div>
-        <div style={{ display: 'inline-flex', padding: 4, background: '#fff', borderRadius: 999, border: '1px solid var(--border-soft)' }}>
-          {['День','Неделя','Месяц'].map((v, i) => (
-            <span key={v} style={{ padding: '8px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', background: i === 2 ? 'var(--purple)' : 'transparent', color: i === 2 ? '#fff' : 'var(--ink-muted)' }}>{v}</span>
-          ))}
+          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={prevMonth}>‹</button>
+          <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={goToday}>Сегодня</button>
+          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth}>›</button>
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 8 }}>
           {['fr','en','de','es','it'].map(l => (
-            <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: '#fff', border: '1px solid var(--border-soft)', fontSize: 11, fontWeight: 800, color: 'var(--ink-2)', cursor: 'pointer' }}>
+            <span
+              key={l}
+              onClick={() => toggleLang(l)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999,
+                background: langFilter.has(l) ? LANG_COLOR[l] + '22' : '#fff',
+                border: `1px solid ${langFilter.has(l) ? LANG_COLOR[l] : 'var(--border-soft)'}`,
+                fontSize: 11, fontWeight: 800, color: langFilter.has(l) ? LANG_COLOR[l] : 'var(--ink-muted)', cursor: 'pointer',
+              }}
+            >
               <span style={{ width: 9, height: 9, borderRadius: 3, background: LANG_COLOR[l] }} /> {l.toUpperCase()}
             </span>
           ))}
         </div>
-        <button className="ps-btn ps-btn-primary ps-btn-sm"><Icon name="plus" size={12} /> Новый урок</button>
+        <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => toast('Запись на урок — напишите преподавателю', 'success')}>
+          <Icon name="plus" size={12} /> Новый урок
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
         {/* Сетка месяца */}
         <div className="ps-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Заголовки дней */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, paddingBottom: 8 }}>
-            {['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'].map(d => (
+            {DAY_NAMES.map(d => (
               <div key={d} style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', padding: '4px 6px' }}>{d}</div>
             ))}
           </div>
-          {/* Ячейки */}
           <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', gap: 4, overflow: 'hidden' }}>
             {cells.map((c, i) => {
               if (c.blank) return <div key={i} />
-              const evs = EVENTS_STUDENT[c.d] || []
-              const isToday = c.d === 12
-              const isPast  = c.d < 12
+              const evs     = (events[c.d] || []).filter(e => langFilter.has(e.l))
+              const today   = isToday(c.d)
+              const past    = isPast(c.d)
+              const sel     = selectedDay === c.d
               return (
-                <div key={i} style={{
-                  borderRadius: 10,
-                  border: isToday ? '2px solid var(--orange)' : '1px solid var(--border-soft)',
-                  background: isToday ? 'var(--orange-tint)' : isPast ? 'var(--bg-cream-soft)' : '#fff',
-                  padding: 7, display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer',
-                }}>
+                <div
+                  key={i}
+                  onClick={() => setSel(c.d)}
+                  style={{
+                    borderRadius: 10,
+                    border: today ? '2px solid var(--orange)' : sel ? '2px solid var(--purple)' : '1px solid var(--border-soft)',
+                    background: today ? 'var(--orange-tint)' : sel ? 'var(--purple-tint)' : past ? 'var(--bg-cream-soft)' : '#fff',
+                    padding: 7, display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer',
+                    transition: 'border-color .1s, background .1s',
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: isToday ? 'var(--orange-deep)' : isPast ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: today ? 'var(--orange-deep)' : sel ? 'var(--purple-deep)' : past ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
                     {evs.length > 2 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>+{evs.length}</span>}
                   </div>
                   {evs.slice(0, 2).map((e, ei) => {
@@ -124,7 +175,6 @@ function CalendarStudent() {
                       </div>
                     )
                   })}
-                  {evs.length > 2 && <div style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700, paddingLeft: 4 }}>+{evs.length - 2} ещё</div>}
                 </div>
               )
             })}
@@ -133,27 +183,39 @@ function CalendarStudent() {
 
         {/* Правая панель */}
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
-          {/* Сегодня */}
-          <div className="ps-card-purple" style={{ padding: 20 }}>
-            <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>сегодня · вт, 12 мая</span>
-            <h3 className="ps-display ps-display-purple" style={{ fontSize: 22, margin: '4px 0 12px' }}>4 урока</h3>
+
+          {/* Выбранный день */}
+          <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0 }}>
+            <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              {selectedDay ? selLabel : 'выберите день'}
+            </span>
+            <h3 className="ps-display ps-display-purple" style={{ fontSize: 20, margin: '4px 0 12px' }}>
+              {selEvs.length > 0 ? `${selEvs.length} ${selEvs.length === 1 ? 'урок' : selEvs.length < 5 ? 'урока' : 'уроков'}` : 'Нет уроков'}
+            </h3>
+            {selEvs.length === 0 && selectedDay && (
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)' }}>В этот день занятий нет</div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { t: '10:00', title: 'FR · Conditionnel', s: 'Завершён',          live: false, done: true  },
-                { t: '15:00', title: 'FR · пара (A2)',    s: 'Сейчас в эфире',    live: true,  done: false },
-                { t: '18:30', title: 'FR · Lecture',      s: 'Через 3ч',          live: false, done: false },
-                { t: '20:00', title: 'Speaking Club',     s: 'Запланирован',      live: false, done: false },
-              ].map((it, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, padding: 10, borderRadius: 10, background: it.live ? 'var(--orange)' : 'rgba(255,255,255,0.08)', border: it.live ? 'none' : '1px solid rgba(255,255,255,0.18)', alignItems: 'center' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, width: 44, flexShrink: 0 }}>{it.t}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{it.title}</div>
-                    <div style={{ fontSize: 10, opacity: 0.85 }}>{it.s}</div>
+              {selEvs.map((it, i) => {
+                const live = it.s === 'now'
+                return (
+                  <div key={i} style={{
+                    display: 'flex', gap: 10, padding: 10, borderRadius: 10,
+                    background: live ? 'var(--orange)' : 'rgba(255,255,255,0.1)',
+                    border: live ? 'none' : '1px solid rgba(255,255,255,0.18)',
+                    alignItems: 'center',
+                  }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, width: 44, flexShrink: 0 }}>{it.t}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800 }}>{it.title}</div>
+                      <div style={{ fontSize: 10, opacity: 0.85 }}>{STATE_LABEL[it.s] || it.s}</div>
+                    </div>
+                    {live && <Icon name="play" size={14} />}
+                    {it.s === 'done' && <span style={{ color: 'rgba(255,255,255,.8)' }}><Icon name="check" size={14} /></span>}
+                    {it.s === 'missed' && <span style={{ color: '#ffaaaa' }}>✗</span>}
                   </div>
-                  {it.live && <Icon name="play" size={14} />}
-                  {it.done && <span style={{ color: 'var(--success-soft)' }}><Icon name="check" size={14} /></span>}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -174,7 +236,6 @@ function CalendarStudent() {
               ))}
             </div>
 
-            {/* Точечная история */}
             <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               {Array.from({ length: 36 }).map((_, i) => {
                 const bg = i >= 25 ? 'var(--purple-soft)' : i === 19 ? 'var(--danger-soft)' : 'var(--success-soft)'
@@ -187,7 +248,7 @@ function CalendarStudent() {
                 { c: 'var(--success)',     l: 'Проведено' },
                 { c: 'var(--danger)',      l: 'Пропущено' },
                 { c: 'var(--purple-deep)', l: 'Запланировано' },
-                { c: 'var(--orange)',      l: 'Сегодня · сейчас' },
+                { c: 'var(--orange)',      l: 'Сегодня' },
               ].map(L => (
                 <div key={L.l} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: L.c, flexShrink: 0 }} />
@@ -211,12 +272,11 @@ function dayData(d) {
 }
 
 function CalendarAdmin() {
-  const cells = buildCells(4, 31)
+  const cells = buildCells(2026, 5)
 
   return (
     <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, overflow: 'hidden' }}>
 
-      {/* Тулбар */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 className="ps-display" style={{ fontSize: 30, margin: 0 }}>Май 2026</h2>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -235,7 +295,6 @@ function CalendarAdmin() {
         <button className="ps-btn ps-btn-outline ps-btn-sm"><Icon name="download" size={12} /> Отчёт</button>
       </div>
 
-      {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
         {[
           { l: 'Занятий в мае', v: '412',       d: 'из 458 план',  c: null    },
@@ -253,11 +312,9 @@ function CalendarAdmin() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
-
-        {/* Сетка */}
         <div className="ps-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, paddingBottom: 6 }}>
-            {['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'].map(d => (
+            {DAY_NAMES.map(d => (
               <div key={d} style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', padding: '4px 6px' }}>{d}</div>
             ))}
           </div>
@@ -278,7 +335,6 @@ function CalendarAdmin() {
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: isToday ? 'var(--orange-deep)' : isPast ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
                     <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>{dt.lessons} ур.</span>
                   </div>
-                  {/* мини-бар по языкам */}
                   <div style={{ display: 'flex', height: 5, borderRadius: 3, overflow: 'hidden', background: 'var(--border-soft)' }}>
                     <div style={{ flex: 4, background: 'var(--purple)' }} />
                     <div style={{ flex: 3, background: 'var(--orange)' }} />
@@ -288,18 +344,12 @@ function CalendarAdmin() {
                   <div style={{ fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 800, color: isPast ? 'var(--ink-2)' : 'var(--purple-deep)' }}>
                     ₽ {dt.revenue.toLocaleString('ru-RU')}
                   </div>
-                  <div style={{ display: 'flex', gap: 4, marginTop: 'auto' }}>
-                    {dt.paid    > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10, fontWeight: 800, color: 'var(--success)' }}><span style={{ width: 5, height: 5, borderRadius: 999, background: 'var(--success)' }} />{dt.paid}</span>}
-                    {dt.pending > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10, fontWeight: 800, color: 'var(--orange-deep)' }}><span style={{ width: 5, height: 5, borderRadius: 999, background: 'var(--orange)' }} />{dt.pending}</span>}
-                    {dt.overdue > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10, fontWeight: 800, color: 'var(--danger)' }}><span style={{ width: 5, height: 5, borderRadius: 999, background: 'var(--danger)' }} />{dt.overdue}</span>}
-                  </div>
                 </div>
               )
             })}
           </div>
         </div>
 
-        {/* Правая панель */}
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
           <div className="ps-card" style={{ padding: 20 }}>
             <span className="ps-eyebrow">вт, 12 мая</span>
@@ -314,36 +364,6 @@ function CalendarAdmin() {
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--orange-deep)' }}>₽ 48 400</div>
               </div>
             </div>
-          </div>
-
-          <div className="ps-card" style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span className="ps-eyebrow">оплаты дня</span>
-              <span className="ps-chip ps-chip-orange">3 ожидают</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}>
-              {[
-                { n: 'Анна Соколова',  a: '₽ 2 000',  c: 'green',  l: 'Оплачено · СБП',     lang: 'fr' },
-                { n: 'Михаил Орлов',   a: '₽ 16 000', c: 'green',  l: 'Оплачено · карта',    lang: 'en' },
-                { n: 'Лиза Кравцова',  a: '₽ 8 000',  c: 'orange', l: 'Ожидает 2ч',          lang: 'fr' },
-                { n: 'Денис Орехов',   a: '₽ 4 800',  c: 'orange', l: 'Счёт выставлен',      lang: 'de' },
-                { n: 'Игорь Петров',   a: '₽ 4 800',  c: 'red',    l: 'Просрочено 3 дн',     lang: 'en' },
-                { n: 'Кирилл Васин',   a: '₽ 2 000',  c: 'green',  l: 'Оплачено · СБП',     lang: 'fr' },
-              ].map((p, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: 'var(--bg-cream-soft)' }}>
-                  <span className={`ps-flag ps-flag-${p.lang}`} style={{ width: 18, height: 18 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink)' }}>{p.n}</div>
-                    <div style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700 }}>{p.l}</div>
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: 'var(--ink)' }}>{p.a}</div>
-                  <span className={`ps-chip ps-chip-${p.c}`} style={{ width: 8, height: 8, padding: 0, borderRadius: 999 }} />
-                </div>
-              ))}
-            </div>
-            <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ marginTop: 12 }}>
-              Все оплаты дня <Icon name="arrow" size={12} />
-            </button>
           </div>
         </aside>
       </div>
@@ -360,7 +380,6 @@ export default function CalendarPage() {
   const isAdmin = role === 'admin'
   const title = isAdmin ? 'Расписание · все занятия' : 'Расписание'
 
-  // events.events заменит EVENTS_STUDENT когда бэкенд готов
   const { error } = useApi(
     () => isAdmin ? calendarApi.getAdminMonth(2026, 5) : calendarApi.getMonth(2026, 5),
     [isAdmin],

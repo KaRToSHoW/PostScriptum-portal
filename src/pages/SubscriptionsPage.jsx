@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
+import { toast } from '../components/Toast'
 
 const ACTIVE = [
   { id: 1, lang: 'fr', langName: 'Французский', level: 'B1', teacher: 'Софья Ф.', plan: '8 уроков', used: 5, total: 8, price: '₽ 13 600', expires: '01.06.2026', daysLeft: 13 },
@@ -26,7 +28,68 @@ const PLANS = [
 const LANG_COLORS = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--info)', es: 'var(--success)' }
 const LANG_SOFT   = { fr: 'var(--purple-soft)', en: 'var(--orange-soft)', de: 'var(--info-soft)', es: 'var(--success-soft)' }
 
-function ActiveCard({ sub }) {
+function BuyModal({ plan, onClose, onConfirm }) {
+  const [method, setMethod] = useState('card')
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 460, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>оформление абонемента</span>
+              <h3 className="ps-display ps-display-purple" style={{ fontSize: 20, margin: '4px 0 0' }}>
+                {plan.langName} · {plan.lessons} уроков
+              </h3>
+            </div>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
+              <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} />
+            </button>
+          </div>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderRadius: 14, background: 'var(--bg-cream-soft)', border: '1px solid var(--border-soft)' }}>
+            <div>
+              <div style={{ fontSize: 13, color: 'var(--ink-muted)', fontWeight: 700 }}>{plan.perLesson} за урок</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28, color: 'var(--ink)', letterSpacing: '-0.02em' }}>{plan.price}</div>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--ink-muted)', display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
+              <div>Действует 30 дней</div>
+              <div>{plan.lessons} уроков</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Способ оплаты</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {[{ id: 'card', label: '💳 Карта' }, { id: 'sbp', label: '⚡ СБП' }].map(m => (
+                <button key={m.id} onClick={() => setMethod(m.id)} style={{
+                  flex: 1, padding: '11px 0', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                  background: method === m.id ? 'var(--purple)' : 'var(--bg-cream-soft)',
+                  color: method === m.id ? '#fff' : 'var(--ink-muted)',
+                  border: method === m.id ? '2px solid var(--purple)' : '2px solid var(--border)',
+                  transition: 'all .12s',
+                }}>{m.label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="ps-btn ps-btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '13px 0' }} onClick={onConfirm}>
+              <Icon name="check" size={14} /> Оплатить {plan.price}
+            </button>
+            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--ink-muted)', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+            Нажимая «Оплатить», вы соглашаетесь с офертой. Возврат в течение 14 дней.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ActiveCard({ sub, onRenew, onCalendar }) {
   const pct   = Math.round(sub.used / sub.total * 100)
   const color = LANG_COLORS[sub.lang]
   const soft  = LANG_SOFT[sub.lang]
@@ -80,10 +143,10 @@ function ActiveCard({ sub }) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, paddingTop: 4, borderTop: '1px solid var(--border-soft)' }}>
-        <button className="ps-btn ps-btn-primary ps-btn-sm" style={{ background: color, borderColor: color }}>
+        <button className="ps-btn ps-btn-primary ps-btn-sm" style={{ background: color, borderColor: color }} onClick={onRenew}>
           <Icon name="plus" size={13} /> Продлить
         </button>
-        <button className="ps-btn ps-btn-ghost ps-btn-sm">
+        <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={onCalendar}>
           <Icon name="calendar" size={13} /> Расписание
         </button>
       </div>
@@ -93,10 +156,34 @@ function ActiveCard({ sub }) {
 
 export default function SubscriptionsPage() {
   const { sideRole } = useApp()
+  const navigate = useNavigate()
   const [buyLang, setBuyLang] = useState('fr')
+  const [buyModal, setBuyModal] = useState(null)
+  const [activeList, setActiveList] = useState(ACTIVE)
+  const buyRef = useRef(null)
 
   const filteredPlans = PLANS.filter(p => p.lang === buyLang)
   const totalSpent = HISTORY.reduce((s, h) => s + parseInt(h.price.replace(/\D/g, '')), 0)
+
+  function handleBuy(plan) {
+    setBuyModal(plan)
+  }
+
+  function confirmBuy() {
+    const plan = buyModal
+    setActiveList(prev => [...prev, {
+      id: Date.now(), lang: plan.lang, langName: plan.langName, level: '?',
+      teacher: 'Назначается', plan: `${plan.lessons} уроков`,
+      used: 0, total: plan.lessons,
+      price: plan.price, expires: '—', daysLeft: 30,
+    }])
+    setBuyModal(null)
+    toast(`Абонемент "${plan.langName} · ${plan.lessons} уроков" оформлен! ✓`)
+  }
+
+  function scrollToBuy() {
+    buyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -138,7 +225,14 @@ export default function SubscriptionsPage() {
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Активные абонементы</h3>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {ACTIVE.map(sub => <ActiveCard key={sub.id} sub={sub} />)}
+                  {activeList.map(sub => (
+                    <ActiveCard
+                      key={sub.id}
+                      sub={sub}
+                      onRenew={scrollToBuy}
+                      onCalendar={() => navigate('/calendar')}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -169,7 +263,7 @@ export default function SubscriptionsPage() {
             </div>
 
             {/* Правая колонка — купить */}
-            <div className="ps-card-purple" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
+            <div ref={buyRef} className="ps-card-purple" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
               <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>покупка</span>
               <h3 className="ps-display ps-display-purple" style={{ fontSize: 24, margin: '6px 0 20px' }}>Новый абонемент</h3>
 
@@ -221,7 +315,7 @@ export default function SubscriptionsPage() {
                     <button className="ps-btn ps-btn-sm" style={{
                       background: p.popular ? 'var(--orange)' : 'rgba(255,255,255,.2)',
                       color: '#fff', border: 'none', flexShrink: 0,
-                    }}>
+                    }} onClick={() => handleBuy(p)}>
                       Купить
                     </button>
                   </div>
@@ -239,6 +333,14 @@ export default function SubscriptionsPage() {
           </div>
         </div>
       </main>
+
+      {buyModal && (
+        <BuyModal
+          plan={buyModal}
+          onClose={() => setBuyModal(null)}
+          onConfirm={confirmBuy}
+        />
+      )}
     </div>
   )
 }

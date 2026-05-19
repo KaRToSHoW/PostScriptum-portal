@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
@@ -13,7 +14,7 @@ const CONVERSATIONS = [
     msgs: [
       { id: 1, from: 'them', text: 'Добрый день, Анна! Как дела с домашним заданием?', time: '18:30' },
       { id: 2, from: 'me',   text: 'Здравствуйте! Пишу эссе, почти готово — осталось проверить грамматику.', time: '18:35' },
-      { id: 3, from: 'them', text: 'Отлично! Обратите внимание на согласование времён в сослагательном наклонении — там была ошибка на прошлом уроке.', time: '18:40' },
+      { id: 3, from: 'them', text: 'Отлично! Обратите внимание на согласование времён — там была ошибка на прошлом уроке.', time: '18:40' },
       { id: 4, from: 'them', text: 'Анна, не забудьте про эссе — жду до пятницы 🙂', time: '18:42' },
     ],
   },
@@ -41,7 +42,7 @@ const CONVERSATIONS = [
   },
 ]
 
-function Avatar({ name, initials, color, online, size = 44 }) {
+function Avatar({ initials, color, online, size = 44 }) {
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <div style={{
@@ -66,11 +67,37 @@ function Avatar({ name, initials, color, online, size = 44 }) {
 
 export default function MessagesPage() {
   const { sideRole } = useApp()
+  const location  = useLocation()
+  const navigate  = useNavigate()
   const [activeId, setActiveId] = useState(1)
   const [text, setText]         = useState('')
   const [convs, setConvs]       = useState(CONVERSATIONS)
+  const [search, setSearch]     = useState('')
+  const bottomRef = useRef(null)
+
+  // Открыть нужный диалог при переходе из другой страницы
+  useEffect(() => {
+    const name = location.state?.teacherName
+    if (name) {
+      const found = CONVERSATIONS.find(c => c.name === name)
+      if (found) {
+        setActiveId(found.id)
+        setConvs(prev => prev.map(c => c.id === found.id ? { ...c, unread: 0 } : c))
+      }
+    }
+  }, [location.state])
+
+  // Автоскролл вниз при новых сообщениях
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [activeId, convs])
 
   const active = convs.find(c => c.id === activeId)
+
+  const filteredConvs = convs.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.role.toLowerCase().includes(search.toLowerCase())
+  )
 
   function handleSelect(id) {
     setActiveId(id)
@@ -96,7 +123,7 @@ export default function MessagesPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Сообщения" />
 
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', margin: 28, gap: 0, borderRadius: 20, boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', margin: 28, gap: 0, borderRadius: 20, boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
 
           {/* Список диалогов */}
           <div style={{ width: 300, background: '#fff', borderRight: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -108,6 +135,8 @@ export default function MessagesPage() {
               <div style={{ position: 'relative' }}>
                 <Icon name="search" size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)' }} />
                 <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
                   placeholder="Поиск..."
                   style={{
                     width: '100%', padding: '8px 10px 8px 32px', borderRadius: 10,
@@ -119,7 +148,10 @@ export default function MessagesPage() {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              {convs.map(c => (
+              {filteredConvs.length === 0 && (
+                <div style={{ padding: '30px 18px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 13 }}>Ничего не найдено</div>
+              )}
+              {filteredConvs.map(c => (
                 <div
                   key={c.id}
                   onClick={() => handleSelect(c.id)}
@@ -130,7 +162,7 @@ export default function MessagesPage() {
                     transition: 'background .12s',
                   }}
                 >
-                  <Avatar name={c.name} initials={c.initials} color={c.color} online={c.online} />
+                  <Avatar initials={c.initials} color={c.color} online={c.online} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                       <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.name}</span>
@@ -156,16 +188,21 @@ export default function MessagesPage() {
           {/* Чат */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-cream-soft)', minWidth: 0 }}>
 
-            {/* Шапка чата */}
+            {/* Шапка */}
             <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Avatar name={active.name} initials={active.initials} color={active.color} online={active.online} size={40} />
+              <Avatar initials={active.initials} color={active.color} online={active.online} size={40} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{active.name}</div>
                 <div style={{ fontSize: 12, color: active.online ? 'var(--success)' : 'var(--ink-muted)', fontWeight: 700, marginTop: 1 }}>
                   {active.online ? 'Онлайн' : 'Был(а) недавно'} · {active.role}
                 </div>
               </div>
-              <button className="ps-btn ps-btn-ghost ps-btn-sm"><Icon name="calendar" size={14} /> Записаться</button>
+              <button
+                className="ps-btn ps-btn-ghost ps-btn-sm"
+                onClick={() => navigate('/calendar', { state: { teacherName: active.name } })}
+              >
+                <Icon name="calendar" size={14} /> Записаться
+              </button>
             </div>
 
             {/* Сообщения */}
@@ -173,7 +210,7 @@ export default function MessagesPage() {
               {active.msgs.map(m => (
                 <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
                   {m.from === 'them' && (
-                    <Avatar name={active.name} initials={active.initials} color={active.color} online={false} size={32} />
+                    <Avatar initials={active.initials} color={active.color} online={false} size={32} />
                   )}
                   <div style={{ maxWidth: '65%' }}>
                     <div style={{
@@ -191,6 +228,7 @@ export default function MessagesPage() {
                   </div>
                 </div>
               ))}
+              <div ref={bottomRef} />
             </div>
 
             {/* Ввод */}
