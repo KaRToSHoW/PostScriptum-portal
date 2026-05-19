@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
@@ -58,13 +58,21 @@ function Toggle({ checked, onChange, label }) {
 }
 
 export default function ProfilePage() {
-  const { user, sideRole } = useApp()
+  const { user, sideRole, locale, setLocale, photo, setPhoto, t } = useApp()
+  const fileRef = useRef(null)
 
   const [name,     setName]     = useState(user?.name     ?? 'Анна Соколова')
   const [email,    setEmail]    = useState('anna@example.ru')
   const [phone,    setPhone]    = useState('+7 999 123-45-67')
   const [tz,       setTz]       = useState('Europe/Moscow')
-  const [locale,   setLocale]   = useState('ru')
+
+  function handlePhotoChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setPhoto(ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   const [notifEmail, setNotifEmail] = useState(true)
   const [notifPush,  setNotifPush]  = useState(true)
@@ -86,9 +94,9 @@ export default function ProfilePage() {
   const initials = name.split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2)
 
   const SECTIONS = [
-    { id: 'profile',  label: 'Личные данные',  icon: 'user'     },
-    { id: 'notif',    label: 'Уведомления',     icon: 'warning'  },
-    { id: 'security', label: 'Безопасность',    icon: 'shield'   },
+    { id: 'profile',  label: t('Личные данные'),  icon: 'user'     },
+    { id: 'notif',    label: t('Уведомления'),     icon: 'warning'  },
+    { id: 'security', label: t('Безопасность'),    icon: 'shield'   },
   ]
 
   return (
@@ -102,28 +110,39 @@ export default function ProfilePage() {
 
           {/* Hero */}
           <div className="ps-card-purple" style={{ padding: 28, display: 'flex', alignItems: 'center', gap: 24, position: 'relative', overflow: 'hidden' }}>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
             <div style={{
               width: 80, height: 80, borderRadius: '50%',
               background: 'rgba(255,255,255,.2)', border: '3px solid rgba(255,255,255,.4)',
               display: 'grid', placeItems: 'center',
               fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28, color: '#fff',
-              flexShrink: 0,
+              flexShrink: 0, overflow: 'hidden',
             }}>
-              {initials}
+              {photo
+                ? <img src={photo} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : initials
+              }
             </div>
             <div>
               <h2 className="ps-display ps-display-purple" style={{ fontSize: 30, margin: '0 0 6px' }}>{name}</h2>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,.75)', display: 'flex', gap: 16 }}>
-                <span>Ученик</span>
+                <span>{t('Ученик')}</span>
                 <span>·</span>
                 <span>{email}</span>
                 <span>·</span>
                 <span>{tz}</span>
               </div>
             </div>
-            <button className="ps-btn ps-btn-sm" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,.15)', color: '#fff', border: '1px solid rgba(255,255,255,.3)', flexShrink: 0 }}>
-              <Icon name="upload" size={13} /> Сменить фото
-            </button>
+            <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+              <button className="ps-btn ps-btn-sm" onClick={() => fileRef.current?.click()} style={{ background: 'rgba(255,255,255,.15)', color: '#fff', border: '1px solid rgba(255,255,255,.3)' }}>
+                <Icon name="upload" size={13} /> {t('Сменить фото')}
+              </button>
+              {photo && (
+                <button className="ps-btn ps-btn-sm" onClick={() => setPhoto(null)} style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.7)', border: '1px solid rgba(255,255,255,.2)', fontSize: 11 }}>
+                  {t('Удалить фото')}
+                </button>
+              )}
+            </div>
             <div style={{ position: 'absolute', right: -20, top: -10, fontFamily: 'var(--font-display)', fontSize: 200, color: 'rgba(255,255,255,.06)', fontWeight: 900, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
               P.S.
             </div>
@@ -154,21 +173,21 @@ export default function ProfilePage() {
             {section === 'profile' && (
               <div className="ps-card" style={{ padding: 28 }}>
                 <div style={{ marginBottom: 24 }}>
-                  <span className="ps-eyebrow">аккаунт</span>
-                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Личные данные</h3>
+                  <span className="ps-eyebrow">{t('аккаунт')}</span>
+                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>{t('Личные данные')}</h3>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-                  <Field label="Имя и фамилия">
-                    <Input value={name} onChange={setName} placeholder="Имя Фамилия" />
+                  <Field label={t('Имя и фамилия')}>
+                    <Input value={name} onChange={setName} placeholder={t('Имя и фамилия')} />
                   </Field>
                   <Field label="Email">
                     <Input value={email} onChange={setEmail} type="email" placeholder="email@example.com" />
                   </Field>
-                  <Field label="Телефон">
+                  <Field label={t('Телефон')}>
                     <Input value={phone} onChange={setPhone} placeholder="+7 999 000-00-00" />
                   </Field>
-                  <Field label="Часовой пояс">
+                  <Field label={t('Часовой пояс')}>
                     <select
                       value={tz} onChange={e => setTz(e.target.value)}
                       style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, fontWeight: 600, color: 'var(--ink)', width: '100%' }}
@@ -176,7 +195,7 @@ export default function ProfilePage() {
                       {TIMEZONES.map(z => <option key={z} value={z}>{z}</option>)}
                     </select>
                   </Field>
-                  <Field label="Язык интерфейса">
+                  <Field label={t('Язык интерфейса')}>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {LOCALES.map(l => (
                         <button
@@ -196,11 +215,11 @@ export default function ProfilePage() {
 
                 <div style={{ display: 'flex', gap: 12, marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border-soft)' }}>
                   <button className="ps-btn ps-btn-primary" onClick={handleSave}>
-                    <Icon name="check" size={14} /> Сохранить
+                    <Icon name="check" size={14} /> {t('Сохранить')}
                   </button>
                   {saved && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--success)', fontWeight: 800 }}>
-                      <Icon name="check" size={14} /> Сохранено
+                      <Icon name="check" size={14} /> {t('Сохранено')}
                     </div>
                   )}
                 </div>
@@ -210,15 +229,15 @@ export default function ProfilePage() {
             {section === 'notif' && (
               <div className="ps-card" style={{ padding: 28 }}>
                 <div style={{ marginBottom: 24 }}>
-                  <span className="ps-eyebrow">настройки</span>
-                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Уведомления</h3>
+                  <span className="ps-eyebrow">{t('настройки')}</span>
+                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>{t('Уведомления')}</h3>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {[
-                    { label: 'Email-уведомления',    val: notifEmail, set: setNotifEmail },
-                    { label: 'Push-уведомления',      val: notifPush,  set: setNotifPush  },
-                    { label: 'SMS-уведомления',        val: notifSms,   set: setNotifSms   },
+                    { label: t('Email-уведомления'), val: notifEmail, set: setNotifEmail },
+                    { label: t('Push-уведомления'),  val: notifPush,  set: setNotifPush  },
+                    { label: t('SMS-уведомления'),   val: notifSms,   set: setNotifSms   },
                   ].map((n, i, arr) => (
                     <div key={n.label} style={{ padding: '16px 0', borderBottom: i < arr.length-1 ? '1px solid var(--border-soft)' : 'none' }}>
                       <Toggle checked={n.val} onChange={n.set} label={n.label} />
@@ -227,7 +246,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div style={{ marginTop: 24 }}>
-                  <Field label="Напоминание об уроке (за сколько часов)">
+                  <Field label={t('Напоминание об уроке (за сколько часов)')}>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {['1','2','12','24','48'].map(h => (
                         <button
@@ -239,7 +258,7 @@ export default function ProfilePage() {
                             color:      reminder === h ? '#fff' : 'var(--ink-muted)',
                             border:     reminder === h ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
                           }}
-                        >{h}ч</button>
+                        >{h}{t('ч')}</button>
                       ))}
                     </div>
                   </Field>
@@ -247,11 +266,11 @@ export default function ProfilePage() {
 
                 <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border-soft)' }}>
                   <button className="ps-btn ps-btn-primary" onClick={handleSave}>
-                    <Icon name="check" size={14} /> Сохранить
+                    <Icon name="check" size={14} /> {t('Сохранить')}
                   </button>
                   {saved && (
                     <span style={{ marginLeft: 14, fontSize: 13, color: 'var(--success)', fontWeight: 800 }}>
-                      ✓ Сохранено
+                      ✓ {t('Сохранено')}
                     </span>
                   )}
                 </div>
@@ -261,25 +280,25 @@ export default function ProfilePage() {
             {section === 'security' && (
               <div className="ps-card" style={{ padding: 28 }}>
                 <div style={{ marginBottom: 24 }}>
-                  <span className="ps-eyebrow">безопасность</span>
-                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Смена пароля</h3>
+                  <span className="ps-eyebrow">{t('безопасность')}</span>
+                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>{t('Смена пароля')}</h3>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 400 }}>
-                  <Field label="Текущий пароль">
+                  <Field label={t('Текущий пароль')}>
                     <Input value={curPwd} onChange={setCurPwd} type="password" placeholder="••••••••" />
                   </Field>
-                  <Field label="Новый пароль">
+                  <Field label={t('Новый пароль')}>
                     <Input value={newPwd} onChange={setNewPwd} type="password" placeholder="••••••••" />
                   </Field>
-                  <Field label="Повторите новый пароль">
+                  <Field label={t('Повторите новый пароль')}>
                     <Input value={repPwd} onChange={setRepPwd} type="password" placeholder="••••••••" />
                   </Field>
                 </div>
 
                 {newPwd && repPwd && newPwd !== repPwd && (
                   <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 12, background: 'var(--danger-soft)', fontSize: 13, color: 'var(--danger)', fontWeight: 700 }}>
-                    Пароли не совпадают
+                    {t('Пароли не совпадают')}
                   </div>
                 )}
 
@@ -290,11 +309,11 @@ export default function ProfilePage() {
                     style={{ width: 'fit-content', opacity: (!curPwd || !newPwd || newPwd !== repPwd) ? 0.5 : 1 }}
                     onClick={handleSave}
                   >
-                    <Icon name="shield" size={14} /> Сменить пароль
+                    <Icon name="shield" size={14} /> {t('Сменить пароль')}
                   </button>
 
                   <div style={{ padding: '16px 20px', borderRadius: 14, background: 'var(--warning-soft)', fontSize: 13, color: 'var(--warning)', fontWeight: 700, lineHeight: 1.5 }}>
-                    ⚠ После смены пароля вы будете автоматически выйдены из всех устройств
+                    ⚠ {t('После смены пароля вы будете автоматически выйдены из всех устройств')}
                   </div>
                 </div>
               </div>

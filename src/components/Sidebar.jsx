@@ -1,8 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import Icon from './Icon'
 import Logo from './Logo'
+import { useApp } from '../context/AppContext'
 
-/* ── Маршруты по id пункта ──────────────────────────────────── */
 const ROUTE_MAP = {
   home:      '/dashboard',
   calendar:  '/calendar',
@@ -15,7 +15,6 @@ const ROUTE_MAP = {
   teachers:  '/teachers',
 }
 
-/* ── id пункта по текущему маршруту ────────────────────────── */
 function routeToItem(pathname) {
   if (pathname === '/dashboard')     return 'home'
   if (pathname === '/calendar')      return 'calendar'
@@ -107,18 +106,17 @@ function SideItem({ icon, label, active, badge, onClick }) {
 export default function Sidebar({ role = 'student' }) {
   const navigate  = useNavigate()
   const { pathname } = useLocation()
+  const { t } = useApp()
   const active    = routeToItem(pathname)
   const groups    = NAV[role] || NAV.student
 
   function handleClick(id) {
     const route = ROUTE_MAP[id]
     if (route) navigate(route)
-    // пункты без маршрута — заглушка (будущие страницы)
   }
 
   return (
     <aside className="ps-side">
-      {/* Логотип — клик ведёт на дашборд */}
       <div
         style={{ padding: '0 8px 18px', cursor: 'pointer' }}
         onClick={() => navigate('/dashboard')}
@@ -128,12 +126,12 @@ export default function Sidebar({ role = 'student' }) {
 
       {groups.map((g, i) => (
         <div key={i}>
-          <div className="sec">{g.sec}</div>
+          <div className="sec">{t(g.sec)}</div>
           {g.items.map(it => (
             <SideItem
               key={it.id}
               icon={it.icon}
-              label={it.label}
+              label={t(it.label)}
               badge={it.badge}
               active={active === it.id}
               onClick={() => handleClick(it.id)}
@@ -142,7 +140,6 @@ export default function Sidebar({ role = 'student' }) {
         </div>
       ))}
 
-      {/* Помощь */}
       <div style={{
         marginTop: 'auto', padding: 12, borderRadius: 14,
         background: 'var(--purple-tint)',
@@ -150,8 +147,8 @@ export default function Sidebar({ role = 'student' }) {
       }}>
         <span style={{ fontSize: 22 }}>🐧</span>
         <div style={{ fontSize: 12, color: 'var(--purple-deep)', fontWeight: 700, lineHeight: 1.3 }}>
-          Нужна помощь?<br />
-          <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>Напишите менеджеру</span>
+          {t('Нужна помощь?')}<br />
+          <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>{t('Напишите менеджеру')}</span>
         </div>
       </div>
     </aside>

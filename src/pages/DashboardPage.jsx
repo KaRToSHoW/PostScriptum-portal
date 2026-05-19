@@ -26,12 +26,12 @@ function ProgressRing({ value = 65, size = 56, color = 'var(--purple)' }) {
 }
 
 /* ── Переключатель ролей ──────────────────────────────────── */
-function RoleSwitcher({ role, onChange }) {
+function RoleSwitcher({ role, onChange, t }) {
   const roles = [
-    { id: 'student', l: 'Ученик' },
-    { id: 'teacher', l: 'Преподаватель' },
-    { id: 'parent',  l: 'Родитель' },
-    { id: 'admin',   l: 'Админ' },
+    { id: 'student', l: t('Ученик') },
+    { id: 'teacher', l: t('Преподаватель') },
+    { id: 'parent',  l: t('Родитель') },
+    { id: 'admin',   l: t('Админ') },
   ]
   return (
     <div style={{
@@ -59,7 +59,7 @@ function RoleSwitcher({ role, onChange }) {
 /* ================================================================
    ДАШБОРД УЧЕНИКА
    ================================================================ */
-function DashStudent() {
+function DashStudent({ t }) {
   const navigate = useNavigate()
   return (
     <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -69,7 +69,7 @@ function DashStudent() {
         {/* Карточка следующего урока */}
         <div className="ps-card-purple" style={{ padding: 30, position: 'relative', overflow: 'hidden', minHeight: 200 }}>
           <div className="ps-dotted" style={{ display: 'inline-block', color: '#FBE3C5', borderColor: '#FBE3C5' }}>
-            Ваш следующий урок
+            {t('Ваш следующий урок')}
           </div>
           <h1 className="ps-display ps-display-purple" style={{ fontSize: 38, marginTop: 14, marginBottom: 8 }}>
             Bonjour, <span style={{ color: 'var(--orange-soft)' }}>Анна!</span>
@@ -80,10 +80,10 @@ function DashStudent() {
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
             <button className="ps-btn ps-btn-primary" onClick={() => toast('Открываем Zoom... (ссылка придёт на email)', 'success')}>
-              <Icon name="play" size={14} /> Войти в Zoom
+              <Icon name="play" size={14} /> {t('Войти в Zoom')}
             </button>
             <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/homework')}>
-              <Icon name="file" size={14} /> Подготовиться
+              <Icon name="file" size={14} /> {t('Подготовиться')}
             </button>
           </div>
           <div style={{ position: 'absolute', right: -30, top: -20, fontFamily: 'var(--font-display)', fontSize: 260, color: 'rgba(255,255,255,0.07)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>FR</div>
@@ -96,7 +96,7 @@ function DashStudent() {
               <Icon name="flame" size={26} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase' }}>Серия занятий</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('Серия занятий')}</div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
                 12 дней <span style={{ fontSize: 16, color: 'var(--orange-deep)' }}>🔥</span>
               </div>
@@ -112,13 +112,13 @@ function DashStudent() {
               <Icon name="wallet" size={24} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase' }}>Абонемент</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('Абонемент')}</div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--ink)' }}>5 из 8 уроков</div>
               <div style={{ height: 6, background: 'var(--purple-soft)', borderRadius: 3, marginTop: 6 }}>
                 <div style={{ height: '100%', width: '62%', background: 'var(--purple)', borderRadius: 3 }} />
               </div>
             </div>
-            <button className="ps-btn ps-btn-sm ps-btn-outline" style={{ flexShrink: 0 }} onClick={() => navigate('/billing')}>Продлить</button>
+            <button className="ps-btn ps-btn-sm ps-btn-outline" style={{ flexShrink: 0 }} onClick={() => navigate('/billing')}>{t('Продлить')}</button>
           </div>
         </div>
       </div>
@@ -130,10 +130,10 @@ function DashStudent() {
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <span className="ps-eyebrow">мои курсы</span>
+              <span className="ps-eyebrow">{t('мои курсы')}</span>
               <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Прогресс по языкам</h3>
             </div>
-            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/billing')}>Все курсы <Icon name="arrow" size={12} /></button>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/billing')}>{t('Все курсы')} <Icon name="arrow" size={12} /></button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -153,7 +153,7 @@ function DashStudent() {
           </div>
 
           <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 16, marginTop: 4 }}>
-            <span className="ps-eyebrow">домашка на эту неделю</span>
+            <span className="ps-eyebrow">{t('домашка на эту неделю')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
               {[
                 { t: 'Эссе «Mes rêves» (200 слов)', due: 'до пт',    lang: 'fr', state: 'В работе',   color: 'purple' },
@@ -175,10 +175,10 @@ function DashStudent() {
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
-              <span className="ps-eyebrow">эта неделя</span>
-              <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Расписание</h3>
+              <span className="ps-eyebrow">{t('эта неделя')}</span>
+              <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>{t('Расписание')}</h3>
             </div>
-            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}><Icon name="calendar" size={12} /> Календарь</button>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}><Icon name="calendar" size={12} /> {t('Календарь')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
             {[
@@ -214,17 +214,17 @@ function DashStudent() {
 /* ================================================================
    ДАШБОРД ПРЕПОДАВАТЕЛЯ
    ================================================================ */
-function DashTeacher() {
+function DashTeacher({ t }) {
   return (
     <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {[
-          { l: 'Уроков на неделе',    v: '23',       d: '+4 к прошлой', up: true,  icon: 'calendar' },
-          { l: 'Активных учеников',   v: '31',       d: '2 новых',      up: true,  icon: 'users'    },
-          { l: 'Средняя оценка',      v: '4.9',      d: 'из 5',         up: null,  icon: 'sparkle'  },
-          { l: 'Доход за месяц',      v: '₽ 84 200', d: '+12%',         up: true,  icon: 'wallet'   },
+          { l: t('Уроков на неделе'),    v: '23',       d: '+4 к прошлой', up: true,  icon: 'calendar' },
+          { l: t('Активных учеников'),   v: '31',       d: '2 новых',      up: true,  icon: 'users'    },
+          { l: t('Средняя оценка'),      v: '4.9',      d: t('из 5'),      up: null,  icon: 'sparkle'  },
+          { l: t('Доход за месяц'),      v: '₽ 84 200', d: '+12%',         up: true,  icon: 'wallet'   },
         ].map((k, i) => (
           <div key={i} className="ps-kpi">
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--purple-deep)' }}>
@@ -248,8 +248,8 @@ function DashTeacher() {
               <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>5 уроков сегодня</h3>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="ps-btn ps-btn-ghost ps-btn-sm">Все</button>
-              <button className="ps-btn ps-btn-primary ps-btn-sm"><Icon name="plus" size={12} /> Новый слот</button>
+              <button className="ps-btn ps-btn-ghost ps-btn-sm">{t('Все')}</button>
+              <button className="ps-btn ps-btn-primary ps-btn-sm"><Icon name="plus" size={12} /> {t('Новый слот')}</button>
             </div>
           </div>
 

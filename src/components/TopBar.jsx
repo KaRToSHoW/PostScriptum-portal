@@ -46,7 +46,7 @@ function Highlight({ text, query }) {
 }
 
 export default function TopBar({ title }) {
-  const { user, logout } = useApp()
+  const { user, logout, t, photo } = useApp()
   const navigate  = useNavigate()
   const [query,   setQuery]   = useState('')
   const [open,    setOpen]    = useState(false)
@@ -101,9 +101,9 @@ export default function TopBar({ title }) {
   return (
     <div className="ps-top">
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-        <span className="ps-eyebrow">{user?.subtitle}</span>
+        <span className="ps-eyebrow">{t(user?.subtitle)}</span>
         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--ink)' }}>
-          {title}
+          {t(title)}
         </span>
       </div>
 
@@ -127,7 +127,7 @@ export default function TopBar({ title }) {
             onChange={e => { setQuery(e.target.value); setOpen(true) }}
             onFocus={() => setOpen(true)}
             onKeyDown={handleKey}
-            placeholder="Поиск по порталу…"
+            placeholder={t('Поиск по порталу…')}
             style={{
               flex: 1, border: 'none', outline: 'none', background: 'transparent',
               fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--ink)',
@@ -173,10 +173,10 @@ export default function TopBar({ title }) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>
-                      <Highlight text={item.label} query={query} />
+                      <Highlight text={t(item.label)} query={query} />
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>
-                      <Highlight text={item.sub} query={query} />
+                      <Highlight text={t(item.sub)} query={query} />
                     </div>
                   </div>
                   {cursor === idx && <Icon name="arrow" size={12} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />}
@@ -195,10 +195,15 @@ export default function TopBar({ title }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ textAlign: 'right', lineHeight: 1.15 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>{user?.name}</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{user?.subtitle}</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{t(user?.subtitle)}</div>
         </div>
-        <div className="avatar">{user?.initials}</div>
-        <button onClick={() => { logout(); navigate('/login') }} title="Выйти" style={{ padding: 8, borderRadius: 10, background: 'var(--bg-cream)', color: 'var(--ink-muted)', border: 0, cursor: 'pointer', display: 'flex' }}>
+        <div className="avatar" style={{ overflow: 'hidden', padding: 0 }}>
+          {photo
+            ? <img src={photo} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+            : user?.initials
+          }
+        </div>
+        <button onClick={() => { logout(); navigate('/login') }} title={t('Выйти')} style={{ padding: 8, borderRadius: 10, background: 'var(--bg-cream)', color: 'var(--ink-muted)', border: 0, cursor: 'pointer', display: 'flex' }}>
           <Icon name="logout" size={16} />
         </button>
       </div>
