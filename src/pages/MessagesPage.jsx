@@ -77,14 +77,31 @@ export default function MessagesPage() {
 
   // Открыть нужный диалог при переходе из другой страницы
   useEffect(() => {
-    const name = location.state?.teacherName
-    if (name) {
-      const found = CONVERSATIONS.find(c => c.name === name)
-      if (found) {
-        setActiveId(found.id)
-        setConvs(prev => prev.map(c => c.id === found.id ? { ...c, unread: 0 } : c))
+    const { teacherName, teacherInitials, teacherColor, teacherRole } = location.state ?? {}
+    if (!teacherName) return
+
+    setConvs(prev => {
+      const existing = prev.find(c => c.name === teacherName)
+      if (existing) {
+        setActiveId(existing.id)
+        return prev.map(c => c.id === existing.id ? { ...c, unread: 0 } : c)
       }
-    }
+      // Создаём новый пустой диалог
+      const newConv = {
+        id:       Date.now(),
+        name:     teacherName,
+        role:     teacherRole ?? 'Преподаватель',
+        initials: teacherInitials ?? teacherName.split(' ').map(s => s[0]).join('').slice(0, 2),
+        color:    teacherColor ?? 'var(--purple)',
+        online:   false,
+        unread:   0,
+        lastMsg:  'Начните переписку',
+        lastTime: '',
+        msgs:     [],
+      }
+      setActiveId(newConv.id)
+      return [newConv, ...prev]
+    })
   }, [location.state])
 
   // Автоскролл вниз при новых сообщениях

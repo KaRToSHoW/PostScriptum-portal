@@ -256,7 +256,12 @@ export default function TeachersPage() {
   }, [location.state])
 
   function handleMessage(t) {
-    navigate('/messages', { state: { teacherName: t.name } })
+    navigate('/messages', { state: {
+      teacherName:     t.name,
+      teacherInitials: t.initials,
+      teacherColor:    t.color,
+      teacherRole:     t.role,
+    }})
   }
 
   function handleBook(t) {

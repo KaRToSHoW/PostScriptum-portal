@@ -124,9 +124,9 @@ function CalendarStudent() {
             </span>
           ))}
         </div>
-        <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => toast('Запись на урок — напишите преподавателю', 'success')}>
-          <Icon name="plus" size={12} /> Новый урок
-        </button>
+        <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 600 }}>
+          Уроки назначает преподаватель
+        </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
