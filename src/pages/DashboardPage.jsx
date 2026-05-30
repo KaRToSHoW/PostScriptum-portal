@@ -91,19 +91,9 @@ function DashStudent({ t }) {
             {t('Ваш следующий урок')}
           </div>
           <h1 className="ps-display ps-display-purple" style={{ fontSize: 38, marginTop: 14, marginBottom: 8 }}>
-            Bonjour, <span style={{ color: 'var(--orange-soft)' }}>Анна!</span>
+            {t('Добро пожаловать!')}
           </h1>
-          <p style={{ fontSize: 14, opacity: 0.88, maxWidth: 460, margin: 0, lineHeight: 1.55 }}>
-            Сегодня в <b>18:30</b> урок с Софьей Фроловой.
-          </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
-            <button className="ps-btn ps-btn-primary" onClick={() => toast('Открываем Zoom... (ссылка придёт на email)', 'success')}>
-              <Icon name="play" size={14} /> {t('Войти в Zoom')}
-            </button>
-            <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/homework')}>
-              <Icon name="file" size={14} /> {t('Подготовиться')}
-            </button>
-          </div>
+          <p></p>
           <div style={{ position: 'absolute', right: -30, top: -20, fontFamily: 'var(--font-display)', fontSize: 260, color: 'rgba(255,255,255,0.07)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>FR</div>
         </div>
 
@@ -119,7 +109,7 @@ function DashStudent({ t }) {
                 <FlameIcon size={14} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--ink)', letterSpacing: '-0.02em', marginTop: 2 }}>
-                12 дней <FlameIcon size={28} />
+                0 дней <FlameIcon size={28} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 3 }}>
@@ -134,7 +124,7 @@ function DashStudent({ t }) {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('Абонемент')}</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--ink)' }}>5 из 8 уроков</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--ink)' }}>0 из 0 уроков</div>
               <div style={{ height: 6, background: 'var(--purple-soft)', borderRadius: 3, marginTop: 6 }}>
                 <div style={{ height: '100%', width: '62%', background: 'var(--purple)', borderRadius: 3 }} />
               </div>
@@ -158,10 +148,7 @@ function DashStudent({ t }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {[
-              { code: 'fr', name: 'Французский B1', teacher: 'Софья Ф.',  value: 72, color: 'var(--purple)', next: 'Сегодня · 18:30' },
-              { code: 'en', name: 'Английский A2+', teacher: 'Татьяна К.', value: 41, color: 'var(--orange)', next: 'Чт · 19:00' },
-            ].map(c => (
+            {[].map(c => (
               <div key={c.code} style={{ padding: 16, borderRadius: 16, border: '1px solid var(--border-soft)', display: 'flex', gap: 14, alignItems: 'center', background: 'var(--bg-cream-soft)' }}>
                 <ProgressRing value={c.value} color={c.color} size={64} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -176,11 +163,7 @@ function DashStudent({ t }) {
           <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 16, marginTop: 4 }}>
             <span className="ps-eyebrow">{t('домашка на эту неделю')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-              {[
-                { t: 'Эссе «Mes rêves» (200 слов)', due: 'до пт',    lang: 'fr', state: 'В работе',   color: 'purple' },
-                { t: 'Listening · BBC News A2',      due: 'до ср',    lang: 'en', state: 'Не начато',  color: 'orange' },
-                { t: 'Лексика модуля 4 — Quizlet',   due: 'сегодня',  lang: 'fr', state: 'Готово',     color: 'green'  },
-              ].map((h, i) => (
+              {[].map((h, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: '#fff', border: '1px solid var(--border-soft)' }}>
                   <span className={`ps-flag ps-flag-${h.lang}`} />
                   <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{h.t}</div>
@@ -202,12 +185,7 @@ function DashStudent({ t }) {
             <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}><Icon name="calendar" size={12} /> {t('Календарь')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-            {[
-              { d: '12', w: 'Вт', t: '18:30 → 19:30', title: 'Французский · Conditionnel',       who: 'Софья Ф.',        lang: 'fr', today: true },
-              { d: '14', w: 'Чт', t: '19:00 → 20:00', title: 'Английский · Past perfect',         who: 'Татьяна К.',      lang: 'en', today: false },
-              { d: '16', w: 'Сб', t: '12:00 → 13:00', title: 'Французский · Speaking club',       who: 'Pierre (носитель)', lang: 'fr', today: false },
-              { d: '19', w: 'Вт', t: '18:30 → 19:30', title: 'Французский · Lecture',             who: 'Софья Ф.',        lang: 'fr', today: false },
-            ].map((it, i) => (
+            {[].map((it, i) => (
               <div key={i} style={{ display: 'flex', gap: 14, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-soft)', alignItems: 'center' }}>
                 <div style={{
                   width: 46, textAlign: 'center', padding: '6px 0', borderRadius: 10, flexShrink: 0,
@@ -242,10 +220,10 @@ function DashTeacher({ t }) {
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {[
-          { l: t('Уроков на неделе'),    v: '23',       d: '+4 к прошлой', up: true,  icon: 'calendar' },
-          { l: t('Активных учеников'),   v: '31',       d: '2 новых',      up: true,  icon: 'users'    },
-          { l: t('Средняя оценка'),      v: '4.9',      d: t('из 5'),      up: null,  icon: 'sparkle'  },
-          { l: t('Доход за месяц'),      v: '₽ 84 200', d: '+12%',         up: true,  icon: 'wallet'   },
+          { l: t('Уроков на неделе'),    v: '—', d: '—', up: null,  icon: 'calendar' },
+          { l: t('Активных учеников'),   v: '—', d: '—', up: null,  icon: 'users'    },
+          { l: t('Средняя оценка'),      v: '—', d: '—', up: null,  icon: 'sparkle'  },
+          { l: t('Доход за месяц'),      v: '—', d: '—', up: null,  icon: 'wallet'   },
         ].map((k, i) => (
           <div key={i} className="ps-kpi">
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--purple-deep)' }}>
@@ -265,8 +243,8 @@ function DashTeacher({ t }) {
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <div>
-              <span className="ps-eyebrow">сегодня · вт, 12 мая</span>
-              <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>5 уроков сегодня</h3>
+              <span className="ps-eyebrow">сегодня</span>
+              <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>Нет уроков</h3>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="ps-btn ps-btn-ghost ps-btn-sm">{t('Все')}</button>
@@ -275,13 +253,7 @@ function DashTeacher({ t }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[
-              { t: '10:00', dur: '60 мин', title: 'Французский A1 · Анна Соколова',             state: 'Завершён',    color: 'green',  lang: 'fr', active: false },
-              { t: '12:30', dur: '60 мин', title: 'Английский B2 · Михаил Орлов',               state: 'Завершён',    color: 'green',  lang: 'en', active: false },
-              { t: '15:00', dur: '45 мин', title: 'Французский A2 · Лиза + Кирилл (пара)',       state: 'Сейчас',      color: 'orange', lang: 'fr', active: true  },
-              { t: '18:30', dur: '60 мин', title: 'Французский B1 · Анна Соколова',              state: 'Через 3ч',    color: 'purple', lang: 'fr', active: false },
-              { t: '20:00', dur: '60 мин', title: 'Французский A2 · Speaking Club (4 ученика)',  state: 'Запланирован',color: 'purple', lang: 'fr', active: false },
-            ].map((s, i, arr) => (
+            {[].map((s, i, arr) => (
               <div key={i} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px dashed var(--border)' : 'none', alignItems: 'center' }}>
                 <div style={{ width: 64, flexShrink: 0 }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: s.active ? 'var(--orange-deep)' : 'var(--ink)', letterSpacing: '-0.02em' }}>{s.t}</div>
@@ -309,15 +281,10 @@ function DashTeacher({ t }) {
           <div className="ps-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <h3 className="ps-display" style={{ fontSize: 18, margin: 0 }}>Требует внимания</h3>
-              <span className="ps-chip ps-chip-orange">4</span>
+              <span className="ps-chip ps-chip-orange">0</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[
-                { who: 'Анна С.',    what: 'Прислала эссе «Mes rêves»',      t: '1ч назад', c: 'orange' },
-                { who: 'Лиза К.',   what: 'Просит перенести с пт на сб',     t: '3ч назад', c: 'purple' },
-                { who: 'Михаил О.', what: 'Не пришёл на урок 09.05',         t: 'вчера',    c: 'red'    },
-                { who: 'Кирилл В.', what: 'Новый ученик — план обучения',    t: 'вчера',    c: 'green'  },
-              ].map((n, i) => (
+              {[].map((n, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--purple-tint)', color: 'var(--purple-deep)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
                     {n.who.split(' ').map(s => s[0]).join('')}
@@ -338,13 +305,13 @@ function DashTeacher({ t }) {
             <h3 className="ps-display ps-display-purple" style={{ fontSize: 22, margin: '4px 0 14px' }}>На этой неделе</h3>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
               {[
-                { d: 'ПН', h: 30 },
-                { d: 'ВТ', h: 92, today: true },
-                { d: 'СР', h: 60 },
-                { d: 'ЧТ', h: 75 },
-                { d: 'ПТ', h: 80 },
-                { d: 'СБ', h: 50 },
-                { d: 'ВС', h: 10 },
+                { d: 'ПН', h: 0 },
+                { d: 'ВТ', h: 0, today: true },
+                { d: 'СР', h: 0 },
+                { d: 'ЧТ', h: 0 },
+                { d: 'ПТ', h: 0 },
+                { d: 'СБ', h: 0 },
+                { d: 'ВС', h: 0 },
               ].map((b, i) => (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: '100%', height: `${b.h}%`, background: b.today ? 'var(--orange)' : 'rgba(255,255,255,0.3)', borderRadius: '6px 6px 3px 3px' }} />
@@ -354,7 +321,7 @@ function DashTeacher({ t }) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.18)', fontSize: 12 }}>
               <span style={{ opacity: 0.7 }}>Всего часов</span>
-              <span style={{ fontWeight: 800 }}>23 / 28</span>
+              <span style={{ fontWeight: 800 }}>0 / 0</span>
             </div>
           </div>
         </div>

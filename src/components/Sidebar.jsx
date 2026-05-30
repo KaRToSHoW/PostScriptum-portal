@@ -35,10 +35,10 @@ const NAV = {
     { sec: 'обучение', items: [
       { id: 'home',     label: 'Главная',         icon: 'home'     },
       { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
-      { id: 'homework', label: 'Домашние задания', icon: 'file', badge: 2 },
+      { id: 'homework', label: 'Домашние задания', icon: 'file' },
     ]},
     { sec: 'общение', items: [
-      { id: 'chat',     label: 'Сообщения',        icon: 'chat', badge: 4 },
+      { id: 'chat',     label: 'Сообщения',        icon: 'chat' },
       { id: 'teachers', label: 'Преподаватели',    icon: 'users'    },
     ]},
     { sec: 'аккаунт', items: [
@@ -54,7 +54,7 @@ const NAV = {
       { id: 'materials', label: 'Материалы',       icon: 'book'     },
     ]},
     { sec: 'общение', items: [
-      { id: 'chat',     label: 'Сообщения',        icon: 'chat', badge: 3 },
+      { id: 'chat',     label: 'Сообщения',        icon: 'chat' },
       { id: 'homework', label: 'Домашние задания', icon: 'file'     },
     ]},
     { sec: 'аккаунт', items: [
@@ -71,7 +71,7 @@ const NAV = {
       { id: 'students', label: 'Ученики',          icon: 'users'    },
       { id: 'teachers', label: 'Преподаватели',    icon: 'user'     },
       { id: 'roles',    label: 'Роли и доступ',    icon: 'shield'   },
-      { id: 'leads',    label: 'Заявки',           icon: 'inbox', badge: 7 },
+      { id: 'leads',    label: 'Заявки',           icon: 'inbox' },
     ]},
     { sec: 'финансы', items: [
       { id: 'finance',  label: 'Финансы',          icon: 'wallet'   },

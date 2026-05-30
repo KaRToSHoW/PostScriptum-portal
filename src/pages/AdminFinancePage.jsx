@@ -11,14 +11,7 @@ import ApiError from '../components/ApiError'
 function RevenueChart() {
   const COLORS = ['var(--purple)', 'var(--orange)', '#9DC4A2', '#D7A87E', '#C9A0DC']
   const LANGS  = ['Французский', 'Английский', 'Немецкий', 'Испанский', 'Итальянский']
-  const MONTHS = [
-    { m: 'ЯНВ',  v: [40,30,12,8,5]  },
-    { m: 'ФЕВ',  v: [48,32,13,8,6]  },
-    { m: 'МАР',  v: [55,36,15,10,7] },
-    { m: 'АПР',  v: [60,40,16,11,8] },
-    { m: 'МАЙ',  v: [72,46,18,13,10], current: true },
-    { m: 'ИЮН',  v: [25,16,7,4,3],  forecast: true },
-  ]
+  const MONTHS = []
   const MAX = 165
 
   return (
@@ -69,12 +62,7 @@ function RevenueChart() {
 
 /* ── Пончик структуры абонементов ──────────────────────────── */
 function SubsDonut() {
-  const TIERS = [
-    { l: '8 занятий',    n: 103, p: 56, c: 'var(--purple)', price: '₽ 16 000' },
-    { l: '4 занятия',    n: 52,  p: 28, c: 'var(--orange)', price: '₽ 8 000'  },
-    { l: 'Speaking club',n: 20,  p: 11, c: '#9DC4A2',       price: '₽ 4 800'  },
-    { l: 'Разовое',      n: 9,   p: 5,  c: '#D7A87E',       price: '₽ 2 000'  },
-  ]
+  const TIERS = []
 
   return (
     <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', height: 340 }}>
@@ -120,15 +108,7 @@ function SubsDonut() {
 
 /* ── Таблица оплат ─────────────────────────────────────────── */
 function PaymentsTable() {
-  const rows = [
-    { n: 'Анна Соколова',  t: '8 занятий',     l: 'fr', a: '₽ 16 000', m: 'СБП',     d: '12 мая', s: 'Оплачено',  c: 'green'  },
-    { n: 'Михаил Орлов',   t: '8 занятий',     l: 'en', a: '₽ 16 000', m: 'Карта',   d: '11 мая', s: 'Оплачено',  c: 'green'  },
-    { n: 'Лиза Кравцова',  t: '4 занятия',     l: 'fr', a: '₽ 8 000',  m: 'СБП',     d: '11 мая', s: 'Ожидает',   c: 'orange' },
-    { n: 'Кирилл Васин',   t: 'Разовое',       l: 'fr', a: '₽ 2 000',  m: 'Карта',   d: '10 мая', s: 'Оплачено',  c: 'green'  },
-    { n: 'Игорь Петров',   t: 'Speaking club', l: 'en', a: '₽ 4 800',  m: 'Перевод', d: '08 мая', s: 'Просрочено', c: 'red'    },
-    { n: 'Денис Орехов',   t: '4 занятия',     l: 'de', a: '₽ 8 000',  m: 'СБП',     d: '07 мая', s: 'Оплачено',  c: 'green'  },
-    { n: 'Лаура Мартин',   t: '8 занятий',     l: 'es', a: '₽ 16 000', m: 'Карта',   d: '06 мая', s: 'Оплачено',  c: 'green'  },
-  ]
+  const rows = []
 
   return (
     <div className="ps-card" style={{ overflow: 'hidden' }}>
@@ -184,13 +164,7 @@ function PaymentsTable() {
 const PERIOD_KEYS = ['WEEK', 'MONTH', 'QUARTER', 'YEAR']
 
 // Заглушка — удалить когда Java API будет готов
-const KPI_MOCK = [
-  { l: 'Выручка · май',        v: '₽ 642 500', d: '+18% к апрелю', up: true  },
-  { l: 'Активных абонементов', v: '184',        d: '+22 за месяц',  up: true  },
-  { l: 'Средний чек',          v: '₽ 13 800',   d: '+₽ 400',        up: true  },
-  { l: 'Просрочки',            v: '7',          d: '₽ 96 800',      up: false },
-  { l: 'Возвраты',             v: '2',          d: '−1 к апрелю',   up: true  },
-]
+const KPI_MOCK = []
 
 export default function AdminFinancePage() {
   const { sideRole } = useApp()

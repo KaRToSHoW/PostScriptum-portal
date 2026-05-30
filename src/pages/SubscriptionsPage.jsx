@@ -6,24 +6,11 @@ import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 
-const ACTIVE = [
-  { id: 1, lang: 'fr', langName: 'Французский', level: 'B1', teacher: 'Софья Ф.', plan: '8 уроков', used: 5, total: 8, price: '₽ 13 600', expires: '01.06.2026', daysLeft: 13 },
-  { id: 2, lang: 'en', langName: 'Английский',  level: 'A2+', teacher: 'Татьяна К.', plan: '4 урока', used: 1, total: 4, price: '₽ 7 200', expires: '15.06.2026', daysLeft: 27 },
-]
+const ACTIVE = []
 
-const HISTORY = [
-  { id: 101, lang: 'fr', langName: 'Французский', plan: '8 уроков', price: '₽ 13 600', paid: '01.04.2026', method: 'Карта', status: 'closed' },
-  { id: 102, lang: 'fr', langName: 'Французский', plan: '8 уроков', price: '₽ 13 600', paid: '01.03.2026', method: 'СБП',   status: 'closed' },
-  { id: 103, lang: 'en', langName: 'Английский',  plan: '4 урока',  price: '₽ 7 200',  paid: '15.03.2026', method: 'Карта', status: 'closed' },
-  { id: 104, lang: 'fr', langName: 'Французский', plan: '4 урока',  price: '₽ 7 200',  paid: '01.02.2026', method: 'СБП',   status: 'closed' },
-]
+const HISTORY = []
 
-const PLANS = [
-  { id: 1, lang: 'fr', langName: 'Французский', lessons: 4,  price: '₽ 7 200',  priceNum: 7200,  perLesson: '₽ 1 800', popular: false },
-  { id: 2, lang: 'fr', langName: 'Французский', lessons: 8,  price: '₽ 13 600', priceNum: 13600, perLesson: '₽ 1 700', popular: true  },
-  { id: 3, lang: 'en', langName: 'Английский',  lessons: 4,  price: '₽ 7 200',  priceNum: 7200,  perLesson: '₽ 1 800', popular: false },
-  { id: 4, lang: 'en', langName: 'Английский',  lessons: 8,  price: '₽ 13 600', priceNum: 13600, perLesson: '₽ 1 700', popular: false },
-]
+const PLANS = []
 
 const LANG_COLORS = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--info)', es: 'var(--success)' }
 const LANG_SOFT   = { fr: 'var(--purple-soft)', en: 'var(--orange-soft)', de: 'var(--info-soft)', es: 'var(--success-soft)' }

@@ -6,15 +6,7 @@ import Icon      from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 
-const INITIAL = [
-  { id: 1, title: 'Эссе «Mes rêves» (200 слов)',       course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '23.05', dueLabel: 'до пт',   state: 'progress', grade: null, comment: null },
-  { id: 2, title: 'Listening · BBC News A2',            course: 'Английский A2+', teacher: 'Татьяна Кравченко', teacherId: 2, lang: 'en', due: '21.05', dueLabel: 'до ср',   state: 'new',      grade: null, comment: null },
-  { id: 3, title: 'Лексика модуля 4 — Quizlet',         course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '19.05', dueLabel: 'сегодня', state: 'done',     grade: 9,   comment: 'Отлично! Все слова усвоены.' },
-  { id: 4, title: 'Аудирование «Au café» + транскрипт', course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '16.05', dueLabel: 'пт',      state: 'done',     grade: 8,   comment: 'Хорошая работа, пара неточностей в транскрипте.' },
-  { id: 5, title: 'Грамматика: Past Perfect (упр 1–20)',course: 'Английский A2+', teacher: 'Татьяна Кравченко', teacherId: 2, lang: 'en', due: '14.05', dueLabel: 'ср',      state: 'overdue',  grade: null, comment: null },
-  { id: 6, title: 'Перевод текста «La ville»',          course: 'Французский B1', teacher: 'Софья Фролова',    teacherId: 1, lang: 'fr', due: '12.05', dueLabel: 'пн',      state: 'overdue',  grade: null, comment: null },
-  { id: 7, title: 'Диалог: знакомство (запись аудио)',   course: 'Английский A2+', teacher: 'Татьяна Кравченко', teacherId: 2, lang: 'en', due: '09.05', dueLabel: 'пт',      state: 'done',     grade: 10,  comment: 'Прекрасное произношение! Зачтено.' },
-]
+const INITIAL = []
 
 const TABS = [
   { id: 'all',      label: 'Все',        filter: () => true },

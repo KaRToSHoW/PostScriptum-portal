@@ -5,42 +5,7 @@ import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
 
-const CONVERSATIONS = [
-  {
-    id: 1, name: 'Софья Фролова', role: 'Преподаватель · Французский', initials: 'СФ', color: 'var(--purple)',
-    online: true, unread: 2,
-    lastMsg: 'Анна, не забудьте про эссе — жду до пятницы 🙂',
-    lastTime: '18:42',
-    msgs: [
-      { id: 1, from: 'them', text: 'Добрый день, Анна! Как дела с домашним заданием?', time: '18:30' },
-      { id: 2, from: 'me',   text: 'Здравствуйте! Пишу эссе, почти готово — осталось проверить грамматику.', time: '18:35' },
-      { id: 3, from: 'them', text: 'Отлично! Обратите внимание на согласование времён — там была ошибка на прошлом уроке.', time: '18:40' },
-      { id: 4, from: 'them', text: 'Анна, не забудьте про эссе — жду до пятницы 🙂', time: '18:42' },
-    ],
-  },
-  {
-    id: 2, name: 'Татьяна Кравченко', role: 'Преподаватель · Английский', initials: 'ТК', color: 'var(--orange)',
-    online: false, unread: 0,
-    lastMsg: 'Увидимся в четверг в 19:00!',
-    lastTime: 'вчера',
-    msgs: [
-      { id: 1, from: 'me',   text: 'Татьяна, можем перенести урок с среды на четверг?', time: '10:00' },
-      { id: 2, from: 'them', text: 'Да, конечно! В 19:00 вам удобно?', time: '10:15' },
-      { id: 3, from: 'me',   text: 'Отлично, спасибо!', time: '10:16' },
-      { id: 4, from: 'them', text: 'Увидимся в четверг в 19:00!', time: '10:17' },
-    ],
-  },
-  {
-    id: 3, name: 'Анна Жукова', role: 'Менеджер', initials: 'АЖ', color: 'var(--info)',
-    online: true, unread: 1,
-    lastMsg: 'Ваш абонемент истекает через 2 недели — продлить?',
-    lastTime: '14:20',
-    msgs: [
-      { id: 1, from: 'them', text: 'Добрый день! Хотела напомнить, что ваш абонемент на французский заканчивается 01.06.', time: '14:18' },
-      { id: 2, from: 'them', text: 'Ваш абонемент истекает через 2 недели — продлить?', time: '14:20' },
-    ],
-  },
-]
+const CONVERSATIONS = []
 
 function Avatar({ initials, color, online, size = 44 }) {
   return (
@@ -205,8 +170,14 @@ export default function MessagesPage() {
           {/* Чат */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-cream-soft)', minWidth: 0 }}>
 
+            {!active && (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
+                Нет данных
+              </div>
+            )}
+
             {/* Шапка */}
-            <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
+            {active && <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
               <Avatar initials={active.initials} color={active.color} online={active.online} size={40} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{active.name}</div>
@@ -220,10 +191,10 @@ export default function MessagesPage() {
               >
                 <Icon name="calendar" size={14} /> Записаться
               </button>
-            </div>
+            </div>}
 
             {/* Сообщения */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {active && <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {active.msgs.map(m => (
                 <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
                   {m.from === 'them' && (
@@ -246,10 +217,10 @@ export default function MessagesPage() {
                 </div>
               ))}
               <div ref={bottomRef} />
-            </div>
+            </div>}
 
             {/* Ввод */}
-            <div style={{ padding: '14px 24px', background: '#fff', borderTop: '1px solid var(--border-soft)', display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+            {active && <div style={{ padding: '14px 24px', background: '#fff', borderTop: '1px solid var(--border-soft)', display: 'flex', gap: 12, alignItems: 'flex-end' }}>
               <textarea
                 value={text}
                 onChange={e => setText(e.target.value)}
@@ -275,7 +246,7 @@ export default function MessagesPage() {
               >
                 <Icon name="arrow" size={18} />
               </button>
-            </div>
+            </div>}
           </div>
         </div>
       </main>

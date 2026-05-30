@@ -6,32 +6,11 @@ import { useApi } from '../hooks/useApi'
 import { teamApi } from '../api/team'
 import ApiError from '../components/ApiError'
 
-const TEACHERS = [
-  { n: 'Софья Фролова',      r: 'Админ · основатель',     flag: 'fr', chip: 'purple', load: '—',        h: [4,5,3,5,4,2,0], cap: 30, total: 23 },
-  { n: 'Татьяна Кравченко',  r: 'Преподаватель',          flag: 'en', chip: 'orange', load: '22 ч/нед', h: [3,4,5,4,3,3,0], cap: 28, total: 22 },
-  { n: 'Pierre Bouchard',    r: 'Преподаватель · носитель',flag: 'fr', chip: 'orange', load: '12 ч/нед', h: [2,3,2,2,3,0,0], cap: 20, total: 12 },
-  { n: 'Анна Жукова',        r: 'Менеджер',               flag: null, chip: 'blue',   load: '11 заявок',h: [1,2,1,2,1,0,0], cap: 18, total: 7  },
-  { n: 'Лаура Мартин',       r: 'Преподаватель',          flag: 'es', chip: 'orange', load: '18 ч/нед', h: [4,5,4,5,4,3,1], cap: 24, total: 26, over: true },
-  { n: 'Иван Шульц',         r: 'Преподаватель',          flag: 'de', chip: 'orange', load: '14 ч/нед', h: [3,3,2,3,3,0,0], cap: 22, total: 14 },
-]
+const TEACHERS = []
 
-const LEADS = [
-  { n: 'Мария Климова',  x: 'Французский · с нуля · вечер · 2р/нед', t: '20 мин', lang: 'fr', new: true },
-  { n: 'Денис Ор.',      x: 'Английский · B2 · подросток',            t: '1 ч',    lang: 'en' },
-  { n: 'Семья Иванов.',  x: 'Итальянский · 2 ученика',                t: '2 ч',    lang: 'it' },
-  { n: 'Виктория Г.',    x: 'Немецкий · A1 → B1',                     t: '3 ч',    lang: 'de' },
-]
+const LEADS = []
 
-const ROLE_MATRIX = [
-  { r: 'Расписание · свои',  v: ['r',  'r',  'rw', 'rw', 'rw'] },
-  { r: 'Расписание · все',   v: ['—',  '—',  '—',  'rw', 'rw'] },
-  { r: 'Домашние задания',   v: ['rw', 'r',  'rw', '—',  'rw'] },
-  { r: 'Материалы курса',    v: ['r',  '—',  'rw', 'r',  'rw'] },
-  { r: 'Финансы · свои',     v: ['r',  'r',  'r',  '—',  'rw'] },
-  { r: 'Финансы · все',      v: ['—',  '—',  '—',  'r',  'rw'] },
-  { r: 'Управление ролями',  v: ['—',  '—',  '—',  '—',  'rw'] },
-  { r: 'Заявки и лиды',      v: ['—',  '—',  '—',  'rw', 'rw'] },
-]
+const ROLE_MATRIX = []
 
 /* ── Ячейка доступа ─────────────────────────────────────────── */
 function Access({ v }) {
@@ -152,30 +131,6 @@ export default function AdminRolesPage() {
               </div>
 
               {/* Первая заявка — активная */}
-              <div style={{ padding: 16, background: 'rgba(255,255,255,0.10)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.18)', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--orange)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, flexShrink: 0 }}>МК</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800 }}>
-                      Мария Климова <span className="ps-flag ps-flag-fr" style={{ verticalAlign: 'middle', display: 'inline-grid' }} />
-                    </div>
-                    <div style={{ fontSize: 12, opacity: 0.85 }}>Французский · с нуля · вечер · 2р/нед</div>
-                  </div>
-                  <span className="ps-chip ps-chip-orange">Новая</span>
-                </div>
-                <div style={{ marginTop: 12, fontSize: 12, opacity: 0.8 }}>Подходящие преподаватели:</div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                  {[{ n: 'Софья Ф.', load: '85%' }, { n: 'Pierre B.', load: '62%' }, { n: 'Лаура М.', load: '94%' }].map((t, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#fff', color: 'var(--ink)', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-                      {t.n} <span style={{ fontSize: 10, color: 'var(--ink-muted)' }}>· {t.load}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                  <button className="ps-btn ps-btn-primary ps-btn-sm" style={{ flex: 1 }}>Назначить Pierre B.</button>
-                  <button className="ps-btn ps-btn-sm" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}>Отложить</button>
-                </div>
-              </div>
 
               {/* Остальные заявки */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
