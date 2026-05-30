@@ -1,7 +1,7 @@
 services:
   backend:
     build:
-      context: ../PostSciptum-backend
+      context: ../backend
 
   # Expose PostgreSQL for local development (Spring Boot running outside Docker)
   db:
