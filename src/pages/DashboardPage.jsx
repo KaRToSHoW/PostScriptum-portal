@@ -73,13 +73,23 @@ function RoleSwitcher({ role, onChange, t }) {
   )
 }
 
-const LANG_NAME = { fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский', it: 'Итальянский' }
+const LANG_NAME  = { fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский', it: 'Итальянский' }
+const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
+
+const HW_CHIP  = { not_started: 'orange', submitted: 'blue', done: 'green', overdue: 'red', ASSIGNED: 'orange', SUBMITTED: 'blue', REVIEWED: 'green', OVERDUE: 'red' }
+const HW_LABEL = { not_started: 'Не начато', submitted: 'Сдано', done: 'Готово', overdue: 'Просрочено', ASSIGNED: 'Не начато', SUBMITTED: 'Сдано', REVIEWED: 'Готово', OVERDUE: 'Просрочено' }
 
 /* ================================================================
    ДАШБОРД УЧЕНИКА
    ================================================================ */
-function DashStudent({ t }) {
+function DashStudent({ t, data }) {
   const navigate = useNavigate()
+  const next  = data?.nextLesson   ?? null
+  const sub   = data?.subscription ?? { used: 0, total: 0 }
+  const streak = data?.streak      ?? 0
+  const courses  = data?.courses   ?? []
+  const homework = data?.homework  ?? []
+  const schedule = data?.schedule  ?? []
   return (
     <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
@@ -91,10 +101,24 @@ function DashStudent({ t }) {
             {t('Ваш следующий урок')}
           </div>
           <h1 className="ps-display ps-display-purple" style={{ fontSize: 38, marginTop: 14, marginBottom: 8 }}>
-            {t('Добро пожаловать!')}
+            {next ? `Скоро в ${next.time}` : t('Добро пожаловать!')}
           </h1>
-          <p></p>
-          <div style={{ position: 'absolute', right: -30, top: -20, fontFamily: 'var(--font-display)', fontSize: 260, color: 'rgba(255,255,255,0.07)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>FR</div>
+          {next && (
+            <p style={{ fontSize: 14, opacity: 0.88, maxWidth: 460, margin: '0 0 18px', lineHeight: 1.55 }}>
+              Урок с <b>{next.teacher}</b>
+            </p>
+          )}
+          {next && (
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="ps-btn ps-btn-primary" onClick={() => next.zoomUrl && window.open(next.zoomUrl, '_blank')}>
+                <Icon name="play" size={14} /> {t('Войти в Zoom')}
+              </button>
+              <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/homework')}>
+                <Icon name="file" size={14} /> {t('Подготовиться')}
+              </button>
+            </div>
+          )}
+          <div style={{ position: 'absolute', right: -30, top: -20, fontFamily: 'var(--font-display)', fontSize: 260, color: 'rgba(255,255,255,0.07)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>{next?.lang?.toUpperCase() ?? 'PS'}</div>
         </div>
 
         {/* Серия + Абонемент */}
@@ -109,7 +133,7 @@ function DashStudent({ t }) {
                 <FlameIcon size={14} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--ink)', letterSpacing: '-0.02em', marginTop: 2 }}>
-                0 дней <FlameIcon size={28} />
+                {streak} дней <FlameIcon size={28} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 3 }}>
@@ -124,9 +148,9 @@ function DashStudent({ t }) {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('Абонемент')}</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--ink)' }}>0 из 0 уроков</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--ink)' }}>{sub.used} из {sub.total} уроков</div>
               <div style={{ height: 6, background: 'var(--purple-soft)', borderRadius: 3, marginTop: 6 }}>
-                <div style={{ height: '100%', width: '62%', background: 'var(--purple)', borderRadius: 3 }} />
+                <div style={{ height: '100%', width: `${sub.total ? Math.round(sub.used/sub.total*100) : 0}%`, background: 'var(--purple)', borderRadius: 3 }} />
               </div>
             </div>
             <button className="ps-btn ps-btn-sm ps-btn-outline" style={{ flexShrink: 0 }} onClick={() => navigate('/billing')}>{t('Продлить')}</button>
@@ -148,27 +172,36 @@ function DashStudent({ t }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {[].map(c => (
-              <div key={c.code} style={{ padding: 16, borderRadius: 16, border: '1px solid var(--border-soft)', display: 'flex', gap: 14, alignItems: 'center', background: 'var(--bg-cream-soft)' }}>
-                <ProgressRing value={c.value} color={c.color} size={64} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>с {c.teacher}</div>
-                  <div style={{ fontSize: 11, marginTop: 8, color: c.color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.1em' }}>{c.next}</div>
+            {courses.length === 0 && (
+              <div style={{ gridColumn:'1/-1', color:'var(--ink-muted)', fontSize:13, padding:'12px 0' }}>Нет активных курсов</div>
+            )}
+            {courses.map(c => {
+              const color = LANG_COLOR[c.lang] || 'var(--purple)'
+              return (
+                <div key={c.id} style={{ padding: 16, borderRadius: 16, border: '1px solid var(--border-soft)', display: 'flex', gap: 14, alignItems: 'center', background: 'var(--bg-cream-soft)' }}>
+                  <ProgressRing value={c.progress ?? 0} color={color} size={64} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.language}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>с {c.teacher}</div>
+                    <div style={{ fontSize: 11, marginTop: 8, color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.1em' }}>{c.nextDate ?? '—'}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 16, marginTop: 4 }}>
             <span className="ps-eyebrow">{t('домашка на эту неделю')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-              {[].map((h, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: '#fff', border: '1px solid var(--border-soft)' }}>
+              {homework.length === 0 && (
+                <div style={{ color:'var(--ink-muted)', fontSize:13 }}>Нет заданий</div>
+              )}
+              {homework.map((h, i) => (
+                <div key={h.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, background: '#fff', border: '1px solid var(--border-soft)' }}>
                   <span className={`ps-flag ps-flag-${h.lang}`} />
-                  <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{h.t}</div>
+                  <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{h.title}</div>
                   <span style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 700, flexShrink: 0 }}>{h.due}</span>
-                  <span className={`ps-chip ps-chip-${h.color}`}>{h.state}</span>
+                  <span className={`ps-chip ps-chip-${HW_CHIP[h.status] ?? 'gray'}`}>{HW_LABEL[h.status] ?? h.status}</span>
                 </div>
               ))}
             </div>
@@ -185,20 +218,22 @@ function DashStudent({ t }) {
             <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}><Icon name="calendar" size={12} /> {t('Календарь')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-            {[].map((it, i) => (
+            {schedule.length === 0 && (
+              <div style={{ color:'var(--ink-muted)', fontSize:13, paddingTop:8 }}>Нет запланированных уроков</div>
+            )}
+            {schedule.map((it, i) => (
               <div key={i} style={{ display: 'flex', gap: 14, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-soft)', alignItems: 'center' }}>
                 <div style={{
                   width: 46, textAlign: 'center', padding: '6px 0', borderRadius: 10, flexShrink: 0,
-                  background: it.today ? 'var(--orange)' : 'var(--bg-cream)',
-                  color:      it.today ? '#fff' : 'var(--ink-2)',
+                  background: 'var(--bg-cream)', color: 'var(--ink-2)',
                 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{it.d}</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 2 }}>{it.w}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{it.date}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 2 }}>{it.dayLabel}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, letterSpacing: '.08em' }}>{it.t}</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{LANG_NAME[it.lang]}</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{it.who}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, letterSpacing: '.08em' }}>{it.timeFrom} → {it.timeTo}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{LANG_NAME[it.lang] ?? it.lang}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{it.teacher}</div>
                 </div>
                 <span className={`ps-flag ps-flag-${it.lang}`} />
               </div>
@@ -338,8 +373,7 @@ const DASH_TITLE = { student: 'Главная', teacher: 'Главная', paren
 export default function DashboardPage() {
   const { role, setRole, sideRole, t } = useApp()
 
-  // apiData заменит захардкоженные данные в DashStudent/DashTeacher когда бэкенд готов
-  const { error } = useApi(
+  const { data, error } = useApi(
     () => (role === 'teacher' ? dashboardApi.getTeacher() : dashboardApi.getStudent()),
     [role],
   )
@@ -351,15 +385,13 @@ export default function DashboardPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title={DASH_TITLE[role] || 'Главная'} />
 
-        {/* Переключатель ролей */}
         <div style={{ padding: '16px 28px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <RoleSwitcher role={role} onChange={setRole} t={t} />
           {error && <ApiError message={error} />}
         </div>
 
-        {/* Контент по роли */}
-        {(role === 'student' || role === 'parent') && <DashStudent t={t} />}
-        {(role === 'teacher' || role === 'admin')  && <DashTeacher t={t} />}
+        {(role === 'student' || role === 'parent') && <DashStudent t={t} data={data} />}
+        {(role === 'teacher' || role === 'admin')  && <DashTeacher t={t} data={data} />}
       </main>
     </div>
   )
