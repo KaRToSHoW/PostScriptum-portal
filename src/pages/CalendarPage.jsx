@@ -13,24 +13,26 @@ const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: '#9DC4A2', es
 const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
 const DAY_NAMES   = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС']
 
+const LANG_NAME = { fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский', it: 'Итальянский' }
+
 /* события мая 2026 */
 const EVENTS_STUDENT = {
-  1:  [{ t:'10:00', title:'FR · Conditionnel', l:'fr', s:'done' }],
-  4:  [{ t:'18:30', title:'FR · Conjugaison',  l:'fr', s:'done' }, { t:'19:00', title:'EN · Speaking', l:'en', s:'done' }],
-  6:  [{ t:'15:00', title:'DE · Grammar',      l:'de', s:'missed' }],
-  7:  [{ t:'10:00', title:'EN · Speaking club',l:'en', s:'done' }, { t:'19:00', title:'FR · Dialogue', l:'fr', s:'done' }],
-  11: [{ t:'10:00', title:'FR · Lecture',      l:'fr', s:'done' }],
-  12: [{ t:'10:00', title:'FR · Conditionnel', l:'fr', s:'today' }, { t:'15:00', title:'FR · пара A2', l:'fr', s:'now' }, { t:'18:30', title:'FR · Conditionnel', l:'fr', s:'today' }, { t:'20:00', title:'Speaking Club', l:'fr', s:'today' }],
-  13: [{ t:'12:00', title:'EN · Grammar',      l:'en', s:'planned' }, { t:'19:00', title:'ES · Vocab', l:'es', s:'planned' }],
-  14: [{ t:'19:00', title:'EN · Татьяна К.',   l:'en', s:'planned' }],
-  15: [{ t:'10:00', title:'FR · Sofya',        l:'fr', s:'planned' }],
-  18: [{ t:'18:30', title:'FR · Conditionnel', l:'fr', s:'planned' }],
-  19: [{ t:'10:00', title:'DE · Шульц',        l:'de', s:'planned' }, { t:'18:30', title:'FR · Sofya', l:'fr', s:'planned' }],
-  21: [{ t:'19:00', title:'EN · Татьяна',      l:'en', s:'planned' }],
-  22: [{ t:'12:00', title:'FR · Speaking',     l:'fr', s:'planned' }],
-  25: [{ t:'10:00', title:'FR · Sofya',        l:'fr', s:'planned' }],
-  26: [{ t:'18:30', title:'FR · группа',       l:'fr', s:'planned' }],
-  28: [{ t:'19:00', title:'EN · Татьяна',      l:'en', s:'planned' }],
+  1:  [{ t:'10:00', l:'fr', s:'done',    who:'Софья Фролова' }],
+  4:  [{ t:'18:30', l:'fr', s:'done',    who:'Софья Фролова' }, { t:'19:00', l:'en', s:'done',    who:'Татьяна Кравченко' }],
+  6:  [{ t:'15:00', l:'de', s:'missed',  who:'Карл Шульц' }],
+  7:  [{ t:'10:00', l:'en', s:'done',    who:'Татьяна Кравченко' }, { t:'19:00', l:'fr', s:'done', who:'Софья Фролова' }],
+  11: [{ t:'10:00', l:'fr', s:'done',    who:'Софья Фролова' }],
+  12: [{ t:'10:00', l:'fr', s:'today',   who:'Софья Фролова' }, { t:'15:00', l:'fr', s:'now',     who:'Pierre (носитель)' }, { t:'18:30', l:'fr', s:'today', who:'Софья Фролова' }, { t:'20:00', l:'fr', s:'today', who:'Pierre (носитель)' }],
+  13: [{ t:'12:00', l:'en', s:'planned', who:'Татьяна Кравченко' }, { t:'19:00', l:'es', s:'planned', who:'Мигель Р.' }],
+  14: [{ t:'19:00', l:'en', s:'planned', who:'Татьяна Кравченко' }],
+  15: [{ t:'10:00', l:'fr', s:'planned', who:'Софья Фролова' }],
+  18: [{ t:'18:30', l:'fr', s:'planned', who:'Софья Фролова' }],
+  19: [{ t:'10:00', l:'de', s:'planned', who:'Карл Шульц' }, { t:'18:30', l:'fr', s:'planned', who:'Софья Фролова' }],
+  21: [{ t:'19:00', l:'en', s:'planned', who:'Татьяна Кравченко' }],
+  22: [{ t:'12:00', l:'fr', s:'planned', who:'Pierre (носитель)' }],
+  25: [{ t:'10:00', l:'fr', s:'planned', who:'Софья Фролова' }],
+  26: [{ t:'18:30', l:'fr', s:'planned', who:'Софья Фролова' }],
+  28: [{ t:'19:00', l:'en', s:'planned', who:'Татьяна Кравченко' }],
 }
 
 const STATE_LABEL = { done: 'Завершён', missed: 'Пропущен', now: 'Сейчас', today: 'Сегодня', planned: 'Запланирован' }
@@ -168,7 +170,7 @@ function CalendarStudent() {
                         textDecoration: st.strike ? 'line-through' : 'none',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>
-                        <b>{e.t}</b> {e.title}
+                        <b>{e.t}</b>
                       </div>
                     )
                   })}
@@ -203,9 +205,10 @@ function CalendarStudent() {
                     alignItems: 'center',
                   }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, width: 44, flexShrink: 0 }}>{it.t}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800 }}>{it.title}</div>
-                      <div style={{ fontSize: 10, opacity: 0.85 }}>{STATE_LABEL[it.s] || it.s}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.2 }}>{LANG_NAME[it.l]}</div>
+                      <div style={{ fontSize: 11, opacity: 0.8, marginTop: 1 }}>{it.who}</div>
+                      <div style={{ fontSize: 10, opacity: 0.65, marginTop: 1 }}>{STATE_LABEL[it.s] || it.s}</div>
                     </div>
                     {live && <Icon name="play" size={14} />}
                     {it.s === 'done' && <span style={{ color: 'rgba(255,255,255,.8)' }}><Icon name="check" size={14} /></span>}

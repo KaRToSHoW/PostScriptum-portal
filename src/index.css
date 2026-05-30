@@ -241,13 +241,27 @@ input, textarea { font-family: inherit; }
 .ps-flag-fr { background: linear-gradient(to right, #0055A4 33%, #fff 33% 66%, #EF4135 66%); }
 .ps-flag-de { background: linear-gradient(to bottom, #000 33%, #DD0000 33% 66%, #FFCE00 66%); }
 .ps-flag-en { background: #012169; position: relative; }
+/* White X (St Andrew) + white cross */
+.ps-flag-en::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(45deg, transparent 42%, #fff 42% 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, #fff 42% 58%, transparent 58%),
+    linear-gradient(to right, transparent 38%, #fff 38% 62%, transparent 62%),
+    linear-gradient(to bottom, transparent 38%, #fff 38% 62%, transparent 62%);
+}
+/* Red cross (St George) + red X (St Patrick) on top */
 .ps-flag-en::after {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(45deg, transparent 45%, #fff 45% 55%, transparent 55%),
-    linear-gradient(-45deg, transparent 45%, #fff 45% 55%, transparent 55%);
+    linear-gradient(to right, transparent 44%, #C8102E 44% 56%, transparent 56%),
+    linear-gradient(to bottom, transparent 44%, #C8102E 44% 56%, transparent 56%),
+    linear-gradient(45deg, transparent 46%, #C8102E 46% 54%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, #C8102E 46% 54%, transparent 54%);
 }
 .ps-flag-es { background: linear-gradient(to bottom, #C60B1E 25%, #FFC400 25% 75%, #C60B1E 75%); }
 .ps-flag-it { background: linear-gradient(to right, #008C45 33%, #fff 33% 66%, #CD212A 66%); }

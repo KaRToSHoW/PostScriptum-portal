@@ -11,6 +11,7 @@ import SubscriptionsPage  from './pages/SubscriptionsPage'
 import ProfilePage        from './pages/ProfilePage'
 import MessagesPage       from './pages/MessagesPage'
 import TeachersPage       from './pages/TeachersPage'
+import StudentsPage       from './pages/StudentsPage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
 function Protected({ children }) {
@@ -51,6 +52,9 @@ function AppRoutes() {
       } />
       <Route path="/teachers" element={
         <Protected><TeachersPage /></Protected>
+      } />
+      <Route path="/students" element={
+        <Protected><StudentsPage /></Protected>
       } />
 
       <Route path="*" element={<Navigate to="/login" replace />} />

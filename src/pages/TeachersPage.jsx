@@ -3,62 +3,15 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
+import ApiError from '../components/ApiError'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
+import { teachersApi } from '../api/teachers'
 
-const TEACHERS = [
-  {
-    id: 1, name: 'Софья Фролова', initials: 'СФ', color: 'var(--purple)',
-    role: 'Преподаватель · основатель', flag: 'fr', native: false,
-    langs: ['Французский B2+', 'Английский B1'],
-    rating: 4.9, reviews: 47, students: 18, experience: '8 лет',
-    bio: 'Специализируюсь на разговорном французском и подготовке к DELF/DALF. Люблю строить уроки вокруг реальных ситуаций — кафе, путешествия, переговоры.',
-    next: 'Сегодня · 18:30',
-    tags: ['Разговорный', 'DELF/DALF', 'Грамматика', 'Бизнес-французский'],
-    myTeacher: true,
-  },
-  {
-    id: 2, name: 'Татьяна Кравченко', initials: 'ТК', color: 'var(--orange)',
-    role: 'Преподаватель', flag: 'en', native: false,
-    langs: ['Английский C1', 'Французский A2'],
-    rating: 4.8, reviews: 31, students: 14, experience: '6 лет',
-    bio: 'Фокус на деловом английском и подготовке к IELTS/TOEFL. Работаю со взрослыми и подростками с уровня A2.',
-    next: 'Чт · 19:00',
-    tags: ['IELTS', 'Деловой', 'Произношение', 'Грамматика'],
-    myTeacher: true,
-  },
-  {
-    id: 3, name: 'Pierre Bouchard', initials: 'PB', color: 'var(--info)',
-    role: 'Носитель языка · Французский', flag: 'fr', native: true,
-    langs: ['Французский (родной)', 'Английский B2'],
-    rating: 5.0, reviews: 22, students: 8, experience: '4 года',
-    bio: 'Родился и вырос в Лионе. Веду разговорные клубы и помогаю поставить настоящий французский акцент. Уроки живые и неформальные.',
-    next: 'Сб · 12:00',
-    tags: ['Speaking Club', 'Произношение', 'Разговорный', 'Носитель'],
-    myTeacher: false,
-  },
-  {
-    id: 4, name: 'Лаура Мартин', initials: 'ЛМ', color: 'var(--success)',
-    role: 'Преподаватель · Испанский', flag: 'es', native: false,
-    langs: ['Испанский C2', 'Французский B1'],
-    rating: 4.7, reviews: 19, students: 12, experience: '5 лет',
-    bio: 'Специализируюсь на испанском — от нуля до уверенного разговора. Использую метод погружения и много практики.',
-    next: null,
-    tags: ['Испанский', 'Разговорный', 'Грамматика', 'DELE'],
-    myTeacher: false,
-  },
-  {
-    id: 5, name: 'Иван Шульц', initials: 'ИШ', color: 'var(--warning)',
-    role: 'Преподаватель · Немецкий', flag: 'de', native: false,
-    langs: ['Немецкий C1', 'Английский B2'],
-    rating: 4.6, reviews: 15, students: 10, experience: '3 года',
-    bio: 'Веду немецкий с нуля до B2. Объясняю грамматику простым языком, много практики через диалоги.',
-    next: null,
-    tags: ['Немецкий', 'Грамматика', 'TestDaF', 'Начинающие'],
-    myTeacher: false,
-  },
-]
-
+const LANG_COLOR = {
+  fr: 'var(--purple)', en: 'var(--orange)', es: 'var(--success)',
+  de: 'var(--warning)', it: 'var(--info)',
+}
 const LANG_FILTERS = [
   { id: 'all', l: 'Все' },
   { id: 'fr',  l: 'Французский' },
@@ -66,6 +19,11 @@ const LANG_FILTERS = [
   { id: 'es',  l: 'Испанский'   },
   { id: 'de',  l: 'Немецкий'    },
 ]
+
+/* нормализуем ответ API к форме, которую ожидают карточки */
+function normalise(t) {
+  return { ...t, native: t.nativeSpeaker, color: LANG_COLOR[t.flag] || 'var(--ink-muted)' }
+}
 
 function Stars({ rating }) {
   return (
@@ -246,14 +204,24 @@ export default function TeachersPage() {
   const { sideRole } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
+  const [teachers, setTeachers]     = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [apiError, setApiError]     = useState(null)
   const [langFilter, setLangFilter] = useState('all')
   const [selected, setSelected]     = useState(null)
   const [onlyMine, setOnlyMine]     = useState(false)
 
   useEffect(() => {
+    teachersApi.list()
+      .then(data => setTeachers(data.map(normalise)))
+      .catch(e => setApiError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
     const id = location.state?.teacherId
-    if (id) setSelected(TEACHERS.find(t => t.id === id) ?? null)
-  }, [location.state])
+    if (id) setSelected(teachers.find(t => t.id === id) ?? null)
+  }, [location.state, teachers])
 
   function handleMessage(t) {
     navigate('/messages', { state: {
@@ -264,12 +232,17 @@ export default function TeachersPage() {
     }})
   }
 
-  function handleBook(t) {
-    toast(`Запись к ${t.name.split(' ')[0]} — выберите время в расписании`)
+  async function handleBook(t) {
+    try {
+      await teachersApi.enroll({ teacherId: t.id, language: t.flag, level: '' })
+      toast(`Записались к ${t.name.split(' ')[0]}! Выберите время в расписании`, 'success')
+    } catch {
+      toast('Запись к ' + t.name.split(' ')[0] + ' — выберите время в расписании')
+    }
     navigate('/calendar')
   }
 
-  const filtered = TEACHERS
+  const filtered = teachers
     .filter(t => onlyMine ? t.myTeacher : true)
     .filter(t => langFilter === 'all' || t.flag === langFilter)
 
@@ -282,13 +255,15 @@ export default function TeachersPage() {
 
         <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
+          {apiError && <ApiError message={apiError} />}
+
           {/* KPI */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
             {[
-              { l: 'Мои преподаватели', v: TEACHERS.filter(t=>t.myTeacher).length, d: 'активные курсы',  icon: 'users',   color: 'var(--purple-deep)' },
-              { l: 'Носители языка',    v: TEACHERS.filter(t=>t.native).length,    d: 'в школе',         icon: 'sparkle', color: 'var(--orange-deep)' },
-              { l: 'Средний рейтинг',   v: (TEACHERS.reduce((s,t)=>s+t.rating,0)/TEACHERS.length).toFixed(1), d: 'из 5', icon: 'star', color: 'var(--warning)' },
-              { l: 'Преподавателей',    v: TEACHERS.length,                        d: 'всего в школе',   icon: 'grid',    color: 'var(--ink-muted)'   },
+              { l: 'Мои преподаватели', v: teachers.filter(t=>t.myTeacher).length, d: 'активные курсы',  icon: 'users',   color: 'var(--purple-deep)' },
+              { l: 'Носители языка',    v: teachers.filter(t=>t.native).length,    d: 'в школе',         icon: 'sparkle', color: 'var(--orange-deep)' },
+              { l: 'Средний рейтинг',   v: teachers.length ? (teachers.reduce((s,t)=>s+t.rating,0)/teachers.length).toFixed(1) : '—', d: 'из 5', icon: 'star', color: 'var(--warning)' },
+              { l: 'Преподавателей',    v: teachers.length,                        d: 'всего в школе',   icon: 'grid',    color: 'var(--ink-muted)'   },
             ].map((k,i) => (
               <div key={i} className="ps-kpi">
                 <div style={{ display:'flex', gap:10, alignItems:'center', color: k.color }}>
@@ -330,10 +305,15 @@ export default function TeachersPage() {
 
           {/* Сетка */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 18 }}>
-            {filtered.map(t => (
+            {loading && (
+              <div style={{ gridColumn: '1/-1', padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
+                Загрузка...
+              </div>
+            )}
+            {!loading && filtered.map(t => (
               <TeacherCard key={t.id} t={t} onSelect={setSelected} />
             ))}
-            {filtered.length === 0 && (
+            {!loading && filtered.length === 0 && !apiError && (
               <div style={{ gridColumn: '1/-1', padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
                 Преподавателей по этому фильтру не найдено
               </div>

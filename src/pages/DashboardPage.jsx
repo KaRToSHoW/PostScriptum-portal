@@ -8,6 +8,23 @@ import { dashboardApi } from '../api/dashboard'
 import ApiError from '../components/ApiError'
 import { toast } from '../components/Toast'
 
+/* ── Кастомный огонёк ────────────────────────────────────── */
+function FlameIcon({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 3C12 3 6 10 6 15C6 18.3 8.7 21 12 21C15.3 21 18 18.3 18 15C18 10 12 3 12 3Z"
+        fill="var(--orange)"
+      />
+      <path
+        d="M12 11C12 11 10 14 10 16C10 17.1 10.9 18 12 18C13.1 18 14 17.1 14 16C14 14 12 11 12 11Z"
+        fill="#FFF8E1"
+        opacity="0.75"
+      />
+    </svg>
+  )
+}
+
 /* ── Прогресс-кольцо ──────────────────────────────────────── */
 function ProgressRing({ value = 65, size = 56, color = 'var(--purple)' }) {
   const r = size / 2 - 6
@@ -56,6 +73,8 @@ function RoleSwitcher({ role, onChange, t }) {
   )
 }
 
+const LANG_NAME = { fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский', it: 'Итальянский' }
+
 /* ================================================================
    ДАШБОРД УЧЕНИКА
    ================================================================ */
@@ -75,8 +94,7 @@ function DashStudent({ t }) {
             Bonjour, <span style={{ color: 'var(--orange-soft)' }}>Анна!</span>
           </h1>
           <p style={{ fontSize: 14, opacity: 0.88, maxWidth: 460, margin: 0, lineHeight: 1.55 }}>
-            Сегодня в <b>18:30</b> урок с Софьей Фроловой:{' '}
-            <i>«Conditionnel présent — мечтаем по-французски»</i>.
+            Сегодня в <b>18:30</b> урок с Софьей Фроловой.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 22 }}>
             <button className="ps-btn ps-btn-primary" onClick={() => toast('Открываем Zoom... (ссылка придёт на email)', 'success')}>
@@ -96,13 +114,16 @@ function DashStudent({ t }) {
               <Icon name="flame" size={26} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase' }}>{t('Серия занятий')}</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
-                12 дней <span style={{ fontSize: 16, color: 'var(--orange-deep)' }}>🔥</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                количество занятий без пропусков
+                <FlameIcon size={14} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--ink)', letterSpacing: '-0.02em', marginTop: 2 }}>
+                12 дней <FlameIcon size={28} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 3 }}>
-              {[1,1,1,1,1,1,0].map((d, i) => (
+              {[0,1,0,1,0,1,0].map((d, i) => (
                 <div key={i} style={{ width: 8, height: 22, borderRadius: 3, background: d ? 'var(--orange)' : 'var(--orange-soft)' }} />
               ))}
             </div>
@@ -198,8 +219,8 @@ function DashStudent({ t }) {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, letterSpacing: '.08em' }}>{it.t}</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{it.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>{it.who}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{LANG_NAME[it.lang]}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{it.who}</div>
                 </div>
                 <span className={`ps-flag ps-flag-${it.lang}`} />
               </div>

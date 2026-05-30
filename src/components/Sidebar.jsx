@@ -13,6 +13,7 @@ const ROUTE_MAP = {
   profile:   '/profile',
   chat:      '/messages',
   teachers:  '/teachers',
+  students:  '/students',
 }
 
 function routeToItem(pathname) {
@@ -25,6 +26,7 @@ function routeToItem(pathname) {
   if (pathname === '/profile')       return 'profile'
   if (pathname === '/messages')      return 'chat'
   if (pathname === '/teachers')      return 'teachers'
+  if (pathname === '/students')      return 'students'
   return 'home'
 }
 
