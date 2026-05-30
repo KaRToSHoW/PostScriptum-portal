@@ -88,6 +88,7 @@ export default function StudentsPage() {
 
   function handleMessage(s) {
     navigate('/messages', { state: {
+      userId: s.id,
       teacherName: s.name, teacherInitials: s.initials,
       teacherColor: LANG_COLOR[s.lang] || 'var(--purple)',
       teacherRole: `${s.language} · ${s.level}`,

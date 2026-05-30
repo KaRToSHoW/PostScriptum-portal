@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar   from '../components/Sidebar'
 import TopBar    from '../components/TopBar'
@@ -6,6 +6,9 @@ import Icon      from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 import { homeworkApi } from '../api/homework'
+import { uploadFile, fileUrl } from '../api/files'
+
+// ─── shared maps ─────────────────────────────────────────────────────────────
 
 const STATUS_MAP = {
   ASSIGNED: 'new', not_started: 'new',
@@ -29,20 +32,14 @@ function mapHw(h) {
   }
 }
 
-const TABS = [
-  { id: 'all',      label: 'Все',        filter: () => true },
-  { id: 'new',      label: 'Новые',      filter: h => h.state === 'new' },
-  { id: 'progress', label: 'В работе',   filter: h => h.state === 'progress' },
-  { id: 'done',     label: 'Сдано',      filter: h => h.state === 'done' },
-  { id: 'overdue',  label: 'Просрочено', filter: h => h.state === 'overdue' },
-]
-
 const STATE_CFG = {
   new:      { label: 'Не начато',  chip: 'blue'   },
   progress: { label: 'В работе',   chip: 'orange' },
   done:     { label: 'Сдано',      chip: 'green'  },
   overdue:  { label: 'Просрочено', chip: 'red'    },
 }
+
+// ─── shared UI ───────────────────────────────────────────────────────────────
 
 function GradeCircle({ grade }) {
   const color = grade >= 9 ? 'var(--success)' : grade >= 7 ? 'var(--warning)' : 'var(--danger)'
@@ -53,18 +50,54 @@ function GradeCircle({ grade }) {
   )
 }
 
-function SubmitModal({ hw, onClose, onSubmit }) {
-  const [text, setText] = useState('')
-  const [link, setLink] = useState('')
+// ─── STUDENT ─────────────────────────────────────────────────────────────────
 
-  function handleSubmit() {
-    if (!text.trim() && !link.trim()) {
-      toast('Добавьте комментарий или ссылку на работу', 'warning')
+const STUDENT_TABS = [
+  { id: 'all',      label: 'Все',        filter: () => true },
+  { id: 'new',      label: 'Новые',      filter: h => h.state === 'new' },
+  { id: 'progress', label: 'В работе',   filter: h => h.state === 'progress' },
+  { id: 'done',     label: 'Сдано',      filter: h => h.state === 'done' },
+  { id: 'overdue',  label: 'Просрочено', filter: h => h.state === 'overdue' },
+]
+
+function SubmitModal({ hw, onClose, onDone }) {
+  const [text, setText]           = useState('')
+  const [link, setLink]           = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [attachedFile, setAttachedFile] = useState(null)   // { url, name }
+  const fileRef = useRef()
+
+  async function handleFilePick(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const res = await uploadFile(file, 'HOMEWORK')
+      setAttachedFile({ url: res.url, name: res.name ?? file.name })
+      toast('Файл прикреплён ✓', 'success')
+    } catch {
+      toast('Не удалось загрузить файл', 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleSubmit() {
+    if (!text.trim() && !link.trim() && !attachedFile) {
+      toast('Добавьте комментарий, ссылку или файл', 'warning')
       return
     }
-    onSubmit(hw.id, text || link)
-    onClose()
-    toast('Задание отправлено на проверку ✓')
+    try {
+      await homeworkApi.submit(hw.id, {
+        text: text || link || '',
+        fileUrl: attachedFile?.url ?? null,
+      })
+      toast('Задание отправлено на проверку ✓', 'success')
+      onDone()
+      onClose()
+    } catch {
+      toast('Ошибка при отправке', 'error')
+    }
   }
 
   return (
@@ -102,6 +135,29 @@ function SubmitModal({ hw, onClose, onSubmit }) {
               style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
             />
           </div>
+
+          {/* File upload */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Прикрепить файл</label>
+            <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={handleFilePick} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                className="ps-btn ps-btn-ghost ps-btn-sm"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                style={{ flexShrink: 0 }}
+              >
+                <Icon name="upload" size={13} />
+                {uploading ? 'Загрузка...' : 'Выбрать файл'}
+              </button>
+              {attachedFile && (
+                <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  ✓ {attachedFile.name}
+                </span>
+              )}
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
             <button className="ps-btn ps-btn-primary" onClick={handleSubmit} style={{ flex: 1, justifyContent: 'center' }}>
               <Icon name="upload" size={14} /> Отправить на проверку
@@ -141,7 +197,17 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Преподаватель: </span>{hw.teacher}</div>
           </div>
 
-          {hw.comment && (
+          {hw.grade !== null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'var(--success-soft)' }}>
+              <GradeCircle grade={hw.grade} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--success)' }}>Оценка: {hw.grade}/10</div>
+                {hw.comment && <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{hw.comment}</div>}
+              </div>
+            </div>
+          )}
+
+          {!hw.grade && hw.comment && (
             <div style={{ padding: '10px 14px', borderRadius: 12, background: 'var(--success-soft)', fontSize: 13, color: 'var(--success)', fontWeight: 700 }}>
               💬 {hw.comment}
             </div>
@@ -161,7 +227,7 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
             )}
             {hw.state === 'done' && (
               <button className="ps-btn ps-btn-sm" style={{ background: 'var(--success-soft)', color: 'var(--success)', border: 'none' }}
-                onClick={() => toast(`Оценка: ${hw.grade}/10 · ${hw.comment || 'Работа принята'}`)}>
+                onClick={() => toast(`Оценка: ${hw.grade ?? '—'}/10 · ${hw.comment || 'Работа принята'}`)}>
                 <Icon name="check" size={13} /> Просмотреть работу
               </button>
             )}
@@ -175,7 +241,7 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
   )
 }
 
-export default function HomeworkPage() {
+function StudentHomework() {
   const { sideRole } = useApp()
   const navigate = useNavigate()
   const [tab, setTab]           = useState('all')
@@ -184,14 +250,17 @@ export default function HomeworkPage() {
   const [submitHw, setSubmitHw] = useState(null)
   const [loading, setLoading]   = useState(true)
 
-  useEffect(() => {
+  function loadList() {
+    setLoading(true)
     homeworkApi.list()
       .then(data => setHwList(data.map(mapHw)))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }
 
-  const items = hwList.filter(TABS.find(t => t.id === tab).filter)
+  useEffect(() => { loadList() }, [])
+
+  const items = hwList.filter(STUDENT_TABS.find(t => t.id === tab).filter)
 
   const total   = hwList.length
   const done    = hwList.filter(h => h.state === 'done').length
@@ -200,13 +269,6 @@ export default function HomeworkPage() {
     const graded = hwList.filter(h => h.grade)
     return graded.length ? (graded.reduce((s, h) => s + h.grade, 0) / graded.length).toFixed(1) : '—'
   })()
-
-  function handleSubmit(id, comment) {
-    setHwList(prev => prev.map(h => h.id === id
-      ? { ...h, state: 'done', comment: 'На проверке у преподавателя' }
-      : h
-    ))
-  }
 
   function handleMessage(hw) {
     navigate('/messages', { state: { teacherName: hw.teacher } })
@@ -225,7 +287,7 @@ export default function HomeworkPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего заданий',   v: total,    d: 'за всё время',      icon: 'file',    color: 'var(--purple-deep)' },
-              { l: 'Сдано',           v: done,     d: `${Math.round(done/total*100)}% выполнено`, icon: 'check',   color: 'var(--success)'    },
+              { l: 'Сдано',           v: done,     d: `${total ? Math.round(done/total*100) : 0}% выполнено`, icon: 'check',   color: 'var(--success)'    },
               { l: 'Просрочено',      v: overdue,  d: 'требует внимания',  icon: 'warning', color: 'var(--danger)'     },
               { l: 'Средняя оценка',  v: avgGrade, d: 'из 10',             icon: 'sparkle', color: 'var(--orange-deep)'},
             ].map((k, i) => (
@@ -248,7 +310,7 @@ export default function HomeworkPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                 <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Задания</h3>
                 <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-                  {TABS.map(t => (
+                  {STUDENT_TABS.map(t => (
                     <button
                       key={t.id}
                       onClick={() => setTab(t.id)}
@@ -263,23 +325,27 @@ export default function HomeworkPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {items.length === 0 && (
-                  <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
-                    Заданий в этой категории нет
-                  </div>
-                )}
-                {items.map(hw => (
-                  <HwRow
-                    key={hw.id}
-                    hw={hw}
-                    expanded={expanded === hw.id}
-                    onToggle={() => setExpanded(expanded === hw.id ? null : hw.id)}
-                    onSubmit={setSubmitHw}
-                    onMessage={handleMessage}
-                  />
-                ))}
-              </div>
+              {loading ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>Загрузка...</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {items.length === 0 && (
+                    <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
+                      Заданий в этой категории нет
+                    </div>
+                  )}
+                  {items.map(hw => (
+                    <HwRow
+                      key={hw.id}
+                      hw={hw}
+                      expanded={expanded === hw.id}
+                      onToggle={() => setExpanded(expanded === hw.id ? null : hw.id)}
+                      onSubmit={setSubmitHw}
+                      onMessage={handleMessage}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Правая колонка */}
@@ -291,10 +357,10 @@ export default function HomeworkPage() {
                   {done} из {total} сдано
                 </h3>
                 <div style={{ height: 8, background: 'rgba(255,255,255,.2)', borderRadius: 4 }}>
-                  <div style={{ height: '100%', width: `${Math.round(done/total*100)}%`, background: 'var(--orange)', borderRadius: 4 }} />
+                  <div style={{ height: '100%', width: `${total ? Math.round(done/total*100) : 0}%`, background: 'var(--orange)', borderRadius: 4 }} />
                 </div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,.7)', marginTop: 8 }}>
-                  {Math.round(done/total*100)}% выполнено
+                  {total ? Math.round(done/total*100) : 0}% выполнено
                 </div>
               </div>
 
@@ -338,9 +404,265 @@ export default function HomeworkPage() {
         <SubmitModal
           hw={submitHw}
           onClose={() => setSubmitHw(null)}
-          onSubmit={handleSubmit}
+          onDone={loadList}
         />
       )}
     </div>
   )
+}
+
+// ─── TEACHER ─────────────────────────────────────────────────────────────────
+
+const TEACHER_STATUS_CFG = {
+  ASSIGNED:  { label: 'Назначено',   chip: 'blue'   },
+  SUBMITTED: { label: 'На проверке', chip: 'orange' },
+  REVIEWED:  { label: 'Проверено',   chip: 'green'  },
+  OVERDUE:   { label: 'Просрочено',  chip: 'red'    },
+}
+
+const TEACHER_TABS = [
+  { id: 'all',      label: 'Все',           filter: () => true },
+  { id: 'pending',  label: 'На проверке',   filter: i => i.status === 'SUBMITTED' },
+  { id: 'reviewed', label: 'Проверено',     filter: i => i.status === 'REVIEWED'  },
+]
+
+function TeacherRow({ item, expanded, onToggle, onReviewed }) {
+  const cfg = TEACHER_STATUS_CFG[item.status] ?? { label: item.status, chip: 'blue' }
+  const [grade, setGrade]       = useState(item.grade ?? '')
+  const [feedback, setFeedback] = useState(item.feedback ?? '')
+  const [saving, setSaving]     = useState(false)
+
+  async function handleReview() {
+    if (!grade || Number(grade) < 1 || Number(grade) > 10) {
+      toast('Укажите оценку от 1 до 10', 'warning')
+      return
+    }
+    setSaving(true)
+    try {
+      await homeworkApi.review(item.id, { grade: Number(grade), feedback })
+      toast('Оценка выставлена ✓', 'success')
+      onReviewed()
+    } catch {
+      toast('Ошибка при сохранении оценки', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ borderRadius: 16, border: '1px solid var(--border-soft)', overflow: 'hidden', background: '#fff' }}>
+      <div
+        onClick={onToggle}
+        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        {/* Student avatar */}
+        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+          {item.studentInitials ?? (item.student ?? '?').slice(0, 2).toUpperCase()}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{item.title}</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{item.student}</div>
+        </div>
+        <span className={`ps-flag ps-flag-${item.lang ?? 'fr'}`} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 700, flexShrink: 0 }}>{item.due ?? ''}</span>
+        <span className={`ps-chip ps-chip-${cfg.chip}`}>{cfg.label}</span>
+        {item.grade != null && <GradeCircle grade={item.grade} />}
+        <Icon name={expanded ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />
+      </div>
+
+      {expanded && (
+        <div style={{ borderTop: '1px solid var(--border-soft)', padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* description */}
+          {item.description && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 4 }}>Задание</div>
+              <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>{item.description}</div>
+            </div>
+          )}
+
+          {/* student's answer */}
+          {item.text && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 4 }}>Ответ ученика</div>
+              <div style={{ padding: '10px 14px', borderRadius: 12, background: 'var(--bg-cream-soft)', fontSize: 13, color: 'var(--ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{item.text}</div>
+            </div>
+          )}
+
+          {/* file link */}
+          {item.fileUrl && (
+            <a
+              href={fileUrl(item.fileUrl)}
+              target="_blank"
+              rel="noreferrer"
+              className="ps-btn ps-btn-ghost ps-btn-sm"
+              style={{ alignSelf: 'flex-start', textDecoration: 'none' }}
+            >
+              <Icon name="file" size={13} /> Открыть файл
+            </a>
+          )}
+
+          {item.submittedAt && (
+            <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Сдано: {item.submittedAt}</div>
+          )}
+
+          {/* review form */}
+          {item.status !== 'REVIEWED' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px', borderRadius: 14, background: 'var(--bg-cream-soft)', border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Выставить оценку</div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 700 }}>Оценка (1–10)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={grade}
+                    onChange={e => setGrade(e.target.value)}
+                    style={{ width: 72, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 14, fontWeight: 800, color: 'var(--ink)', textAlign: 'center', outline: 'none' }}
+                  />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 700 }}>Комментарий</label>
+                  <textarea
+                    value={feedback}
+                    onChange={e => setFeedback(e.target.value)}
+                    placeholder="Напишите комментарий к работе..."
+                    rows={3}
+                    style={{ padding: '8px 12px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 13, color: 'var(--ink)', resize: 'none', outline: 'none', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}
+                  />
+                </div>
+              </div>
+              <button
+                className="ps-btn ps-btn-primary ps-btn-sm"
+                onClick={handleReview}
+                disabled={saving}
+                style={{ alignSelf: 'flex-start' }}
+              >
+                <Icon name="check" size={13} />
+                {saving ? 'Сохранение...' : 'Поставить оценку'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'var(--success-soft)' }}>
+              <GradeCircle grade={item.grade} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--success)' }}>Оценка выставлена: {item.grade}/10</div>
+                {item.feedback && <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{item.feedback}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TeacherHomework() {
+  const { sideRole } = useApp()
+  const [tab, setTab]           = useState('all')
+  const [expanded, setExpanded] = useState(null)
+  const [list, setList]         = useState([])
+  const [loading, setLoading]   = useState(true)
+
+  function loadList() {
+    setLoading(true)
+    homeworkApi.teacherList()
+      .then(data => setList(data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { loadList() }, [])
+
+  const total    = list.length
+  const pending  = list.filter(i => i.status === 'SUBMITTED').length
+  const reviewed = list.filter(i => i.status === 'REVIEWED').length
+
+  const activeTab = TEACHER_TABS.find(t => t.id === tab)
+  const items = list.filter(activeTab.filter)
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
+      <Sidebar role={sideRole} />
+
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <TopBar title="Проверка заданий" />
+
+        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+          {/* KPI */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+            {[
+              { l: 'Всего работ',    v: total,    d: 'от учеников',     icon: 'file',    color: 'var(--purple-deep)' },
+              { l: 'На проверке',    v: pending,  d: 'ожидают оценки',  icon: 'clock',   color: 'var(--orange-deep)' },
+              { l: 'Проверено',      v: reviewed, d: 'выставлены оценки', icon: 'check', color: 'var(--success)'     },
+            ].map((k, i) => (
+              <div key={i} className="ps-kpi">
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}>
+                  <Icon name={k.icon} size={16} />
+                  <div className="label">{k.l}</div>
+                </div>
+                <div className="val">{k.v}</div>
+                <div className="delta">{k.d}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* List */}
+          <div className="ps-card" style={{ padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Работы учеников</h3>
+              <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
+                {TEACHER_TABS.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    style={{
+                      padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+                      border: 'none', cursor: 'pointer', transition: 'background .12s, color .12s',
+                      background: tab === t.id ? 'var(--purple)' : 'transparent',
+                      color:      tab === t.id ? '#fff' : 'var(--ink-muted)',
+                    }}
+                  >{t.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {loading ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>Загрузка...</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {items.length === 0 && (
+                  <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
+                    Работ в этой категории нет
+                  </div>
+                )}
+                {items.map(item => (
+                  <TeacherRow
+                    key={item.id}
+                    item={item}
+                    expanded={expanded === item.id}
+                    onToggle={() => setExpanded(expanded === item.id ? null : item.id)}
+                    onReviewed={loadList}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      </main>
+    </div>
+  )
+}
+
+// ─── default export ───────────────────────────────────────────────────────────
+
+export default function HomeworkPage() {
+  const { role } = useApp()
+  if (role === 'teacher' || role === 'admin') {
+    return <TeacherHomework />
+  }
+  return <StudentHomework />
 }

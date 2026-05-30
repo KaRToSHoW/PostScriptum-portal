@@ -225,6 +225,7 @@ export default function TeachersPage() {
 
   function handleMessage(t) {
     navigate('/messages', { state: {
+      userId:          t.id,
       teacherName:     t.name,
       teacherInitials: t.initials,
       teacherColor:    t.color,

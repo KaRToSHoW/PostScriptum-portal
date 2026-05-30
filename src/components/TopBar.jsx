@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import Icon from './Icon'
+import NotificationsBell from './NotificationsBell'
 
 const INDEX = [
   { type: 'page',    label: 'Главная',              sub: 'Раздел',                  icon: 'home',     route: '/dashboard' },
@@ -187,10 +188,7 @@ export default function TopBar({ title }) {
         )}
       </div>
 
-      <button style={{ padding: 8, borderRadius: 10, background: 'var(--bg-cream)', color: 'var(--ink-2)', border: 0, position: 'relative', cursor: 'pointer' }}>
-        <Icon name="bell" size={16} />
-        <span style={{ position: 'absolute', top: 4, right: 5, width: 8, height: 8, background: 'var(--orange)', borderRadius: '50%', border: '1.5px solid #fff' }} />
-      </button>
+      <NotificationsBell />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ textAlign: 'right', lineHeight: 1.15 }}>

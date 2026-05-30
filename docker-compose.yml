@@ -44,7 +44,10 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: none
       APP_JWT_SECRET: ${JWT_SECRET}
       APP_JWT_EXPIRATION_MS: 86400000
+      APP_UPLOAD_DIR: /app/uploads
       CORS_ALLOWED_ORIGINS: ${FRONTEND_URL:-http://localhost}
+    volumes:
+      - uploads_data:/app/uploads
 
   frontend:
     build:
@@ -68,3 +71,4 @@ services:
 volumes:
   db_data:
   pgadmin_data:
+  uploads_data:

@@ -1,0 +1,143 @@
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Icon from './Icon'
+import { notificationsApi } from '../api/notifications'
+
+const TYPE_ICON = {
+  LESSON_REMINDER:       { icon: 'calendar', color: 'var(--purple)' },
+  HOMEWORK_DUE:          { icon: 'file',     color: 'var(--orange-deep)' },
+  PAYMENT_DUE:           { icon: 'wallet',   color: 'var(--warning)' },
+  PAYMENT_OVERDUE:       { icon: 'warning',  color: 'var(--danger)' },
+  NEW_MESSAGE:           { icon: 'chat',     color: 'var(--info)' },
+  SUBSCRIPTION_EXPIRING: { icon: 'wallet',   color: 'var(--orange-deep)' },
+  SYSTEM:                { icon: 'bell',     color: 'var(--ink-muted)' },
+}
+
+function timeAgo(ts) {
+  if (!ts) return ''
+  const then = new Date(ts).getTime()
+  const diff = Math.max(0, Date.now() - then)
+  const min = Math.floor(diff / 60000)
+  if (min < 1)  return 'только что'
+  if (min < 60) return `${min} мин`
+  const h = Math.floor(min / 60)
+  if (h < 24)   return `${h} ч`
+  const d = Math.floor(h / 24)
+  return `${d} дн`
+}
+
+export default function NotificationsBell() {
+  const navigate = useNavigate()
+  const [open, setOpen]     = useState(false)
+  const [items, setItems]   = useState([])
+  const [unread, setUnread] = useState(0)
+  const wrapRef = useRef(null)
+
+  async function load() {
+    try {
+      const [list, count] = await Promise.all([
+        notificationsApi.list(),
+        notificationsApi.unreadCount(),
+      ])
+      setItems(list ?? [])
+      setUnread(count?.count ?? 0)
+    } catch { /* бэкенд недоступен — тихо */ }
+  }
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 30000)   // опрос раз в 30с
+    return () => clearInterval(t)
+  }, [])
+
+  useEffect(() => {
+    function onDown(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  async function markAll() {
+    try { await notificationsApi.markAllRead() } catch {}
+    setItems(prev => prev.map(n => ({ ...n, isRead: true })))
+    setUnread(0)
+  }
+
+  async function openItem(n) {
+    if (!n.isRead) {
+      try { await notificationsApi.markRead(n.id) } catch {}
+      setItems(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x))
+      setUnread(u => Math.max(0, u - 1))
+    }
+    if (n.link) navigate(n.link)
+    setOpen(false)
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ padding: 8, borderRadius: 10, background: 'var(--bg-cream)', color: 'var(--ink-2)', border: 0, position: 'relative', cursor: 'pointer' }}
+      >
+        <Icon name="bell" size={16} />
+        {unread > 0 && (
+          <span style={{
+            position: 'absolute', top: 1, right: 1, minWidth: 16, height: 16, padding: '0 4px',
+            background: 'var(--orange)', color: '#fff', borderRadius: 999, fontSize: 9, fontWeight: 800,
+            display: 'grid', placeItems: 'center', border: '1.5px solid #fff',
+          }}>{unread > 9 ? '9+' : unread}</span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, marginTop: 8, width: 360,
+          background: '#fff', borderRadius: 16, border: '1px solid var(--border)',
+          boxShadow: '0 12px 40px rgba(70,62,137,.18)', zIndex: 300, overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border-soft)' }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>Уведомления</span>
+            {unread > 0 && (
+              <button onClick={markAll} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--purple)' }}>
+                Прочитать все
+              </button>
+            )}
+          </div>
+
+          <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+            {items.length === 0 && (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 13 }}>
+                Нет уведомлений
+              </div>
+            )}
+            {items.map(n => {
+              const cfg = TYPE_ICON[n.type] || TYPE_ICON.SYSTEM
+              return (
+                <div
+                  key={n.id}
+                  onClick={() => openItem(n)}
+                  style={{
+                    display: 'flex', gap: 12, padding: '12px 16px', cursor: 'pointer',
+                    background: n.isRead ? '#fff' : 'var(--purple-tint)',
+                    borderBottom: '1px solid var(--border-soft)',
+                  }}
+                >
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: cfg.color + '22', color: cfg.color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <Icon name={cfg.icon} size={15} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>{n.title}</div>
+                    {n.body && <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2, lineHeight: 1.4 }}>{n.body}</div>}
+                    <div style={{ fontSize: 10, color: 'var(--ink-dim)', fontWeight: 700, marginTop: 3 }}>{timeAgo(n.createdAt)}</div>
+                  </div>
+                  {!n.isRead && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--orange)', flexShrink: 0, marginTop: 4 }} />}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -248,17 +248,25 @@ function DashStudent({ t, data }) {
 /* ================================================================
    ДАШБОРД ПРЕПОДАВАТЕЛЯ
    ================================================================ */
-function DashTeacher({ t }) {
+function DashTeacher({ t, data }) {
+  const navigate = useNavigate()
+  const schedule  = data?.schedule  ?? []
+  const attention = data?.attention ?? []
+  const workload  = data?.workload  ?? { days: [], totalHours: 0, capacity: 0 }
+  const students  = new Set(schedule.map(s => s.student)).size
+
+  const ATTN_COLOR = { orange: 'var(--orange-soft)', red: 'var(--danger-soft)', purple: 'var(--purple-tint)', green: 'var(--success-soft)' }
+
   return (
     <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {[
-          { l: t('Уроков на неделе'),    v: '—', d: '—', up: null,  icon: 'calendar' },
-          { l: t('Активных учеников'),   v: '—', d: '—', up: null,  icon: 'users'    },
-          { l: t('Средняя оценка'),      v: '—', d: '—', up: null,  icon: 'sparkle'  },
-          { l: t('Доход за месяц'),      v: '—', d: '—', up: null,  icon: 'wallet'   },
+          { l: t('Уроков на неделе'),    v: schedule.length,                     d: 'предстоит',     icon: 'calendar' },
+          { l: t('Активных учеников'),   v: students,                            d: 'в расписании',  icon: 'users'    },
+          { l: t('Часов на неделе'),     v: `${workload.totalHours} / ${workload.capacity}`, d: 'загрузка', icon: 'clock' },
+          { l: t('Требует внимания'),    v: attention.length,                    d: 'событий',       icon: 'warning'  },
         ].map((k, i) => (
           <div key={i} className="ps-kpi">
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--purple-deep)' }}>
@@ -266,7 +274,7 @@ function DashTeacher({ t }) {
               <div className="label">{k.l}</div>
             </div>
             <div className="val">{k.v}</div>
-            <div className={`delta${k.up === true ? ' up' : k.up === false ? ' down' : ''}`}>{k.d}</div>
+            <div className="delta">{k.d}</div>
           </div>
         ))}
       </div>
@@ -278,33 +286,32 @@ function DashTeacher({ t }) {
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <div>
-              <span className="ps-eyebrow">сегодня</span>
-              <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>Нет уроков</h3>
+              <span className="ps-eyebrow">ближайшие уроки</span>
+              <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>
+                {schedule.length > 0 ? `${schedule.length} уроков` : 'Нет уроков'}
+              </h3>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="ps-btn ps-btn-ghost ps-btn-sm">{t('Все')}</button>
-              <button className="ps-btn ps-btn-primary ps-btn-sm"><Icon name="plus" size={12} /> {t('Новый слот')}</button>
-            </div>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}>
+              <Icon name="calendar" size={12} /> {t('Календарь')}
+            </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[].map((s, i, arr) => (
+            {schedule.length === 0 && (
+              <div style={{ color: 'var(--ink-muted)', fontSize: 13, padding: '8px 0' }}>Запланированных уроков нет</div>
+            )}
+            {schedule.map((s, i, arr) => (
               <div key={i} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px dashed var(--border)' : 'none', alignItems: 'center' }}>
-                <div style={{ width: 64, flexShrink: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: s.active ? 'var(--orange-deep)' : 'var(--ink)', letterSpacing: '-0.02em' }}>{s.t}</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 700 }}>{s.dur}</div>
+                <div style={{ width: 54, flexShrink: 0, textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--ink)', letterSpacing: '-0.02em' }}>{s.date}</div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{s.dayLabel}</div>
                 </div>
-                <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: s.active ? 'var(--orange)' : 'var(--purple-soft)', flexShrink: 0 }} />
+                <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: 'var(--purple-soft)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>{s.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 3 }}>Zoom · готов план урока</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, letterSpacing: '.08em' }}>{s.timeFrom} → {s.timeTo}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{s.student}</div>
                 </div>
                 <span className={`ps-flag ps-flag-${s.lang}`} />
-                <span className={`ps-chip ps-chip-${s.color}`}>{s.state}</span>
-                {s.active
-                  ? <button className="ps-btn ps-btn-primary ps-btn-sm"><Icon name="play" size={12} />В эфир</button>
-                  : <button className="ps-btn ps-btn-ghost ps-btn-sm">···</button>
-                }
               </div>
             ))}
           </div>
@@ -316,19 +323,22 @@ function DashTeacher({ t }) {
           <div className="ps-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <h3 className="ps-display" style={{ fontSize: 18, margin: 0 }}>Требует внимания</h3>
-              <span className="ps-chip ps-chip-orange">0</span>
+              <span className="ps-chip ps-chip-orange">{attention.length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[].map((n, i) => (
+              {attention.length === 0 && (
+                <div style={{ color: 'var(--ink-muted)', fontSize: 12 }}>Всё под контролем 👌</div>
+              )}
+              {attention.map((n, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--purple-tint)', color: 'var(--purple-deep)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-                    {n.who.split(' ').map(s => s[0]).join('')}
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: ATTN_COLOR[n.type] || 'var(--purple-tint)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
+                    {(n.who || '?').split(' ').map(s => s[0]).join('').slice(0, 2)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>{n.who}</div>
                     <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{n.what}</div>
                   </div>
-                  <span style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700, flexShrink: 0 }}>{n.t}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700, flexShrink: 0 }}>{n.timeAgo}</span>
                 </div>
               ))}
             </div>
@@ -339,24 +349,16 @@ function DashTeacher({ t }) {
             <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>нагрузка</span>
             <h3 className="ps-display ps-display-purple" style={{ fontSize: 22, margin: '4px 0 14px' }}>На этой неделе</h3>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
-              {[
-                { d: 'ПН', h: 0 },
-                { d: 'ВТ', h: 0, today: true },
-                { d: 'СР', h: 0 },
-                { d: 'ЧТ', h: 0 },
-                { d: 'ПТ', h: 0 },
-                { d: 'СБ', h: 0 },
-                { d: 'ВС', h: 0 },
-              ].map((b, i) => (
+              {(workload.days.length ? workload.days : [0,0,0,0,0,0,0].map((_, i) => ({ label: ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'][i], pct: 0 }))).map((b, i) => (
                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: '100%', height: `${b.h}%`, background: b.today ? 'var(--orange)' : 'rgba(255,255,255,0.3)', borderRadius: '6px 6px 3px 3px' }} />
-                  <span style={{ fontSize: 10, fontWeight: 800, color: b.today ? '#fff' : 'rgba(255,255,255,0.65)' }}>{b.d}</span>
+                  <div style={{ width: '100%', height: `${b.pct}%`, minHeight: 3, background: b.today ? 'var(--orange)' : 'rgba(255,255,255,0.3)', borderRadius: '6px 6px 3px 3px' }} />
+                  <span style={{ fontSize: 10, fontWeight: 800, color: b.today ? '#fff' : 'rgba(255,255,255,0.65)' }}>{b.label}</span>
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.18)', fontSize: 12 }}>
               <span style={{ opacity: 0.7 }}>Всего часов</span>
-              <span style={{ fontWeight: 800 }}>0 / 0</span>
+              <span style={{ fontWeight: 800 }}>{workload.totalHours} / {workload.capacity}</span>
             </div>
           </div>
         </div>

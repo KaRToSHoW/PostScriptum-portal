@@ -1,8 +1,12 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
+import { toast } from '../components/Toast'
+import { profileApi } from '../api/profile'
+import { settingsApi } from '../api/settings'
+import { uploadFile, fileUrl } from '../api/files'
 
 const TIMEZONES = ['Europe/Moscow','Europe/Kaliningrad','Asia/Yekaterinburg','Asia/Novosibirsk','Asia/Krasnoyarsk','Asia/Irkutsk','Asia/Yakutsk','Asia/Vladivostok']
 const LOCALES   = [{ v:'ru', l:'Русский' }, { v:'en', l:'English' }, { v:'fr', l:'Français' }]
@@ -66,12 +70,26 @@ export default function ProfilePage() {
   const [phone,    setPhone]    = useState('+7 999 123-45-67')
   const [tz,       setTz]       = useState('Europe/Moscow')
 
-  function handlePhotoChange(e) {
+  async function handlePhotoChange(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => setPhoto(ev.target.result)
-    reader.readAsDataURL(file)
+    try {
+      const res = await uploadFile(file, 'AVATAR')
+      const absUrl = fileUrl(res.url)
+      setPhoto(absUrl)
+      await profileApi.update({ avatarUrl: res.url })
+    } catch (err) {
+      toast(err.message, 'error')
+    }
+  }
+
+  async function handleDeletePhoto() {
+    setPhoto(null)
+    try {
+      await profileApi.update({ avatarUrl: null })
+    } catch (err) {
+      toast(err.message, 'error')
+    }
   }
 
   const [notifEmail, setNotifEmail] = useState(true)
@@ -83,12 +101,55 @@ export default function ProfilePage() {
   const [newPwd, setNewPwd] = useState('')
   const [repPwd, setRepPwd] = useState('')
 
-  const [saved,  setSaved]  = useState(false)
   const [section, setSection] = useState('profile')
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+  // Load settings on mount and populate notification/reminder state
+  useEffect(() => {
+    settingsApi.get().then(data => {
+      if (data.notificationEmail !== undefined) setNotifEmail(data.notificationEmail)
+      if (data.notificationPush  !== undefined) setNotifPush(data.notificationPush)
+      if (data.notificationSms   !== undefined) setNotifSms(data.notificationSms)
+      if (data.reminderHoursBefore !== undefined) setReminder(String(data.reminderHoursBefore))
+      if (data.interfaceLocale   !== undefined) setLocale(data.interfaceLocale)
+    }).catch(() => {/* backend may be down — keep local defaults */})
+  }, [])
+
+  async function handleSaveProfile() {
+    try {
+      await Promise.all([
+        profileApi.update({ name, phone, timezone: tz, avatarUrl: photo ?? null }),
+        settingsApi.update({ interfaceLocale: locale }),
+      ])
+      toast(t('Сохранено'))
+    } catch (e) {
+      toast(e.message, 'error')
+    }
+  }
+
+  async function handleSaveNotif() {
+    try {
+      await settingsApi.update({
+        notificationEmail: notifEmail,
+        notificationPush:  notifPush,
+        notificationSms:   notifSms,
+        reminderHoursBefore: Number(reminder),
+      })
+      toast(t('Сохранено'))
+    } catch (e) {
+      toast(e.message, 'error')
+    }
+  }
+
+  async function handleChangePassword() {
+    try {
+      await profileApi.changePassword({ currentPassword: curPwd, newPassword: newPwd })
+      toast(t('Пароль успешно изменён'))
+      setCurPwd('')
+      setNewPwd('')
+      setRepPwd('')
+    } catch (e) {
+      toast(e.message, 'error')
+    }
   }
 
   const initials = name.split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2)
@@ -138,7 +199,7 @@ export default function ProfilePage() {
                 <Icon name="upload" size={13} /> {t('Сменить фото')}
               </button>
               {photo && (
-                <button className="ps-btn ps-btn-sm" onClick={() => setPhoto(null)} style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.7)', border: '1px solid rgba(255,255,255,.2)', fontSize: 11 }}>
+                <button className="ps-btn ps-btn-sm" onClick={handleDeletePhoto} style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.7)', border: '1px solid rgba(255,255,255,.2)', fontSize: 11 }}>
                   {t('Удалить фото')}
                 </button>
               )}
@@ -214,14 +275,9 @@ export default function ProfilePage() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 12, marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border-soft)' }}>
-                  <button className="ps-btn ps-btn-primary" onClick={handleSave}>
+                  <button className="ps-btn ps-btn-primary" onClick={handleSaveProfile}>
                     <Icon name="check" size={14} /> {t('Сохранить')}
                   </button>
-                  {saved && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--success)', fontWeight: 800 }}>
-                      <Icon name="check" size={14} /> {t('Сохранено')}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -265,14 +321,9 @@ export default function ProfilePage() {
                 </div>
 
                 <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border-soft)' }}>
-                  <button className="ps-btn ps-btn-primary" onClick={handleSave}>
+                  <button className="ps-btn ps-btn-primary" onClick={handleSaveNotif}>
                     <Icon name="check" size={14} /> {t('Сохранить')}
                   </button>
-                  {saved && (
-                    <span style={{ marginLeft: 14, fontSize: 13, color: 'var(--success)', fontWeight: 800 }}>
-                      ✓ {t('Сохранено')}
-                    </span>
-                  )}
                 </div>
               </div>
             )}
@@ -307,7 +358,7 @@ export default function ProfilePage() {
                     className="ps-btn ps-btn-primary"
                     disabled={!curPwd || !newPwd || newPwd !== repPwd}
                     style={{ width: 'fit-content', opacity: (!curPwd || !newPwd || newPwd !== repPwd) ? 0.5 : 1 }}
-                    onClick={handleSave}
+                    onClick={handleChangePassword}
                   >
                     <Icon name="shield" size={14} /> {t('Сменить пароль')}
                   </button>

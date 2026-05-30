@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { messagesApi } from '../api/messages'
+import { currentEmail } from '../api/session'
 
 const LANG_COLORS = ['var(--purple)','var(--orange)','var(--success)','var(--info)','var(--warning)']
 
@@ -31,6 +32,25 @@ function Avatar({ initials, color, online, size = 44 }) {
   )
 }
 
+function formatTime(sentAt) {
+  if (!sentAt) return ''
+  try {
+    return new Date(sentAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ''
+  }
+}
+
+function mapMessages(msgs) {
+  const myEmail = currentEmail()
+  return msgs.map(m => ({
+    id:    m.id,
+    text:  m.body,
+    time:  formatTime(m.sentAt),
+    from:  myEmail && m.senderEmail === myEmail ? 'me' : 'them',
+  }))
+}
+
 export default function MessagesPage() {
   const { sideRole } = useApp()
   const location  = useLocation()
@@ -39,11 +59,13 @@ export default function MessagesPage() {
   const [text, setText]         = useState('')
   const [convs, setConvs]       = useState([])
   const [search, setSearch]     = useState('')
-  const bottomRef = useRef(null)
+  const bottomRef  = useRef(null)
+  const pollRef    = useRef(null)
 
-  // Загрузка чатов из API
-  useEffect(() => {
-    messagesApi.conversations()
+  // ---------- helpers ----------
+
+  const loadConversations = useCallback(() => {
+    return messagesApi.conversations()
       .then(data => {
         const mapped = data.map((c, i) => ({
           id:       c.id,
@@ -51,91 +73,179 @@ export default function MessagesPage() {
           initials: c.initials ?? c.name[0],
           color:    LANG_COLORS[i % LANG_COLORS.length],
           online:   false,
+          role:     c.role ?? '',
           lastMsg:  c.lastMsg ?? '',
+          lastTime: c.lastTs ? formatTime(c.lastTs) : '',
           unread:   c.unread ?? 0,
-          messages: [],
+          msgs:     [],
         }))
+        return mapped
+      })
+  }, [])
+
+  const loadThread = useCallback((id) => {
+    return messagesApi.thread(id)
+      .then(data => mapMessages(data))
+  }, [])
+
+  // ---------- on mount: load conversations, auto-select first ----------
+
+  useEffect(() => {
+    loadConversations()
+      .then(mapped => {
         setConvs(mapped)
         if (mapped.length > 0) setActiveId(mapped[0].id)
       })
       .catch(() => {})
-  }, [])
+  }, [loadConversations])
 
-  // Загрузка сообщений при выборе чата
+  // ---------- location.state: navigate from another page ----------
+
+  useEffect(() => {
+    const state = location.state ?? {}
+    const { teacherName, teacherInitials, teacherColor, teacherRole, userId } = state
+
+    if (!teacherName && !userId) return
+
+    if (userId) {
+      // start or get existing conversation by userId
+      messagesApi.start(userId)
+        .then(({ conversationId }) => {
+          // reload conversations to include the new/existing one
+          return loadConversations().then(mapped => {
+            setConvs(mapped)
+            setActiveId(conversationId)
+          })
+        })
+        .catch(() => {})
+      return
+    }
+
+    // no userId — try to match by name in the existing list
+    if (teacherName) {
+      setConvs(prev => {
+        const existing = prev.find(c => c.name === teacherName)
+        if (existing) {
+          setActiveId(existing.id)
+          return prev
+        }
+        // create a placeholder conversation (will be replaced once API is available)
+        const newConv = {
+          id:       `tmp-${Date.now()}`,
+          name:     teacherName,
+          role:     teacherRole ?? '',
+          initials: teacherInitials ?? teacherName.split(' ').map(s => s[0]).join('').slice(0, 2),
+          color:    teacherColor ?? 'var(--purple)',
+          online:   false,
+          unread:   0,
+          lastMsg:  '',
+          lastTime: '',
+          msgs:     [],
+        }
+        setActiveId(newConv.id)
+        return [newConv, ...prev]
+      })
+    }
+  }, [location.state, loadConversations])
+
+  // ---------- load thread + markRead when active conversation changes ----------
+
   useEffect(() => {
     if (!activeId) return
-    messagesApi.thread(activeId)
+
+    loadThread(activeId)
       .then(msgs => {
-        setConvs(prev => prev.map(c => c.id === activeId
-          ? { ...c, messages: msgs.map(m => ({
-              id: m.id, from: 'other', text: m.body,
-              time: m.sent_at ? new Date(m.sent_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '',
-              isOwn: m.sender_email === undefined ? false : undefined,
-              senderEmail: m.sender_email,
-            })) }
-          : c
+        setConvs(prev => prev.map(c =>
+          c.id === activeId ? { ...c, msgs, unread: 0 } : c
         ))
       })
       .catch(() => {})
-  }, [activeId])
 
-  // Открыть нужный диалог при переходе из другой страницы
+    // mark as read silently
+    messagesApi.markRead(activeId).catch(() => {})
+  }, [activeId, loadThread])
+
+  // ---------- polling every 5 seconds ----------
+
   useEffect(() => {
-    const { teacherName, teacherInitials, teacherColor, teacherRole } = location.state ?? {}
-    if (!teacherName) return
+    if (!activeId) return
 
-    setConvs(prev => {
-      const existing = prev.find(c => c.name === teacherName)
-      if (existing) {
-        setActiveId(existing.id)
-        return prev.map(c => c.id === existing.id ? { ...c, unread: 0 } : c)
-      }
-      // Создаём новый пустой диалог
-      const newConv = {
-        id:       Date.now(),
-        name:     teacherName,
-        role:     teacherRole ?? 'Преподаватель',
-        initials: teacherInitials ?? teacherName.split(' ').map(s => s[0]).join('').slice(0, 2),
-        color:    teacherColor ?? 'var(--purple)',
-        online:   false,
-        unread:   0,
-        lastMsg:  'Начните переписку',
-        lastTime: '',
-        msgs:     [],
-      }
-      setActiveId(newConv.id)
-      return [newConv, ...prev]
-    })
-  }, [location.state])
+    function poll() {
+      loadThread(activeId)
+        .then(msgs => {
+          setConvs(prev => prev.map(c =>
+            c.id === activeId ? { ...c, msgs } : c
+          ))
+        })
+        .catch(() => {})
 
-  // Автоскролл вниз при новых сообщениях
+      loadConversations()
+        .then(fresh => {
+          setConvs(prev => fresh.map(fc => {
+            const existing = prev.find(pc => pc.id === fc.id)
+            // merge: keep loaded msgs for the active conv, take fresh unread for others
+            if (!existing) return fc
+            return {
+              ...fc,
+              color: existing.color, // keep stable color assignment
+              msgs:  existing.id === activeId ? existing.msgs : existing.msgs,
+              unread: fc.id === activeId ? 0 : fc.unread,
+            }
+          }))
+        })
+        .catch(() => {})
+    }
+
+    pollRef.current = setInterval(poll, 5000)
+    return () => clearInterval(pollRef.current)
+  }, [activeId, loadThread, loadConversations])
+
+  // ---------- auto-scroll when messages change ----------
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [activeId, convs])
 
-  const active = convs.find(c => c.id === activeId)
-
-  const filteredConvs = convs.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.role.toLowerCase().includes(search.toLowerCase())
-  )
+  // ---------- select conversation ----------
 
   function handleSelect(id) {
+    if (id === activeId) return
     setActiveId(id)
-    setConvs(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c))
   }
+
+  // ---------- send message ----------
 
   function handleSend() {
-    if (!text.trim()) return
-    const msg = { id: Date.now(), from: 'me', text: text.trim(), time: new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) }
-    setConvs(prev => prev.map(c => c.id === activeId
-      ? { ...c, msgs: [...c.msgs, msg], lastMsg: msg.text, lastTime: msg.time }
-      : c
-    ))
+    if (!text.trim() || !activeId) return
+    const body = text.trim()
     setText('')
+    messagesApi.send(activeId, body)
+      .then(() => loadThread(activeId))
+      .then(msgs => {
+        setConvs(prev => prev.map(c =>
+          c.id === activeId
+            ? { ...c, msgs, lastMsg: body, lastTime: formatTime(new Date().toISOString()) }
+            : c
+        ))
+      })
+      .catch(() => {})
   }
 
-  const totalUnread = convs.reduce((s, c) => s + c.unread, 0)
+  // ---------- derived state ----------
+
+  const active = convs.find(c => c.id === activeId)
+
+  const filteredConvs = convs.filter(c => {
+    const q = search.toLowerCase()
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.role ?? '').toLowerCase().includes(q)
+    )
+  })
+
+  const totalUnread = convs.reduce((s, c) => s + (c.unread ?? 0), 0)
+
+  // ---------- render ----------
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -169,8 +279,15 @@ export default function MessagesPage() {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              {filteredConvs.length === 0 && (
-                <div style={{ padding: '30px 18px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 13 }}>Ничего не найдено</div>
+              {convs.length === 0 && (
+                <div style={{ padding: '30px 18px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 13 }}>
+                  Нет диалогов
+                </div>
+              )}
+              {convs.length > 0 && filteredConvs.length === 0 && (
+                <div style={{ padding: '30px 18px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 13 }}>
+                  Ничего не найдено
+                </div>
               )}
               {filteredConvs.map(c => (
                 <div
@@ -189,7 +306,9 @@ export default function MessagesPage() {
                       <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.name}</span>
                       <span style={{ fontSize: 11, color: 'var(--ink-muted)', flexShrink: 0 }}>{c.lastTime}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{c.role}</div>
+                    {c.role ? (
+                      <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{c.role}</div>
+                    ) : null}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                       <span style={{ fontSize: 12, color: 'var(--ink-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
                         {c.lastMsg}
@@ -211,81 +330,92 @@ export default function MessagesPage() {
 
             {!active && (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
-                Нет данных
+                {convs.length === 0 ? 'Нет диалогов' : 'Выберите чат'}
               </div>
             )}
 
             {/* Шапка */}
-            {active && <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Avatar initials={active.initials} color={active.color} online={active.online} size={40} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{active.name}</div>
-                <div style={{ fontSize: 12, color: active.online ? 'var(--success)' : 'var(--ink-muted)', fontWeight: 700, marginTop: 1 }}>
-                  {active.online ? 'Онлайн' : 'Был(а) недавно'} · {active.role}
-                </div>
-              </div>
-              <button
-                className="ps-btn ps-btn-ghost ps-btn-sm"
-                onClick={() => navigate('/calendar', { state: { teacherName: active.name } })}
-              >
-                <Icon name="calendar" size={14} /> Записаться
-              </button>
-            </div>}
-
-            {/* Сообщения */}
-            {active && <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {active.msgs.map(m => (
-                <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
-                  {m.from === 'them' && (
-                    <Avatar initials={active.initials} color={active.color} online={false} size={32} />
-                  )}
-                  <div style={{ maxWidth: '65%' }}>
-                    <div style={{
-                      padding: '10px 14px', borderRadius: m.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      background: m.from === 'me' ? 'var(--purple)' : '#fff',
-                      color: m.from === 'me' ? '#fff' : 'var(--ink)',
-                      fontSize: 14, lineHeight: 1.5, fontWeight: 500,
-                      boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                    }}>
-                      {m.text}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 4, textAlign: m.from === 'me' ? 'right' : 'left' }}>
-                      {m.time}
-                    </div>
+            {active && (
+              <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <Avatar initials={active.initials} color={active.color} online={active.online} size={40} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{active.name}</div>
+                  <div style={{ fontSize: 12, color: active.online ? 'var(--success)' : 'var(--ink-muted)', fontWeight: 700, marginTop: 1 }}>
+                    {active.online ? 'Онлайн' : 'Был(а) недавно'}{active.role ? ` · ${active.role}` : ''}
                   </div>
                 </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>}
+                <button
+                  className="ps-btn ps-btn-ghost ps-btn-sm"
+                  onClick={() => navigate('/calendar', { state: { teacherName: active.name } })}
+                >
+                  <Icon name="calendar" size={14} /> Записаться
+                </button>
+              </div>
+            )}
+
+            {/* Сообщения */}
+            {active && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {active.msgs.length === 0 && (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontSize: 13, paddingTop: 40 }}>
+                    Нет сообщений
+                  </div>
+                )}
+                {active.msgs.map(m => (
+                  <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
+                    {m.from === 'them' && (
+                      <Avatar initials={active.initials} color={active.color} online={false} size={32} />
+                    )}
+                    <div style={{ maxWidth: '65%' }}>
+                      <div style={{
+                        padding: '10px 14px', borderRadius: m.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        background: m.from === 'me' ? 'var(--purple)' : '#fff',
+                        color: m.from === 'me' ? '#fff' : 'var(--ink)',
+                        fontSize: 14, lineHeight: 1.5, fontWeight: 500,
+                        boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+                      }}>
+                        {m.text}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 4, textAlign: m.from === 'me' ? 'right' : 'left' }}>
+                        {m.time}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+            )}
 
             {/* Ввод */}
-            {active && <div style={{ padding: '14px 24px', background: '#fff', borderTop: '1px solid var(--border-soft)', display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-              <textarea
-                value={text}
-                onChange={e => setText(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                placeholder="Написать сообщение..."
-                rows={1}
-                style={{
-                  flex: 1, padding: '10px 14px', borderRadius: 14,
-                  border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)',
-                  fontSize: 14, color: 'var(--ink)', resize: 'none', outline: 'none',
-                  fontFamily: 'var(--font-body)', lineHeight: 1.5,
-                }}
-              />
-              <button
-                onClick={handleSend}
-                disabled={!text.trim()}
-                style={{
-                  width: 42, height: 42, borderRadius: 12, border: 'none', cursor: text.trim() ? 'pointer' : 'not-allowed',
-                  background: text.trim() ? 'var(--purple)' : 'var(--purple-soft)',
-                  color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0,
-                  transition: 'background .15s',
-                }}
-              >
-                <Icon name="arrow" size={18} />
-              </button>
-            </div>}
+            {active && (
+              <div style={{ padding: '14px 24px', background: '#fff', borderTop: '1px solid var(--border-soft)', display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                <textarea
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+                  placeholder="Написать сообщение..."
+                  rows={1}
+                  style={{
+                    flex: 1, padding: '10px 14px', borderRadius: 14,
+                    border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)',
+                    fontSize: 14, color: 'var(--ink)', resize: 'none', outline: 'none',
+                    fontFamily: 'var(--font-body)', lineHeight: 1.5,
+                  }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!text.trim()}
+                  style={{
+                    width: 42, height: 42, borderRadius: 12, border: 'none', cursor: text.trim() ? 'pointer' : 'not-allowed',
+                    background: text.trim() ? 'var(--purple)' : 'var(--purple-soft)',
+                    color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0,
+                    transition: 'background .15s',
+                  }}
+                >
+                  <Icon name="arrow" size={18} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </main>

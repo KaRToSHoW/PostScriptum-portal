@@ -1,17 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
-import { useApi } from '../hooks/useApi'
-import { financeApi } from '../api/finance'
-import ApiError from '../components/ApiError'
+import { adminApi } from '../api/admin'
 
 /* ── Стековый бар-чарт выручки ─────────────────────────────── */
-function RevenueChart() {
+function RevenueChart({ months }) {
   const COLORS = ['var(--purple)', 'var(--orange)', '#9DC4A2', '#D7A87E', '#C9A0DC']
   const LANGS  = ['Французский', 'Английский', 'Немецкий', 'Испанский', 'Итальянский']
-  const MONTHS = []
   const MAX = 165
 
   return (
@@ -31,7 +28,12 @@ function RevenueChart() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flex: 1, minHeight: 0 }}>
-        {MONTHS.map((mo, i) => {
+        {months.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontSize: 13 }}>
+            Нет данных
+          </div>
+        )}
+        {months.map((mo, i) => {
           const total = mo.v.reduce((a, b) => a + b, 0)
           return (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: '100%', justifyContent: 'flex-end' }}>
@@ -61,8 +63,29 @@ function RevenueChart() {
 }
 
 /* ── Пончик структуры абонементов ──────────────────────────── */
-function SubsDonut() {
-  const TIERS = []
+function SubsDonut({ subscriptions }) {
+  const COLORS = ['var(--purple)', 'var(--orange)', '#9DC4A2', '#D7A87E']
+  const labels = subscriptions?.labels ?? []
+  const counts = subscriptions?.counts ?? []
+  const active = subscriptions?.active ?? 0
+
+  // Build tiers array from labels/counts
+  const TIERS = labels.map((label, i) => ({
+    l: label,
+    n: counts[i] ?? 0,
+    c: COLORS[i % COLORS.length],
+    price: '',
+  }))
+
+  // Compute donut segments
+  const total = counts.reduce((a, b) => a + b, 0) || 1
+  let offset = 0
+  const segments = TIERS.map((t) => {
+    const pct = (t.n / total) * 100
+    const seg = { ...t, pct, offset }
+    offset += pct
+    return seg
+  })
 
   return (
     <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', height: 340 }}>
@@ -72,15 +95,18 @@ function SubsDonut() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 24, flex: 1 }}>
         {/* SVG-пончик */}
         <svg width={150} height={150} viewBox="0 0 42 42" style={{ flexShrink: 0 }}>
-          <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--purple)" strokeWidth="6" strokeDasharray="56 100" strokeDashoffset="0" />
-          <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--orange)" strokeWidth="6" strokeDasharray="28 100" strokeDashoffset="-56" />
-          <circle cx="21" cy="21" r="15.9" fill="none" stroke="#9DC4A2"       strokeWidth="6" strokeDasharray="11 100" strokeDashoffset="-84" />
-          <circle cx="21" cy="21" r="15.9" fill="none" stroke="#D7A87E"       strokeWidth="6" strokeDasharray="5 100"  strokeDashoffset="-95" />
-          <text x="21" y="20" textAnchor="middle" fontSize="6"   fontWeight="800" fill="var(--ink)"      fontFamily="var(--font-display)">184</text>
+          {segments.map((s, i) => (
+            <circle key={i} cx="21" cy="21" r="15.9" fill="none" stroke={s.c} strokeWidth="6"
+              strokeDasharray={`${s.pct} 100`} strokeDashoffset={`${-s.offset}`} />
+          ))}
+          <text x="21" y="20" textAnchor="middle" fontSize="6"   fontWeight="800" fill="var(--ink)"      fontFamily="var(--font-display)">{active}</text>
           <text x="21" y="25" textAnchor="middle" fontSize="2.4" fontWeight="700" fill="var(--ink-muted)">абонементов</text>
         </svg>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {TIERS.length === 0 && (
+            <div style={{ color: 'var(--ink-muted)', fontSize: 13 }}>Нет данных</div>
+          )}
           {TIERS.map(t => (
             <div key={t.l} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: t.c, flexShrink: 0 }} />
@@ -92,23 +118,26 @@ function SubsDonut() {
         </div>
       </div>
 
-      <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-soft)' }}>
-        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Истекают на этой неделе
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {['Анна С.', 'Игорь П.', 'Лиза К.', 'Мила О.', '+ 5'].map((n, i) => (
-            <span key={i} className="ps-chip ps-chip-orange">{n}</span>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
 
+/* ── Статус оплаты → цвет чипа ─────────────────────────────── */
+function statusChip(status) {
+  switch ((status || '').toLowerCase()) {
+    case 'paid':     return { cls: 'ps-chip-green',  label: 'Оплачено' }
+    case 'overdue':  return { cls: 'ps-chip-red',    label: 'Просрочено' }
+    case 'refunded': return { cls: 'ps-chip-purple', label: 'Возврат' }
+    case 'pending':  return { cls: 'ps-chip-orange', label: 'Ожидает' }
+    default:         return { cls: 'ps-chip-gray',   label: status || '—' }
+  }
+}
+
 /* ── Таблица оплат ─────────────────────────────────────────── */
-function PaymentsTable() {
-  const rows = []
+function PaymentsTable({ rows, total }) {
+  const paid     = rows.filter(r => r.status === 'paid').length
+  const pending  = rows.filter(r => r.status === 'pending').length
+  const overdue  = rows.filter(r => r.status === 'overdue').length
 
   return (
     <div className="ps-card" style={{ overflow: 'hidden' }}>
@@ -118,10 +147,10 @@ function PaymentsTable() {
           <h3 className="ps-display" style={{ fontSize: 18, margin: '4px 0 0' }}>Оплаты и абонементы</h3>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span className="ps-chip ps-chip-purple">Все · 32</span>
-          <span className="ps-chip ps-chip-green">Оплачено · 28</span>
-          <span className="ps-chip ps-chip-orange">Ожидает · 3</span>
-          <span className="ps-chip ps-chip-red">Просрочено · 1</span>
+          <span className="ps-chip ps-chip-purple">Все · {total}</span>
+          <span className="ps-chip ps-chip-green">Оплачено · {paid}</span>
+          <span className="ps-chip ps-chip-orange">Ожидает · {pending}</span>
+          <span className="ps-chip ps-chip-red">Просрочено · {overdue}</span>
         </div>
       </div>
       <table className="ps-table">
@@ -133,25 +162,36 @@ function PaymentsTable() {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              <td style={{ fontWeight: 800 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-tint)', color: 'var(--purple-deep)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-                    {row.n.split(' ').map(s => s[0]).join('')}
-                  </div>
-                  {row.n}
-                </div>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={8} style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '24px 0' }}>
+                Нет данных
               </td>
-              <td>{row.t}</td>
-              <td><span className={`ps-flag ps-flag-${row.l}`} /></td>
-              <td style={{ fontWeight: 800, fontFamily: 'var(--font-display)' }}>{row.a}</td>
-              <td style={{ color: 'var(--ink-muted)' }}>{row.m}</td>
-              <td style={{ color: 'var(--ink-muted)' }}>{row.d}</td>
-              <td><span className={`ps-chip ps-chip-${row.c}`}>{row.s}</span></td>
-              <td style={{ textAlign: 'right', color: 'var(--ink-muted)', cursor: 'pointer' }}>···</td>
             </tr>
-          ))}
+          )}
+          {rows.map((row) => {
+            const name = row.student || '—'
+            const chip = statusChip(row.status)
+            return (
+              <tr key={row.id}>
+                <td style={{ fontWeight: 800 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-tint)', color: 'var(--purple-deep)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
+                      {name.split(' ').map(s => s[0]).join('').slice(0, 2)}
+                    </div>
+                    {name}
+                  </div>
+                </td>
+                <td>{row.subscription || '—'}</td>
+                <td><span style={{ color: 'var(--ink-muted)' }}>—</span></td>
+                <td style={{ fontWeight: 800, fontFamily: 'var(--font-display)' }}>{row.amount}</td>
+                <td style={{ color: 'var(--ink-muted)' }}>{row.method || '—'}</td>
+                <td style={{ color: 'var(--ink-muted)' }}>{row.date || '—'}</td>
+                <td><span className={`ps-chip ${chip.cls}`}>{chip.label}</span></td>
+                <td style={{ textAlign: 'right', color: 'var(--ink-muted)', cursor: 'pointer' }}>···</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -163,21 +203,38 @@ function PaymentsTable() {
    ================================================================ */
 const PERIOD_KEYS = ['WEEK', 'MONTH', 'QUARTER', 'YEAR']
 
-// Заглушка — удалить когда Java API будет готов
-const KPI_MOCK = []
-
 export default function AdminFinancePage() {
   const { sideRole } = useApp()
   const [period, setPeriod] = useState(1) // 0=7дн, 1=Месяц, 2=Квартал, 3=Год
   const PERIODS = ['7 дней', 'Месяц', 'Квартал', 'Год']
 
-  // Подключение к API — data.kpi заменит KPI_MOCK когда бэкенд готов
-  const { data, loading, error } = useApi(
-    () => financeApi.getSummary(PERIOD_KEYS[period]),
-    [period],
-  )
+  const [financeData,  setFinanceData]  = useState(null)
+  const [paymentsData, setPaymentsData] = useState(null)
+  const [loading,      setLoading]      = useState(false)
 
-  const KPI = data?.kpi ?? KPI_MOCK
+  // Load finance when period changes
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    adminApi.finance(PERIOD_KEYS[period])
+      .then(d => { if (!cancelled) setFinanceData(d) })
+      .catch(() => { /* silent — render empty */ })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [period])
+
+  // Load payments once on mount
+  useEffect(() => {
+    adminApi.payments()
+      .then(d => setPaymentsData(d))
+      .catch(() => { /* silent */ })
+  }, [])
+
+  const kpi          = financeData?.kpi          ?? []
+  const revenueRows  = financeData?.revenue       ?? []
+  const subscriptions = financeData?.subscriptions ?? null
+  const paymentRows  = paymentsData?.content      ?? []
+  const paymentTotal = paymentsData?.totalElements ?? 0
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -208,9 +265,13 @@ export default function AdminFinancePage() {
           </div>
 
           {/* KPI */}
-          {error && <ApiError message={error} />}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, opacity: loading ? 0.5 : 1, transition: 'opacity .2s' }}>
-            {KPI.map((k, i) => (
+            {kpi.length === 0 && !loading && (
+              <div style={{ gridColumn: '1/-1', color: 'var(--ink-muted)', fontSize: 13, padding: '12px 0' }}>
+                Нет данных KPI
+              </div>
+            )}
+            {kpi.map((k, i) => (
               <div key={i} className="ps-kpi">
                 <div className="label">{k.l}</div>
                 <div className="val" style={{ fontSize: 24 }}>{k.v}</div>
@@ -221,12 +282,12 @@ export default function AdminFinancePage() {
 
           {/* Графики */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
-            <RevenueChart />
-            <SubsDonut />
+            <RevenueChart months={revenueRows} />
+            <SubsDonut subscriptions={subscriptions} />
           </div>
 
           {/* Таблица */}
-          <PaymentsTable />
+          <PaymentsTable rows={paymentRows} total={paymentTotal} />
         </div>
       </main>
     </div>
