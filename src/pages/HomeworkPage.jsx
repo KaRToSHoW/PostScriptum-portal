@@ -1,12 +1,33 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar   from '../components/Sidebar'
 import TopBar    from '../components/TopBar'
 import Icon      from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
+import { homeworkApi } from '../api/homework'
 
-const INITIAL = []
+const STATUS_MAP = {
+  ASSIGNED: 'new', not_started: 'new',
+  SUBMITTED: 'done', submitted: 'done',
+  REVIEWED: 'done', done: 'done',
+  OVERDUE: 'overdue', overdue: 'overdue',
+}
+
+function mapHw(h) {
+  return {
+    id:       h.id,
+    title:    h.title,
+    state:    STATUS_MAP[h.status] ?? 'new',
+    lang:     h.lang ?? 'fr',
+    due:      h.due ?? '',
+    dueLabel: h.due ?? '',
+    grade:    h.grade ?? null,
+    comment:  h.feedback ?? null,
+    teacher:  h.teacher ?? '',
+    course:   h.course ?? '',
+  }
+}
 
 const TABS = [
   { id: 'all',      label: 'Все',        filter: () => true },
@@ -157,10 +178,18 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
 export default function HomeworkPage() {
   const { sideRole } = useApp()
   const navigate = useNavigate()
-  const [tab, setTab]         = useState('all')
+  const [tab, setTab]           = useState('all')
   const [expanded, setExpanded] = useState(null)
-  const [hwList, setHwList]   = useState(INITIAL)
+  const [hwList, setHwList]     = useState([])
   const [submitHw, setSubmitHw] = useState(null)
+  const [loading, setLoading]   = useState(true)
+
+  useEffect(() => {
+    homeworkApi.list()
+      .then(data => setHwList(data.map(mapHw)))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
   const items = hwList.filter(TABS.find(t => t.id === tab).filter)
 

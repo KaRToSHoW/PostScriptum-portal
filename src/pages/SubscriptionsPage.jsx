@@ -1,16 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
-
-const ACTIVE = []
-
-const HISTORY = []
-
-const PLANS = []
+import { subscriptionsApi } from '../api/subscriptions'
 
 const LANG_COLORS = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--info)', es: 'var(--success)' }
 const LANG_SOFT   = { fr: 'var(--purple-soft)', en: 'var(--orange-soft)', de: 'var(--info-soft)', es: 'var(--success-soft)' }
@@ -144,13 +139,41 @@ function ActiveCard({ sub, onRenew, onCalendar }) {
 export default function SubscriptionsPage() {
   const { sideRole } = useApp()
   const navigate = useNavigate()
-  const [buyLang, setBuyLang] = useState('fr')
+  const [buyLang, setBuyLang]   = useState('fr')
   const [buyModal, setBuyModal] = useState(null)
-  const [activeList, setActiveList] = useState(ACTIVE)
+  const [activeList, setActiveList] = useState([])
+  const [history, setHistory]   = useState([])
+  const [plans, setPlans]       = useState([])
   const buyRef = useRef(null)
 
-  const filteredPlans = PLANS.filter(p => p.lang === buyLang)
-  const totalSpent = HISTORY.reduce((s, h) => s + parseInt(h.price.replace(/\D/g, '')), 0)
+  useEffect(() => {
+    subscriptionsApi.list()
+      .then(data => {
+        setActiveList(data.filter(s => s.status === 'ACTIVE').map(s => ({
+          id: s.id, lang: s.lang, langName: s.langName,
+          plan: `${s.total} уроков`, used: s.used, total: s.total,
+          expires: s.endDate ? new Date(s.endDate).toLocaleDateString('ru-RU') : '—',
+          price: `₽ ${Number(s.price ?? 0).toLocaleString('ru-RU')}`,
+        })))
+        setHistory(data.filter(s => s.status !== 'ACTIVE').map(s => ({
+          id: s.id, lang: s.lang, langName: s.langName,
+          plan: `${s.total} уроков`, date: s.startDate,
+          price: `₽ ${Number(s.price ?? 0).toLocaleString('ru-RU')}`,
+        })))
+      })
+      .catch(() => {})
+    subscriptionsApi.plans()
+      .then(data => setPlans(data.map(p => ({
+        id: p.id, lang: p.lang, langName: p.langName ?? p.lang_name,
+        lessons: p.lessonCount ?? p.lesson_count,
+        price: `₽ ${Number(p.price).toLocaleString('ru-RU')}`,
+        perLesson: `₽ ${Math.round(p.price / (p.lessonCount ?? p.lesson_count)).toLocaleString('ru-RU')}`,
+      }))))
+      .catch(() => {})
+  }, [])
+
+  const filteredPlans = plans.filter(p => !p.lang || p.lang === buyLang)
+  const totalSpent = history.reduce((s, h) => s + parseInt((h.price || '0').replace(/\D/g, '')), 0)
 
   function handleBuy(plan) {
     setBuyModal(plan)

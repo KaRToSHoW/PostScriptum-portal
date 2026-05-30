@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
@@ -43,15 +43,23 @@ function buildCells(year, month) {
    ВАРИАНТ УЧЕНИКА
    ================================================================ */
 function CalendarStudent() {
-  const TODAY = { y: 2026, m: 5, d: 12 }
+  const now = new Date()
+  const TODAY = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() }
   const [ym, setYm]             = useState({ y: TODAY.y, m: TODAY.m })
   const [selectedDay, setSel]   = useState(TODAY.d)
   const [langFilter, setLang]   = useState(new Set(['fr','en','de','es','it']))
+  const [events, setEvents]     = useState({})
+
+  useEffect(() => {
+    let alive = true
+    calendarApi.getMonth(ym.y, ym.m)
+      .then(d => { if (alive && d?.events) setEvents(d.events) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [ym.y, ym.m])
 
   const isToday = (d) => ym.y === TODAY.y && ym.m === TODAY.m && d === TODAY.d
   const isPast  = (d) => ym.y < TODAY.y || (ym.y === TODAY.y && ym.m < TODAY.m) || (ym.y === TODAY.y && ym.m === TODAY.m && d < TODAY.d)
-  const isCurMo = ym.y === TODAY.y && ym.m === TODAY.m
-  const events  = isCurMo ? EVENTS_STUDENT : {}
 
   const cells   = buildCells(ym.y, ym.m)
   const selEvs  = (events[selectedDay] || []).filter(e => langFilter.has(e.l))

@@ -4,8 +4,9 @@ import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
+import { messagesApi } from '../api/messages'
 
-const CONVERSATIONS = []
+const LANG_COLORS = ['var(--purple)','var(--orange)','var(--success)','var(--info)','var(--warning)']
 
 function Avatar({ initials, color, online, size = 44 }) {
   return (
@@ -34,11 +35,49 @@ export default function MessagesPage() {
   const { sideRole } = useApp()
   const location  = useLocation()
   const navigate  = useNavigate()
-  const [activeId, setActiveId] = useState(1)
+  const [activeId, setActiveId] = useState(null)
   const [text, setText]         = useState('')
-  const [convs, setConvs]       = useState(CONVERSATIONS)
+  const [convs, setConvs]       = useState([])
   const [search, setSearch]     = useState('')
   const bottomRef = useRef(null)
+
+  // Загрузка чатов из API
+  useEffect(() => {
+    messagesApi.conversations()
+      .then(data => {
+        const mapped = data.map((c, i) => ({
+          id:       c.id,
+          name:     c.name,
+          initials: c.initials ?? c.name[0],
+          color:    LANG_COLORS[i % LANG_COLORS.length],
+          online:   false,
+          lastMsg:  c.lastMsg ?? '',
+          unread:   c.unread ?? 0,
+          messages: [],
+        }))
+        setConvs(mapped)
+        if (mapped.length > 0) setActiveId(mapped[0].id)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Загрузка сообщений при выборе чата
+  useEffect(() => {
+    if (!activeId) return
+    messagesApi.thread(activeId)
+      .then(msgs => {
+        setConvs(prev => prev.map(c => c.id === activeId
+          ? { ...c, messages: msgs.map(m => ({
+              id: m.id, from: 'other', text: m.body,
+              time: m.sent_at ? new Date(m.sent_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '',
+              isOwn: m.sender_email === undefined ? false : undefined,
+              senderEmail: m.sender_email,
+            })) }
+          : c
+        ))
+      })
+      .catch(() => {})
+  }, [activeId])
 
   // Открыть нужный диалог при переходе из другой страницы
   useEffect(() => {
