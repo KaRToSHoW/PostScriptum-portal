@@ -12,6 +12,8 @@ import ProfilePage        from './pages/ProfilePage'
 import MessagesPage       from './pages/MessagesPage'
 import TeachersPage       from './pages/TeachersPage'
 import StudentsPage       from './pages/StudentsPage'
+import AdminUsersPage     from './pages/AdminUsersPage'
+import ParentPage         from './pages/ParentPage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
 function Protected({ children }) {
@@ -55,6 +57,18 @@ function AppRoutes() {
       } />
       <Route path="/students" element={
         <Protected><StudentsPage /></Protected>
+      } />
+      <Route path="/admin/users" element={
+        <Protected><AdminUsersPage /></Protected>
+      } />
+      <Route path="/children" element={
+        <Protected><ParentPage /></Protected>
+      } />
+      <Route path="/leads" element={
+        <Protected><AdminRolesPage /></Protected>
+      } />
+      <Route path="/settings" element={
+        <Protected><ProfilePage /></Protected>
       } />
 
       <Route path="*" element={<Navigate to="/login" replace />} />

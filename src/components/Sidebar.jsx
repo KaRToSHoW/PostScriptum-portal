@@ -14,6 +14,15 @@ const ROUTE_MAP = {
   chat:      '/messages',
   teachers:  '/teachers',
   students:  '/students',
+  users:     '/admin/users',
+  children:  '/children',
+  leads:     '/leads',
+  settings:  '/settings',
+  subs:      '/billing',
+  earnings:  '/billing',
+  materials: '/homework',
+  reports:   '/admin/finance',
+  courses:   '/teachers',
 }
 
 function routeToItem(pathname) {
@@ -24,9 +33,13 @@ function routeToItem(pathname) {
   if (pathname === '/homework')      return 'homework'
   if (pathname === '/billing')       return 'billing'
   if (pathname === '/profile')       return 'profile'
+  if (pathname === '/settings')      return 'settings'
   if (pathname === '/messages')      return 'chat'
   if (pathname === '/teachers')      return 'teachers'
   if (pathname === '/students')      return 'students'
+  if (pathname === '/admin/users')   return 'users'
+  if (pathname === '/children')      return 'children'
+  if (pathname === '/leads')         return 'leads'
   return 'home'
 }
 
@@ -40,6 +53,20 @@ const NAV = {
     { sec: 'общение', items: [
       { id: 'chat',     label: 'Сообщения',        icon: 'chat' },
       { id: 'teachers', label: 'Преподаватели',    icon: 'users'    },
+    ]},
+    { sec: 'аккаунт', items: [
+      { id: 'billing',  label: 'Абонементы',       icon: 'wallet'   },
+      { id: 'profile',  label: 'Профиль',          icon: 'user'     },
+    ]},
+  ],
+  parent: [
+    { sec: 'обзор', items: [
+      { id: 'children', label: 'Мои дети',         icon: 'users'    },
+      { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
+    ]},
+    { sec: 'общение', items: [
+      { id: 'chat',     label: 'Сообщения',        icon: 'chat'     },
+      { id: 'teachers', label: 'Преподаватели',    icon: 'user'     },
     ]},
     { sec: 'аккаунт', items: [
       { id: 'billing',  label: 'Абонементы',       icon: 'wallet'   },
@@ -68,8 +95,9 @@ const NAV = {
       { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
     ]},
     { sec: 'люди', items: [
-      { id: 'students', label: 'Ученики',          icon: 'users'    },
-      { id: 'teachers', label: 'Преподаватели',    icon: 'user'     },
+      { id: 'users',    label: 'Пользователи',     icon: 'users'    },
+      { id: 'students', label: 'Ученики',          icon: 'user'     },
+      { id: 'teachers', label: 'Преподаватели',    icon: 'sparkle'  },
       { id: 'roles',    label: 'Роли и доступ',    icon: 'shield'   },
       { id: 'leads',    label: 'Заявки',           icon: 'inbox' },
     ]},

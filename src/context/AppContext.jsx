@@ -11,8 +11,9 @@ export const USER_PRESETS = {
 export const SIDE_ROLE = {
   student: 'student',
   teacher: 'teacher',
-  parent:  'student',
+  parent:  'parent',
   admin:   'admin',
+  manager: 'admin',
 }
 
 const AppContext = createContext(null)

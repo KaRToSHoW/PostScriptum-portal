@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
@@ -373,12 +373,16 @@ function DashTeacher({ t, data }) {
 const DASH_TITLE = { student: 'Главная', teacher: 'Главная', parent: 'Главная', admin: 'Дашборд' }
 
 export default function DashboardPage() {
-  const { role, setRole, sideRole, t } = useApp()
+  const { role, sideRole, t } = useApp()
 
+  const isTeacherSide = role === 'teacher' || role === 'manager' || role === 'admin'
   const { data, error } = useApi(
-    () => (role === 'teacher' ? dashboardApi.getTeacher() : dashboardApi.getStudent()),
+    () => (isTeacherSide ? dashboardApi.getTeacher() : dashboardApi.getStudent()),
     [role],
   )
+
+  // Родитель не имеет своего дашборда — отправляем на «Мои дети»
+  if (role === 'parent') return <Navigate to="/children" replace />
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -387,13 +391,14 @@ export default function DashboardPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title={DASH_TITLE[role] || 'Главная'} />
 
-        <div style={{ padding: '16px 28px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <RoleSwitcher role={role} onChange={setRole} t={t} />
-          {error && <ApiError message={error} />}
-        </div>
+        {error && (
+          <div style={{ padding: '16px 28px 0' }}>
+            <ApiError message={error} />
+          </div>
+        )}
 
         {(role === 'student' || role === 'parent') && <DashStudent t={t} data={data} />}
-        {(role === 'teacher' || role === 'admin')  && <DashTeacher t={t} data={data} />}
+        {(role === 'teacher' || role === 'manager' || role === 'admin') && <DashTeacher t={t} data={data} />}
       </main>
     </div>
   )

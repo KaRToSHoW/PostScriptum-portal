@@ -207,9 +207,9 @@ export default function SubscriptionsPage() {
           {/* KPI */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
-              { l: 'Активных абонементов', v: ACTIVE.length,          d: 'сейчас',              icon: 'bookmark', color: 'var(--purple-deep)' },
-              { l: 'Уроков осталось',      v: ACTIVE.reduce((s,a)=>s+(a.total-a.used),0), d: 'по всем курсам', icon: 'calendar',  color: 'var(--success)'    },
-              { l: 'Ближайшее истечение',  v: '13 дн.',               d: 'Французский · 01.06', icon: 'warning',  color: 'var(--orange-deep)' },
+              { l: 'Активных абонементов', v: activeList.length,      d: 'сейчас',              icon: 'bookmark', color: 'var(--purple-deep)' },
+              { l: 'Уроков осталось',      v: activeList.reduce((s,a)=>s+((a.total||0)-(a.used||0)),0), d: 'по всем курсам', icon: 'calendar',  color: 'var(--success)'    },
+              { l: 'Ближайшее истечение',  v: activeList[0]?.expires ?? '—', d: activeList[0]?.langName ?? '', icon: 'warning',  color: 'var(--orange-deep)' },
               { l: 'Потрачено всего',       v: `₽ ${totalSpent.toLocaleString('ru')}`, d: 'за всё время', icon: 'wallet', color: 'var(--ink-muted)' },
             ].map((k, i) => (
               <div key={i} className="ps-kpi">
@@ -253,14 +253,17 @@ export default function SubscriptionsPage() {
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Прошлые платежи</h3>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {HISTORY.map((h, i, arr) => (
+                  {history.length === 0 && (
+                    <div style={{ color: 'var(--ink-muted)', fontSize: 13, padding: '12px 0' }}>Платежей пока нет</div>
+                  )}
+                  {history.map((h, i, arr) => (
                     <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: i < arr.length-1 ? '1px solid var(--border-soft)' : 'none' }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: LANG_SOFT[h.lang], display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: LANG_SOFT[h.lang] || 'var(--bg-cream)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                         <span className={`ps-flag ps-flag-${h.lang}`} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--ink)' }}>{h.langName} · {h.plan}</div>
-                        <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>{h.paid} · {h.method}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>{h.date}</div>
                       </div>
                       <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, color: 'var(--ink)', flexShrink: 0 }}>{h.price}</span>
                       <button className="ps-btn ps-btn-ghost ps-btn-sm" style={{ flexShrink: 0 }}>

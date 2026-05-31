@@ -6,9 +6,14 @@ import Icon      from '../components/Icon'
 import ApiError  from '../components/ApiError'
 import { useApp } from '../context/AppContext'
 import { teachersApi } from '../api/teachers'
+import { adminApi } from '../api/admin'
 import { toast } from '../components/Toast'
 
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
+const LANGS = [
+  { code: 'fr', name: 'Французский' }, { code: 'en', name: 'Английский' },
+  { code: 'de', name: 'Немецкий' },   { code: 'es', name: 'Испанский' }, { code: 'it', name: 'Итальянский' },
+]
 
 function ProgressBar({ value, color }) {
   return (
@@ -71,7 +76,7 @@ function StudentCard({ s, onMessage }) {
   )
 }
 
-export default function StudentsPage() {
+function TeacherStudents() {
   const { sideRole } = useApp()
   const navigate = useNavigate()
   const [students, setStudents] = useState([])
@@ -162,4 +167,185 @@ export default function StudentsPage() {
       </main>
     </div>
   )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   АДМИН: все ученики + назначение преподавателя / привязка родителя
+   ════════════════════════════════════════════════════════════════ */
+
+function AssignModal({ student, onClose, onDone }) {
+  const [teachers, setTeachers] = useState([])
+  const [teacherId, setTeacherId] = useState('')
+  const [lang, setLang] = useState('fr')
+  const [level, setLevel] = useState('B1')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => { teachersApi.list().then(setTeachers).catch(() => {}) }, [])
+
+  async function submit() {
+    if (!teacherId) { toast('Выберите преподавателя', 'warning'); return }
+    setBusy(true)
+    try {
+      await adminApi.assignTeacher({ studentId: student.id, teacherId: Number(teacherId), languageCode: lang, level })
+      toast('Преподаватель назначен ✓', 'success'); onDone(); onClose()
+    } catch (e) { toast(e.message || 'Ошибка', 'error') } finally { setBusy(false) }
+  }
+
+  return (
+    <ModalShell title={`Назначить преподавателя · ${student.name}`} onClose={onClose}>
+      <FieldRow label="Преподаватель">
+        <select className="ps-input" value={teacherId} onChange={e => setTeacherId(e.target.value)}>
+          <option value="">— выбрать —</option>
+          {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      </FieldRow>
+      <FieldRow label="Язык">
+        <select className="ps-input" value={lang} onChange={e => setLang(e.target.value)}>
+          {LANGS.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+        </select>
+      </FieldRow>
+      <FieldRow label="Уровень">
+        <input className="ps-input" value={level} onChange={e => setLevel(e.target.value)} placeholder="B1" />
+      </FieldRow>
+      <ModalActions busy={busy} onSubmit={submit} onClose={onClose} label="Назначить" />
+    </ModalShell>
+  )
+}
+
+function LinkParentModal({ student, onClose, onDone }) {
+  const [parents, setParents] = useState([])
+  const [parentId, setParentId] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    adminApi.users().then(us => setParents(us.filter(u => u.role === 'PARENT'))).catch(() => {})
+  }, [])
+
+  async function submit() {
+    if (!parentId) { toast('Выберите родителя', 'warning'); return }
+    setBusy(true)
+    try {
+      await adminApi.linkParent({ parentId: Number(parentId), studentId: student.id })
+      toast('Родитель привязан ✓', 'success'); onDone(); onClose()
+    } catch (e) { toast(e.message || 'Ошибка', 'error') } finally { setBusy(false) }
+  }
+
+  return (
+    <ModalShell title={`Привязать родителя · ${student.name}`} onClose={onClose}>
+      <FieldRow label="Родитель">
+        <select className="ps-input" value={parentId} onChange={e => setParentId(e.target.value)}>
+          <option value="">— выбрать —</option>
+          {parents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </FieldRow>
+      {parents.length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Нет пользователей с ролью «Родитель». Создайте их на странице «Пользователи».</div>}
+      <ModalActions busy={busy} onSubmit={submit} onClose={onClose} label="Привязать" />
+    </ModalShell>
+  )
+}
+
+function ModalShell({ title, onClose, children }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 440, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '18px 22px' }}>
+          <h3 className="ps-display ps-display-purple" style={{ fontSize: 17, margin: 0 }}>{title}</h3>
+        </div>
+        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+function FieldRow({ label, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+function ModalActions({ busy, onSubmit, onClose, label }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, paddingTop: 6 }}>
+      <button className="ps-btn ps-btn-primary" onClick={onSubmit} disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>{busy ? '...' : label}</button>
+      <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
+    </div>
+  )
+}
+
+function AdminStudents() {
+  const { sideRole } = useApp()
+  const navigate = useNavigate()
+  const [students, setStudents] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [assign, setAssign]     = useState(null)
+  const [link, setLink]         = useState(null)
+
+  function load() {
+    setLoading(true)
+    adminApi.students().then(setStudents).catch(() => {}).finally(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
+      <Sidebar role={sideRole} />
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <TopBar title="Ученики" />
+        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+            {[
+              { l: 'Всего учеников', v: students.length, icon: 'users', color: 'var(--purple-deep)' },
+              { l: 'С преподавателем', v: students.filter(s => s.teachers).length, icon: 'sparkle', color: 'var(--success)' },
+              { l: 'Средний прогресс', v: students.length ? Math.round(students.reduce((a,s)=>a+(s.progress||0),0)/students.length)+'%' : '—', icon: 'chart', color: 'var(--orange-deep)' },
+            ].map((k,i) => (
+              <div key={i} className="ps-kpi">
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}><Icon name={k.icon} size={16} /><div className="label">{k.l}</div></div>
+                <div className="val">{loading ? '…' : k.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {!loading && students.length === 0 && (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)' }}>Учеников пока нет</div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+            {students.map(s => (
+              <div key={s.id} className="ps-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="ps-avatar" style={{ width: 44, height: 44, fontSize: 14 }}>{s.initials}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{s.email}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--purple-deep)' }}>{s.progress ?? 0}%</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+                  <Icon name="sparkle" size={11} /> {s.teachers || 'Преподаватель не назначен'} · {s.courses ?? 0} курс(ов)
+                </div>
+                <div style={{ display: 'flex', gap: 8, paddingTop: 8, borderTop: '1px solid var(--border-soft)', flexWrap: 'wrap' }}>
+                  <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={() => setAssign(s)}><Icon name="plus" size={12} /> Преподаватель</button>
+                  <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => setLink(s)}><Icon name="users" size={12} /> Родитель</button>
+                  <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/messages', { state: { userId: s.id, teacherName: s.name, teacherInitials: s.initials } })}><Icon name="chat" size={12} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {assign && <AssignModal student={assign} onClose={() => setAssign(null)} onDone={load} />}
+      {link && <LinkParentModal student={link} onClose={() => setLink(null)} onDone={load} />}
+    </div>
+  )
+}
+
+export default function StudentsPage() {
+  const { role } = useApp()
+  if (role === 'admin' || role === 'manager') return <AdminStudents />
+  return <TeacherStudents />
 }
