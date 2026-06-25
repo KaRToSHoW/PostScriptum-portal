@@ -174,19 +174,29 @@ function TeacherStudents() {
    ════════════════════════════════════════════════════════════════ */
 
 function AssignModal({ student, onClose, onDone }) {
-  const [teachers, setTeachers] = useState([])
+  const [teachers,  setTeachers]  = useState([])
   const [teacherId, setTeacherId] = useState('')
-  const [lang, setLang] = useState('fr')
-  const [level, setLevel] = useState('B1')
-  const [busy, setBusy] = useState(false)
+  const [lang,      setLang]      = useState('')
+  const [busy,      setBusy]      = useState(false)
 
   useEffect(() => { teachersApi.list().then(setTeachers).catch(() => {}) }, [])
 
+  const selectedTeacher = teachers.find(t => String(t.id) === String(teacherId))
+  const teacherLangs = selectedTeacher
+    ? LANGS.filter(l => (selectedTeacher.langCodes ?? []).includes(l.code))
+    : []
+
+  // Reset lang when teacher changes
+  useEffect(() => {
+    setLang(teacherLangs.length > 0 ? teacherLangs[0].code : '')
+  }, [teacherId])
+
   async function submit() {
     if (!teacherId) { toast('Выберите преподавателя', 'warning'); return }
+    if (!lang)      { toast('Выберите язык', 'warning'); return }
     setBusy(true)
     try {
-      await adminApi.assignTeacher({ studentId: student.id, teacherId: Number(teacherId), languageCode: lang, level })
+      await adminApi.assignTeacher({ studentId: student.id, teacherId: Number(teacherId), languageCode: lang })
       toast('Преподаватель назначен ✓', 'success'); onDone(); onClose()
     } catch (e) { toast(e.message || 'Ошибка', 'error') } finally { setBusy(false) }
   }
@@ -200,12 +210,13 @@ function AssignModal({ student, onClose, onDone }) {
         </select>
       </FieldRow>
       <FieldRow label="Язык">
-        <select className="ps-input" value={lang} onChange={e => setLang(e.target.value)}>
-          {LANGS.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+        <select className="ps-input" value={lang} onChange={e => setLang(e.target.value)}
+          disabled={teacherLangs.length === 0}>
+          {teacherLangs.length === 0
+            ? <option value="">— сначала выберите преподавателя —</option>
+            : teacherLangs.map(l => <option key={l.code} value={l.code}>{l.name}</option>)
+          }
         </select>
-      </FieldRow>
-      <FieldRow label="Уровень">
-        <input className="ps-input" value={level} onChange={e => setLevel(e.target.value)} placeholder="B1" />
       </FieldRow>
       <ModalActions busy={busy} onSubmit={submit} onClose={onClose} label="Назначить" />
     </ModalShell>
