@@ -7,25 +7,13 @@ import { adminApi } from '../api/admin'
 import { subscriptionsApi } from '../api/subscriptions'
 import { toast } from '../components/Toast'
 
-const LANG_COLORS = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--info)', es: 'var(--success)' }
-const LANG_SOFT   = { fr: 'var(--purple-soft)', en: 'var(--orange-soft)', de: 'var(--info-soft)', es: 'var(--success-soft)' }
-
-const FALLBACK_SUBS = [
-  { id: 1, student: 'Анна Соколова',    lang: 'fr', langName: 'Французский', plan: '8 уроков',  used: 3,  total: 8,  status: 'ACTIVE',   expires: '15.07.2026', daysLeft: 20, price: '₽ 14 400' },
-  { id: 2, student: 'Иван Петров',      lang: 'en', langName: 'Английский',  plan: '16 уроков', used: 10, total: 16, status: 'ACTIVE',   expires: '22.07.2026', daysLeft: 27, price: '₽ 24 000' },
-  { id: 3, student: 'Мария Козлова',    lang: 'de', langName: 'Немецкий',    plan: '4 урока',   used: 4,  total: 4,  status: 'EXPIRED',  expires: '01.06.2026', daysLeft: 0,  price: '₽ 8 400'  },
-  { id: 4, student: 'Сергей Волков',    lang: 'es', langName: 'Испанский',   plan: '8 уроков',  used: 1,  total: 8,  status: 'ACTIVE',   expires: '10.07.2026', daysLeft: 15, price: '₽ 13 000' },
-  { id: 5, student: 'Ольга Смирнова',   lang: 'fr', langName: 'Французский', plan: '4 урока',   used: 4,  total: 4,  status: 'EXPIRED',  expires: '20.05.2026', daysLeft: 0,  price: '₽ 8 000'  },
-  { id: 6, student: 'Дмитрий Фролов',   lang: 'en', langName: 'Английский',  plan: '8 уроков',  used: 6,  total: 8,  status: 'ACTIVE',   expires: '05.08.2026', daysLeft: 41, price: '₽ 13 600' },
-]
-
 function statusChip(status) {
   switch ((status || '').toUpperCase()) {
-    case 'ACTIVE':   return { cls: 'ps-chip-green',  label: 'Активный'  }
-    case 'EXPIRED':  return { cls: 'ps-chip-gray',   label: 'Истёк'     }
-    case 'PENDING':  return { cls: 'ps-chip-orange', label: 'Ожидает'   }
-    case 'CANCELLED':return { cls: 'ps-chip-red',    label: 'Отменён'   }
-    default:         return { cls: 'ps-chip-gray',   label: status || '—' }
+    case 'ACTIVE':    return { cls: 'ps-chip-green',  label: 'Активный'  }
+    case 'EXPIRED':   return { cls: 'ps-chip-gray',   label: 'Истёк'     }
+    case 'PAUSED':    return { cls: 'ps-chip-orange', label: 'Пауза'     }
+    case 'CANCELLED': return { cls: 'ps-chip-red',    label: 'Отменён'   }
+    default:          return { cls: 'ps-chip-gray',   label: status || '—' }
   }
 }
 
@@ -64,7 +52,7 @@ function NewSubscriptionModal({ onClose, onCreated }) {
         <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)' }}>Тариф
           <select className="ps-input" style={{ width: '100%', marginTop: 4 }} value={planId} onChange={e => setPlanId(e.target.value)}>
             <option value="">Выберите тариф</option>
-            {plans.map(p => <option key={p.id} value={p.id}>{p.name} · {p.langName} · ₽ {Number(p.price).toLocaleString('ru-RU')}</option>)}
+            {plans.map(p => <option key={p.id} value={p.id}>{p.name} · ₽ {Number(p.price).toLocaleString('ru-RU')}</option>)}
           </select>
         </label>
         <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
@@ -81,33 +69,29 @@ function NewSubscriptionModal({ onClose, onCreated }) {
 export default function AdminSubscriptionsPage() {
   const { sideRole } = useApp()
 
-  const [subs,       setSubs]       = useState([])
+  const [subs,         setSubs]         = useState([])
   const [filterStatus, setFilterStatus] = useState('all')
-  const [filterLang,   setFilterLang]   = useState('all')
   const [search,       setSearch]       = useState('')
   const [showNew,      setShowNew]      = useState(false)
 
   const load = () => {
     adminApi.allSubscriptions()
-      .then(data => setSubs(Array.isArray(data) && data.length > 0 ? data : FALLBACK_SUBS))
-      .catch(() => setSubs(FALLBACK_SUBS))
+      .then(data => setSubs(Array.isArray(data) ? data : []))
+      .catch(() => setSubs([]))
   }
 
   useEffect(() => { load() }, [])
 
   const active  = subs.filter(s => s.status === 'ACTIVE').length
   const expired = subs.filter(s => s.status === 'EXPIRED' || s.status === 'CANCELLED').length
-  const urgent  = subs.filter(s => s.status === 'ACTIVE' && s.daysLeft <= 7).length
+  const urgent  = subs.filter(s => s.status === 'ACTIVE' && (s.daysLeft ?? 99) <= 7).length
 
-  const LANG_OPTIONS   = ['all', 'fr', 'en', 'de', 'es']
-  const LANG_LABELS    = { all: 'Все языки', fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский' }
-  const STATUS_OPTIONS = ['all', 'ACTIVE', 'EXPIRED', 'PENDING', 'CANCELLED']
-  const STATUS_LABELS  = { all: 'Все статусы', ACTIVE: 'Активные', EXPIRED: 'Истёкшие', PENDING: 'Ожидают', CANCELLED: 'Отменённые' }
+  const STATUS_OPTIONS = ['all', 'ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED']
+  const STATUS_LABELS  = { all: 'Все статусы', ACTIVE: 'Активные', EXPIRED: 'Истёкшие', PAUSED: 'На паузе', CANCELLED: 'Отменённые' }
 
   const filtered = subs.filter(s => {
     if (filterStatus !== 'all' && s.status !== filterStatus) return false
-    if (filterLang !== 'all' && s.lang !== filterLang) return false
-    if (search && !s.student.toLowerCase().includes(search.toLowerCase())) return false
+    if (search && !(s.student ?? '').toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
@@ -123,10 +107,10 @@ export default function AdminSubscriptionsPage() {
           {/* KPI */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
-              { l: 'Всего абонементов',  v: subs.length,  icon: 'bookmark', color: 'var(--purple-deep)' },
-              { l: 'Активных',           v: active,       icon: 'check',    color: 'var(--success)'     },
-              { l: 'Истёкших',           v: expired,      icon: 'warning',  color: 'var(--ink-muted)'   },
-              { l: 'Истекают скоро',     v: urgent,       icon: 'warning',  color: 'var(--orange-deep)' },
+              { l: 'Всего абонементов', v: subs.length, icon: 'bookmark', color: 'var(--purple-deep)' },
+              { l: 'Активных',          v: active,      icon: 'check',    color: 'var(--success)'     },
+              { l: 'Истёкших',          v: expired,     icon: 'warning',  color: 'var(--ink-muted)'   },
+              { l: 'Истекают скоро',    v: urgent,      icon: 'warning',  color: 'var(--orange-deep)' },
             ].map((k, i) => (
               <div key={i} className="ps-kpi">
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}>
@@ -145,19 +129,14 @@ export default function AdminSubscriptionsPage() {
               {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
 
-            <select value={filterLang} onChange={e => setFilterLang(e.target.value)}
-              style={{ padding: '8px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: '1px solid var(--border-soft)', background: filterLang !== 'all' ? 'var(--orange-soft)' : '#fff', color: filterLang !== 'all' ? 'var(--orange-deep)' : 'var(--ink-muted)', cursor: 'pointer', outline: 'none' }}>
-              {LANG_OPTIONS.map(l => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
-            </select>
-
             <div style={{ position: 'relative' }}>
               <Icon name="search" size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)', pointerEvents: 'none' }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по ученику…"
                 style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, borderRadius: 999, fontSize: 12, fontWeight: 600, border: '1px solid var(--border-soft)', background: '#fff', color: 'var(--ink)', outline: 'none', width: 200 }} />
             </div>
 
-            {(filterStatus !== 'all' || filterLang !== 'all' || search) && (
-              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => { setFilterStatus('all'); setFilterLang('all'); setSearch('') }}>
+            {(filterStatus !== 'all' || search) && (
+              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => { setFilterStatus('all'); setSearch('') }}>
                 Сбросить
               </button>
             )}
@@ -170,17 +149,14 @@ export default function AdminSubscriptionsPage() {
 
           {/* Таблица */}
           <div className="ps-card" style={{ overflow: 'hidden' }}>
-            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <span className="ps-eyebrow">список</span>
-                <h3 className="ps-display" style={{ fontSize: 18, margin: '4px 0 0' }}>Все абонементы · {filtered.length}</h3>
-              </div>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-soft)' }}>
+              <span className="ps-eyebrow">список</span>
+              <h3 className="ps-display" style={{ fontSize: 18, margin: '4px 0 0' }}>Все абонементы · {filtered.length}</h3>
             </div>
             <table className="ps-table">
               <thead>
                 <tr>
                   <th>Ученик</th>
-                  <th>Язык</th>
                   <th>Тариф</th>
                   <th>Прогресс</th>
                   <th>Истекает</th>
@@ -191,43 +167,39 @@ export default function AdminSubscriptionsPage() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '24px 0' }}>Нет данных</td>
+                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '28px 0' }}>
+                      {subs.length === 0 ? 'Нет абонементов' : 'Ничего не найдено'}
+                    </td>
                   </tr>
                 )}
                 {filtered.map(s => {
-                  const chip = statusChip(s.status)
-                  const pct  = s.total > 0 ? Math.round(s.used / s.total * 100) : 0
-                  const color = LANG_COLORS[s.lang] ?? 'var(--purple)'
-                  const soft  = LANG_SOFT[s.lang]  ?? 'var(--purple-soft)'
-                  const urgent = s.status === 'ACTIVE' && s.daysLeft <= 7
+                  const chip   = statusChip(s.status)
+                  const pct    = (s.total ?? 0) > 0 ? Math.round((s.used ?? 0) / s.total * 100) : 0
+                  const urgent = s.status === 'ACTIVE' && (s.daysLeft ?? 99) <= 7
                   return (
                     <tr key={s.id}>
                       <td style={{ fontWeight: 800 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-tint)', color: 'var(--purple-deep)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-                            {s.student.split(' ').map(x => x[0]).join('').slice(0, 2)}
+                            {(s.student ?? '?').split(' ').map(x => x[0]).join('').slice(0, 2)}
                           </div>
-                          {s.student}
+                          {s.student ?? '—'}
                         </div>
                       </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: 3, background: color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 13 }}>{s.langName}</span>
-                        </div>
-                      </td>
-                      <td style={{ color: 'var(--ink-muted)' }}>{s.plan}</td>
+                      <td style={{ color: 'var(--ink-muted)' }}>{s.plan ?? '—'}</td>
                       <td style={{ minWidth: 130 }}>
-                        <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginBottom: 4 }}>{s.used} / {s.total} уроков</div>
-                        <div style={{ height: 6, background: soft, borderRadius: 3 }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3 }} />
+                        <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginBottom: 4 }}>{s.used ?? 0} / {s.total ?? 0} уроков</div>
+                        <div style={{ height: 6, background: 'var(--purple-soft)', borderRadius: 3 }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: 'var(--purple)', borderRadius: 3 }} />
                         </div>
                       </td>
                       <td style={{ color: urgent ? 'var(--danger)' : 'var(--ink-muted)', fontWeight: urgent ? 800 : 600, fontSize: 13 }}>
-                        {urgent && '⚠ '}{s.expires}
-                        {s.status === 'ACTIVE' && <div style={{ fontSize: 11, color: urgent ? 'var(--danger)' : 'var(--ink-muted)' }}>через {s.daysLeft} дн.</div>}
+                        {urgent && '⚠ '}{s.expires ?? '—'}
+                        {s.status === 'ACTIVE' && s.daysLeft != null && (
+                          <div style={{ fontSize: 11, color: urgent ? 'var(--danger)' : 'var(--ink-muted)' }}>через {s.daysLeft} дн.</div>
+                        )}
                       </td>
-                      <td style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13 }}>{s.price}</td>
+                      <td style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13 }}>{s.price ?? '—'}</td>
                       <td><span className={`ps-chip ${chip.cls}`}>{chip.label}</span></td>
                     </tr>
                   )
