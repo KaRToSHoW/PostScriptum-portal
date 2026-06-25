@@ -132,7 +132,7 @@ export default function ProfilePage() {
   async function handleSaveProfile() {
     try {
       await Promise.all([
-        profileApi.update({ name, phone, timezone: tz, avatarUrl: photo ?? null }),
+        profileApi.update({ name, phone, timezone: tz }),
         settingsApi.update({ interfaceLocale: locale }),
       ])
       toast(t('Сохранено'))

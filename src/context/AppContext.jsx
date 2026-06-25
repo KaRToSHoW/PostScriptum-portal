@@ -74,9 +74,11 @@ export function AppProvider({ children }) {
     localStorage.removeItem('ps_token')
     localStorage.removeItem('ps_role')
     localStorage.removeItem('ps_user')
+    localStorage.removeItem('ps_photo')
     setIsAuth(false)
     setApiUser(null)
     setRole('student')
+    setPhotoRaw(null)
   }
 
   return (

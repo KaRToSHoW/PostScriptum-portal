@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+const BASE = import.meta.env.VITE_API_URL ?? ''
 
 /** Загружает файл через multipart. purpose: AVATAR|HOMEWORK|MATERIAL|MESSAGE */
 export async function uploadFile(file, purpose = 'GENERAL') {

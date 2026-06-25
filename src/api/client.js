@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+const BASE = import.meta.env.VITE_API_URL ?? ''
 
 function getToken() {
   return localStorage.getItem('ps_token')
