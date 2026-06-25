@@ -18,11 +18,10 @@ const ROUTE_MAP = {
   children:  '/children',
   leads:     '/leads',
   settings:  '/settings',
-  subs:      '/billing',
+  subs:      '/admin/finance',
   earnings:  '/billing',
   materials: '/homework',
   reports:   '/admin/finance',
-  courses:   '/teachers',
 }
 
 function routeToItem(pathname) {
@@ -107,7 +106,6 @@ const NAV = {
       { id: 'reports',  label: 'Отчёты',           icon: 'chart'    },
     ]},
     { sec: 'система', items: [
-      { id: 'courses',  label: 'Курсы и языки',    icon: 'globe'    },
       { id: 'settings', label: 'Настройки',        icon: 'cog'      },
     ]},
   ],

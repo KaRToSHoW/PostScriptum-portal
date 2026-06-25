@@ -196,7 +196,7 @@ function AssignModal({ student, onClose, onDone }) {
       <FieldRow label="Преподаватель">
         <select className="ps-input" value={teacherId} onChange={e => setTeacherId(e.target.value)}>
           <option value="">— выбрать —</option>
-          {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          {teachers.map(t => <option key={t.id} value={t.id}>{t.name}{t.email ? ` (${t.email})` : ''}</option>)}
         </select>
       </FieldRow>
       <FieldRow label="Язык">
@@ -235,7 +235,7 @@ function LinkParentModal({ student, onClose, onDone }) {
       <FieldRow label="Родитель">
         <select className="ps-input" value={parentId} onChange={e => setParentId(e.target.value)}>
           <option value="">— выбрать —</option>
-          {parents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {parents.map(p => <option key={p.id} value={p.id}>{p.name} ({p.email})</option>)}
         </select>
       </FieldRow>
       {parents.length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Нет пользователей с ролью «Родитель». Создайте их на странице «Пользователи».</div>}
@@ -318,7 +318,7 @@ function AdminStudents() {
                   <div className="ps-avatar" style={{ width: 44, height: 44, fontSize: 14 }}>{s.initials}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{s.email}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{s.email}{s.parentName ? ` · родитель: ${s.parentName}` : ''}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--purple-deep)' }}>{s.progress ?? 0}%</div>

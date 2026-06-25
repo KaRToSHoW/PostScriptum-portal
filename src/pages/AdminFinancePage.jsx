@@ -4,6 +4,8 @@ import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { adminApi } from '../api/admin'
+import { subscriptionsApi } from '../api/subscriptions'
+import { toast } from '../components/Toast'
 
 /* ── Стековый бар-чарт выручки ─────────────────────────────── */
 function RevenueChart({ months }) {
@@ -198,6 +200,78 @@ function PaymentsTable({ rows, total }) {
   )
 }
 
+/* ── Модалка нового абонемента ─────────────────────────────── */
+function NewSubscriptionModal({ onClose, onCreated }) {
+  const [students, setStudents] = useState([])
+  const [plans, setPlans]       = useState([])
+  const [studentId, setStudentId] = useState('')
+  const [planId, setPlanId]       = useState('')
+  const [saving, setSaving]       = useState(false)
+
+  useEffect(() => {
+    adminApi.students().then(d => setStudents(Array.isArray(d) ? d : [])).catch(() => {})
+    subscriptionsApi.plans().then(d => setPlans(Array.isArray(d) ? d : [])).catch(() => {})
+  }, [])
+
+  function submit() {
+    if (!studentId || !planId) return
+    setSaving(true)
+    adminApi.createSubscription({ studentId: Number(studentId), planId: Number(planId) })
+      .then(() => { toast('Абонемент оформлен ✓'); onCreated(); onClose() })
+      .catch(() => toast('Не удалось оформить абонемент'))
+      .finally(() => setSaving(false))
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 420, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <h3 className="ps-display" style={{ fontSize: 20, margin: 0 }}>Новый абонемент</h3>
+
+        <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)' }}>Ученик
+          <select className="ps-input" style={{ width: '100%', marginTop: 4 }} value={studentId} onChange={e => setStudentId(e.target.value)}>
+            <option value="">Выберите ученика</option>
+            {students.map(s => (
+              <option key={s.id} value={s.id}>{s.name}{s.email ? ` (${s.email})` : ''}</option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)' }}>Тариф
+          <select className="ps-input" style={{ width: '100%', marginTop: 4 }} value={planId} onChange={e => setPlanId(e.target.value)}>
+            <option value="">Выберите тариф</option>
+            {plans.map(p => (
+              <option key={p.id} value={p.id}>{p.name} · {p.langName} · ₽ {Number(p.price).toLocaleString('ru-RU')}</option>
+            ))}
+          </select>
+        </label>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+          <button className="ps-btn ps-btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={saving || !studentId || !planId} onClick={submit}>
+            {saving ? 'Сохранение…' : 'Оформить'}
+          </button>
+          <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function exportPaymentsCsv(rows) {
+  const header = ['Ученик', 'Тариф', 'Сумма', 'Метод', 'Дата', 'Статус']
+  const lines = [header.join(';')]
+  rows.forEach(r => {
+    lines.push([r.student, r.subscription, r.amount, r.method, r.date, r.status].map(v => `"${v ?? ''}"`).join(';'))
+  })
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `payments_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 /* ================================================================
    СТРАНИЦА ФИНАНСОВ
    ================================================================ */
@@ -211,6 +285,9 @@ export default function AdminFinancePage() {
   const [financeData,  setFinanceData]  = useState(null)
   const [paymentsData, setPaymentsData] = useState(null)
   const [loading,      setLoading]      = useState(false)
+  const [showNewSub,   setShowNewSub]   = useState(false)
+
+  const reloadPayments = () => adminApi.payments().then(d => setPaymentsData(d)).catch(() => {})
 
   // Load finance when period changes
   useEffect(() => {
@@ -260,8 +337,8 @@ export default function AdminFinancePage() {
             <span className="ps-chip ps-chip-gray" style={{ cursor: 'pointer' }}>Все языки</span>
             <span className="ps-chip ps-chip-gray" style={{ cursor: 'pointer' }}>Все преподаватели</span>
             <div style={{ flex: 1 }} />
-            <button className="ps-btn ps-btn-outline ps-btn-sm"><Icon name="download" size={12} /> Экспорт</button>
-            <button className="ps-btn ps-btn-primary ps-btn-sm"><Icon name="plus" size={12} /> Новый абонемент</button>
+            <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={() => exportPaymentsCsv(paymentRows)}><Icon name="download" size={12} /> Экспорт</button>
+            <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowNewSub(true)}><Icon name="plus" size={12} /> Новый абонемент</button>
           </div>
 
           {/* KPI */}
@@ -290,6 +367,13 @@ export default function AdminFinancePage() {
           <PaymentsTable rows={paymentRows} total={paymentTotal} />
         </div>
       </main>
+
+      {showNewSub && (
+        <NewSubscriptionModal
+          onClose={() => setShowNewSub(false)}
+          onCreated={() => { reloadPayments(); adminApi.finance(PERIOD_KEYS[period]).then(d => setFinanceData(d)).catch(() => {}) }}
+        />
+      )}
     </div>
   )
 }

@@ -4,6 +4,7 @@ export const adminApi = {
   // Финансы
   finance:  (period = 'MONTH')      => api.get(`/api/admin/finance?period=${period}`),
   payments: (page = 0, size = 20)   => api.get(`/api/admin/finance/payments?page=${page}&size=${size}`),
+  createSubscription: (body)        => api.post('/api/admin/finance/subscriptions', body), // {studentId, planId}
 
   // Команда / роли / заявки
   team:         ()           => api.get('/api/admin/team'),

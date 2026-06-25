@@ -7,8 +7,9 @@ import { adminApi } from '../api/admin'
 
 /* ── Ячейка доступа ─────────────────────────────────────────── */
 function Access({ v }) {
-  if (v === 'rw') return <span className="ps-chip ps-chip-green"  style={{ fontSize: 10 }}>✓ R/W</span>
-  if (v === 'r')  return <span className="ps-chip ps-chip-purple" style={{ fontSize: 10 }}>R</span>
+  const norm = (v || '').toString().trim().toUpperCase()
+  if (norm === 'R/W' || norm === 'RW') return <span className="ps-chip ps-chip-green"  style={{ fontSize: 10 }}>✓ R/W</span>
+  if (norm === 'R')                    return <span className="ps-chip ps-chip-purple" style={{ fontSize: 10 }}>R</span>
   return <span style={{ color: 'var(--ink-dim)', fontWeight: 800 }}>—</span>
 }
 
@@ -52,6 +53,13 @@ export default function AdminRolesPage() {
       .catch(() => { /* silent */ })
   }, [loadLeads])
 
+  // Convert a lead into a real student account and reload
+  const handleConvertLead = useCallback((id) => {
+    adminApi.convertLead(id)
+      .then(() => loadLeads())
+      .catch(() => { /* silent */ })
+  }, [loadLeads])
+
   // Derive access matrix rows from API shape:
   // accessMatrix: { roles:[...], modules:[{ name, permissions:[...] }] }
   const matrixRows = (accessMatrix?.modules ?? []).map(mod => ({
@@ -81,7 +89,6 @@ export default function AdminRolesPage() {
                   <span className="ps-eyebrow">матрица доступа</span>
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Роли и права</h3>
                 </div>
-                <button className="ps-btn ps-btn-primary ps-btn-sm"><Icon name="plus" size={12} /> Новая роль</button>
               </div>
               <table className="ps-table" style={{ fontSize: 12.5 }}>
                 <thead>
@@ -175,7 +182,6 @@ export default function AdminRolesPage() {
                   </span>
                   <h3 className="ps-display ps-display-purple" style={{ fontSize: 22, margin: '4px 0 0' }}>Распределить ученика</h3>
                 </div>
-                <button className="ps-btn ps-btn-primary ps-btn-sm">Все заявки</button>
               </div>
 
               {/* Первая заявка — активная */}
@@ -193,6 +199,11 @@ export default function AdminRolesPage() {
                       className="ps-btn ps-btn-primary ps-btn-sm"
                       onClick={() => handleLeadStatus(firstLead.id, 'assigned')}
                     >Назначить</button>
+                    <button
+                      className="ps-btn ps-btn-outline ps-btn-sm"
+                      style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}
+                      onClick={() => handleConvertLead(firstLead.id)}
+                    >Конвертировать</button>
                     <button
                       className="ps-btn ps-btn-outline ps-btn-sm"
                       style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}

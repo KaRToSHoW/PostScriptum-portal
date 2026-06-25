@@ -16,7 +16,10 @@ import { api } from './client'
     year:   number,
     month:  number,
     rooms:  [{ id, name }],
-    slots:  [{ day, timeFrom, timeTo, teacher, student, lang, room, status }]
+    totalLessons: number,
+    days: {
+      [day: number]: [{ t, l, s, who, room, students }]
+    }
   }
 */
 

@@ -23,6 +23,15 @@ function Protected({ children }) {
   return children
 }
 
+/* Маршрут только для роли ученика: админ/менеджер не могут быть учениками */
+function StudentOnly({ children }) {
+  const { isAuth, role } = useApp()
+  const location = useLocation()
+  if (!isAuth) return <Navigate to="/login" state={{ from: location }} replace />
+  if (role === 'admin' || role === 'manager') return <Navigate to="/dashboard" replace />
+  return children
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -41,10 +50,10 @@ function AppRoutes() {
         <Protected><AdminRolesPage /></Protected>
       } />
       <Route path="/homework" element={
-        <Protected><HomeworkPage /></Protected>
+        <StudentOnly><HomeworkPage /></StudentOnly>
       } />
       <Route path="/billing" element={
-        <Protected><SubscriptionsPage /></Protected>
+        <StudentOnly><SubscriptionsPage /></StudentOnly>
       } />
       <Route path="/profile" element={
         <Protected><ProfilePage /></Protected>

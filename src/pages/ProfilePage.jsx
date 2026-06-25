@@ -65,10 +65,13 @@ export default function ProfilePage() {
   const { user, sideRole, locale, setLocale, photo, setPhoto, t } = useApp()
   const fileRef = useRef(null)
 
-  const [name,     setName]     = useState(user?.name     ?? 'Анна Соколова')
-  const [email,    setEmail]    = useState('anna@example.ru')
-  const [phone,    setPhone]    = useState('+7 999 123-45-67')
+  const [name,     setName]     = useState(user?.name ?? '')
+  const [email,    setEmail]    = useState('')
+  const [phone,    setPhone]    = useState('')
   const [tz,       setTz]       = useState('Europe/Moscow')
+  const [roleLabel, setRoleLabel] = useState('')
+
+  const ROLE_LABEL = { STUDENT: 'Ученик', TEACHER: 'Преподаватель', PARENT: 'Родитель', MANAGER: 'Менеджер', ADMIN: 'Администратор' }
 
   async function handlePhotoChange(e) {
     const file = e.target.files?.[0]
@@ -111,6 +114,18 @@ export default function ProfilePage() {
       if (data.notificationSms   !== undefined) setNotifSms(data.notificationSms)
       if (data.reminderHoursBefore !== undefined) setReminder(String(data.reminderHoursBefore))
       if (data.interfaceLocale   !== undefined) setLocale(data.interfaceLocale)
+    }).catch(() => {/* backend may be down — keep local defaults */})
+  }, [])
+
+  // Load real profile data on mount
+  useEffect(() => {
+    profileApi.get().then(data => {
+      if (data.name)     setName(data.name)
+      if (data.email)    setEmail(data.email)
+      if (data.phone)    setPhone(data.phone)
+      if (data.timezone) setTz(data.timezone)
+      if (data.role)     setRoleLabel(ROLE_LABEL[data.role] ?? data.role)
+      if (data.avatarUrl) setPhoto(data.avatarUrl)
     }).catch(() => {/* backend may be down — keep local defaults */})
   }, [])
 
@@ -187,7 +202,7 @@ export default function ProfilePage() {
             <div>
               <h2 className="ps-display ps-display-purple" style={{ fontSize: 30, margin: '0 0 6px' }}>{name}</h2>
               <div style={{ fontSize: 14, color: 'rgba(255,255,255,.75)', display: 'flex', gap: 16 }}>
-                <span>{t('Ученик')}</span>
+                <span>{roleLabel}</span>
                 <span>·</span>
                 <span>{email}</span>
                 <span>·</span>
