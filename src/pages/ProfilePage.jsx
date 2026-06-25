@@ -78,8 +78,7 @@ export default function ProfilePage() {
     if (!file) return
     try {
       const res = await uploadFile(file, 'AVATAR')
-      const absUrl = fileUrl(res.url)
-      setPhoto(absUrl)
+      setPhoto(res.url)
       await profileApi.update({ avatarUrl: res.url })
     } catch (err) {
       toast(err.message, 'error')

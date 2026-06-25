@@ -12,6 +12,12 @@ export async function uploadFile(file, purpose = 'GENERAL') {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
   })
+  if (res.status === 401) {
+    localStorage.removeItem('ps_token')
+    localStorage.removeItem('ps_role')
+    window.location.replace('/login')
+    throw new Error('Не авторизован')
+  }
   if (!res.ok) throw new Error('Не удалось загрузить файл')
   return res.json()   // { id, url, name, size }
 }

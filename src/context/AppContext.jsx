@@ -28,7 +28,13 @@ export function AppProvider({ children }) {
     return raw ? JSON.parse(raw) : null
   })
   const [locale,  setLocaleRaw] = useState(() => localStorage.getItem('ps_locale') ?? 'ru')
-  const [photo,   setPhotoRaw]  = useState(() => localStorage.getItem('ps_photo')  ?? null)
+  const [photo,   setPhotoRaw]  = useState(() => {
+    const stored = localStorage.getItem('ps_photo')
+    if (!stored) return null
+    // strip old absolute localhost URLs left from dev builds
+    if (stored.startsWith('http://localhost') || stored.startsWith('http://127.')) return null
+    return stored
+  })
 
   // Re-fetch the real profile from the backend after reload so we don't show stale preset data
   useEffect(() => {
@@ -37,7 +43,7 @@ export function AppProvider({ children }) {
       const fresh = { name: data.name, initials: data.name?.split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2), subtitle: data.email }
       localStorage.setItem('ps_user', JSON.stringify(fresh))
       setApiUser(fresh)
-      if (data.avatarUrl) setPhoto(fileUrl(data.avatarUrl))
+      if (data.avatarUrl) setPhoto(data.avatarUrl)
     }).catch(() => {/* token may be stale — leave preset/cached data as-is */})
   }, [isAuth])
 
