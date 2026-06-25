@@ -7,26 +7,15 @@ import { adminApi } from '../api/admin'
 import { subscriptionsApi } from '../api/subscriptions'
 import { toast } from '../components/Toast'
 
-/* ── Стековый бар-чарт выручки ─────────────────────────────── */
+/* ── Бар-чарт выручки ─────────────────────────────────────── */
 function RevenueChart({ months }) {
-  const COLORS = ['var(--purple)', 'var(--orange)', '#9DC4A2', '#D7A87E', '#C9A0DC']
-  const LANGS  = ['Французский', 'Английский', 'Немецкий', 'Испанский', 'Итальянский']
-  const MAX = 165
+  const max = months.reduce((m, mo) => Math.max(m, mo.v ?? 0), 1)
 
   return (
     <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', height: 340 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <div>
-          <span className="ps-eyebrow">помесячная динамика</span>
-          <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Выручка по языкам</h3>
-        </div>
-        <div style={{ display: 'flex', gap: 14, fontSize: 11, fontWeight: 700, color: 'var(--ink-muted)', flexWrap: 'wrap' }}>
-          {LANGS.map((l, i) => (
-            <span key={l} style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: COLORS[i] }} /> {l}
-            </span>
-          ))}
-        </div>
+      <div style={{ marginBottom: 18 }}>
+        <span className="ps-eyebrow">помесячная динамика</span>
+        <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Выручка по месяцам</h3>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flex: 1, minHeight: 0 }}>
@@ -36,23 +25,19 @@ function RevenueChart({ months }) {
           </div>
         )}
         {months.map((mo, i) => {
-          const total = mo.v.reduce((a, b) => a + b, 0)
+          const total = mo.v ?? 0
           return (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: '100%', justifyContent: 'flex-end' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: mo.current ? 'var(--purple-deep)' : 'var(--ink-muted)' }}>
                 ₽{total}k
               </div>
               <div style={{
-                width: '100%', height: `${total / MAX * 100}%`,
-                display: 'flex', flexDirection: 'column-reverse',
-                borderRadius: '8px 8px 4px 4px', overflow: 'hidden',
+                width: '100%', height: `${total / max * 100}%`,
+                borderRadius: '8px 8px 4px 4px',
+                background: mo.current ? 'var(--purple)' : 'var(--purple-soft)',
                 opacity: mo.forecast ? 0.45 : 1,
                 border: mo.forecast ? '1.5px dashed var(--border)' : 'none',
-              }}>
-                {mo.v.map((seg, si) => (
-                  <div key={si} style={{ height: `${seg / total * 100}%`, background: COLORS[si] }} />
-                ))}
-              </div>
+              }} />
               <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: mo.current ? 'var(--purple-deep)' : 'var(--ink-muted)' }}>
                 {mo.m}{mo.forecast ? ' *' : ''}
               </div>
@@ -158,7 +143,7 @@ function PaymentsTable({ rows, total }) {
       <table className="ps-table">
         <thead>
           <tr>
-            <th>Ученик</th><th>Тариф</th><th>Язык</th>
+            <th>Ученик</th><th>Тариф</th>
             <th>Сумма</th><th>Метод</th><th>Дата</th>
             <th>Статус</th><th></th>
           </tr>
@@ -166,7 +151,7 @@ function PaymentsTable({ rows, total }) {
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={8} style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '24px 0' }}>
+              <td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '24px 0' }}>
                 Нет данных
               </td>
             </tr>
@@ -185,7 +170,6 @@ function PaymentsTable({ rows, total }) {
                   </div>
                 </td>
                 <td>{row.subscription || '—'}</td>
-                <td><span style={{ color: 'var(--ink-muted)' }}>—</span></td>
                 <td style={{ fontWeight: 800, fontFamily: 'var(--font-display)' }}>{row.amount}</td>
                 <td style={{ color: 'var(--ink-muted)' }}>{row.method || '—'}</td>
                 <td style={{ color: 'var(--ink-muted)' }}>{row.date || '—'}</td>
@@ -241,7 +225,7 @@ function NewSubscriptionModal({ onClose, onCreated }) {
           <select className="ps-input" style={{ width: '100%', marginTop: 4 }} value={planId} onChange={e => setPlanId(e.target.value)}>
             <option value="">Выберите тариф</option>
             {plans.map(p => (
-              <option key={p.id} value={p.id}>{p.name} · {p.langName} · ₽ {Number(p.price).toLocaleString('ru-RU')}</option>
+              <option key={p.id} value={p.id}>{p.name} · ₽ {Number(p.price).toLocaleString('ru-RU')}</option>
             ))}
           </select>
         </label>
@@ -287,7 +271,6 @@ export default function AdminFinancePage() {
   const [loading,      setLoading]      = useState(false)
   const [showNewSub,   setShowNewSub]   = useState(false)
 
-  const [filterLang,    setFilterLang]   = useState('all')
   const [filterStatus,  setFilterStatus] = useState('all')
   const [filterSearch,  setFilterSearch] = useState('')
 
@@ -317,20 +300,12 @@ export default function AdminFinancePage() {
   const paymentRows  = paymentsData?.content      ?? []
   const paymentTotal = paymentsData?.totalElements ?? 0
 
-  const LANG_OPTIONS   = ['all', 'fr', 'en', 'de', 'es']
-  const LANG_LABELS    = { all: 'Все языки', fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский' }
   const STATUS_OPTIONS = ['all', 'paid', 'pending', 'overdue', 'refunded']
   const STATUS_LABELS  = { all: 'Все статусы', paid: 'Оплачено', pending: 'Ожидает', overdue: 'Просрочено', refunded: 'Возврат' }
 
   const filteredRows = paymentRows.filter(r => {
     if (filterStatus !== 'all' && r.status !== filterStatus) return false
     if (filterSearch && !((r.student ?? '').toLowerCase().includes(filterSearch.toLowerCase()))) return false
-    if (filterLang !== 'all') {
-      const sub = (r.subscription ?? '').toLowerCase()
-      const langMap = { fr: ['франц', 'french', 'fr'], en: ['англ', 'english', 'en'], de: ['нем', 'german', 'de'], es: ['исп', 'spanish', 'es'] }
-      const terms = langMap[filterLang] ?? []
-      if (!terms.some(t => sub.includes(t))) return false
-    }
     return true
   })
 
@@ -357,15 +332,6 @@ export default function AdminFinancePage() {
               ))}
             </div>
 
-            {/* Язык */}
-            <select
-              value={filterLang}
-              onChange={e => setFilterLang(e.target.value)}
-              style={{ padding: '8px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: '1px solid var(--border-soft)', background: filterLang !== 'all' ? 'var(--purple-soft)' : '#fff', color: filterLang !== 'all' ? 'var(--purple-deep)' : 'var(--ink-muted)', cursor: 'pointer', outline: 'none' }}
-            >
-              {LANG_OPTIONS.map(l => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
-            </select>
-
             {/* Статус */}
             <select
               value={filterStatus}
@@ -386,8 +352,8 @@ export default function AdminFinancePage() {
               />
             </div>
 
-            {filterLang !== 'all' || filterStatus !== 'all' || filterSearch ? (
-              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => { setFilterLang('all'); setFilterStatus('all'); setFilterSearch('') }}>
+            {filterStatus !== 'all' || filterSearch ? (
+              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => { setFilterStatus('all'); setFilterSearch('') }}>
                 Сбросить
               </button>
             ) : null}
