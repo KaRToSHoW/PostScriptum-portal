@@ -10,6 +10,19 @@ import { subscriptionsApi } from '../api/subscriptions'
 const LANG_COLORS = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--info)', es: 'var(--success)' }
 const LANG_SOFT   = { fr: 'var(--purple-soft)', en: 'var(--orange-soft)', de: 'var(--info-soft)', es: 'var(--success-soft)' }
 
+const FALLBACK_PLANS = [
+  { id: 1, lang: 'fr', langName: 'Французский', lessons: 4,  price: '₽ 8 000',  perLesson: '₽ 2 000' },
+  { id: 2, lang: 'fr', langName: 'Французский', lessons: 8,  price: '₽ 14 400', perLesson: '₽ 1 800', popular: true },
+  { id: 3, lang: 'fr', langName: 'Французский', lessons: 16, price: '₽ 25 600', perLesson: '₽ 1 600' },
+  { id: 4, lang: 'en', langName: 'Английский',  lessons: 4,  price: '₽ 7 600',  perLesson: '₽ 1 900' },
+  { id: 5, lang: 'en', langName: 'Английский',  lessons: 8,  price: '₽ 13 600', perLesson: '₽ 1 700', popular: true },
+  { id: 6, lang: 'en', langName: 'Английский',  lessons: 16, price: '₽ 24 000', perLesson: '₽ 1 500' },
+  { id: 7, lang: 'de', langName: 'Немецкий',    lessons: 4,  price: '₽ 8 400',  perLesson: '₽ 2 100' },
+  { id: 8, lang: 'de', langName: 'Немецкий',    lessons: 8,  price: '₽ 15 200', perLesson: '₽ 1 900', popular: true },
+  { id: 9, lang: 'es', langName: 'Испанский',   lessons: 4,  price: '₽ 7 200',  perLesson: '₽ 1 800' },
+  { id: 10, lang: 'es', langName: 'Испанский',  lessons: 8,  price: '₽ 13 000', perLesson: '₽ 1 625', popular: true },
+]
+
 function BuyModal({ plan, onClose, onConfirm }) {
   const [method, setMethod] = useState('card')
   return (
@@ -163,13 +176,17 @@ export default function SubscriptionsPage() {
       })
       .catch(() => {})
     subscriptionsApi.plans()
-      .then(data => setPlans(data.map(p => ({
-        id: p.id, lang: p.lang, langName: p.langName ?? p.lang_name,
-        lessons: p.lessonCount ?? p.lesson_count,
-        price: `₽ ${Number(p.price).toLocaleString('ru-RU')}`,
-        perLesson: `₽ ${Math.round(p.price / (p.lessonCount ?? p.lesson_count)).toLocaleString('ru-RU')}`,
-      }))))
-      .catch(() => {})
+      .then(data => {
+        const mapped = data.map(p => ({
+          id: p.id, lang: p.lang, langName: p.langName ?? p.lang_name,
+          lessons: p.lessonCount ?? p.lesson_count,
+          price: `₽ ${Number(p.price).toLocaleString('ru-RU')}`,
+          perLesson: `₽ ${Math.round(p.price / (p.lessonCount ?? p.lesson_count)).toLocaleString('ru-RU')}`,
+          popular: p.popular ?? false,
+        }))
+        setPlans(mapped.length > 0 ? mapped : FALLBACK_PLANS)
+      })
+      .catch(() => setPlans(FALLBACK_PLANS))
   }, [])
 
   const filteredPlans = plans.filter(p => !p.lang || p.lang === buyLang)
@@ -235,6 +252,20 @@ export default function SubscriptionsPage() {
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Активные абонементы</h3>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {activeList.length === 0 && (
+                    <div style={{ padding: '28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--purple-soft)', display: 'grid', placeItems: 'center' }}>
+                        <Icon name="bookmark" size={24} style={{ color: 'var(--purple)' }} />
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)' }}>Нет активных абонементов</div>
+                      <div style={{ fontSize: 13, color: 'var(--ink-muted)', textAlign: 'center', maxWidth: 280, lineHeight: 1.5 }}>
+                        Выберите тариф и язык в разделе справа, чтобы начать обучение
+                      </div>
+                      <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={scrollToBuy}>
+                        <Icon name="plus" size={13} /> Купить абонемент
+                      </button>
+                    </div>
+                  )}
                   {activeList.map(sub => (
                     <ActiveCard
                       key={sub.id}

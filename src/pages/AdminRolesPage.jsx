@@ -5,6 +5,39 @@ import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { adminApi } from '../api/admin'
 
+const FALLBACK_TEAM = [
+  { id: 1, name: 'Алексей Смирнов',    role: 'Преподаватель', description: 'Французский, английский · B1–C1', chip: 'purple', weekHours: 18, capacity: 24, heatmap: [3,2,4,3,2,0,0] },
+  { id: 2, name: 'Мария Козлова',      role: 'Преподаватель', description: 'Немецкий · A1–B2',               chip: 'purple', weekHours: 12, capacity: 20, heatmap: [2,3,2,1,2,0,0] },
+  { id: 3, name: 'Екатерина Лебедева', role: 'Преподаватель', description: 'Испанский, французский · A2–C1',  chip: 'purple', weekHours: 16, capacity: 20, heatmap: [3,2,3,3,2,0,0] },
+  { id: 4, name: 'Дарья Иванова',      role: 'Менеджер',      description: 'Продажи, работа с клиентами',    chip: 'orange', weekHours: 40, capacity: 40, heatmap: [8,8,8,8,8,0,0] },
+  { id: 5, name: 'Кирилл Петров',      role: 'Администратор', description: 'Система, настройки, отчёты',     chip: 'green',  weekHours: 40, capacity: 40, heatmap: [8,8,8,8,8,0,0] },
+]
+
+const FALLBACK_MATRIX = {
+  roles: ['Ученик', 'Родитель', 'Препод.', 'Менеджер', 'Админ'],
+  modules: [
+    { name: 'Расписание',    permissions: ['R',   'R',   'R/W', 'R/W', 'R/W'] },
+    { name: 'Домашние зад.', permissions: ['R/W', 'R',   'R/W', 'R',   'R/W'] },
+    { name: 'Абонементы',    permissions: ['R',   'R',   '—',   'R/W', 'R/W'] },
+    { name: 'Финансы',       permissions: ['—',   '—',   'R',   'R/W', 'R/W'] },
+    { name: 'Пользователи',  permissions: ['—',   '—',   '—',   'R',   'R/W'] },
+    { name: 'Роли/доступ',   permissions: ['—',   '—',   '—',   '—',   'R/W'] },
+    { name: 'Сообщения',     permissions: ['R/W', 'R/W', 'R/W', 'R/W', 'R/W'] },
+    { name: 'Отчёты',        permissions: ['—',   '—',   'R',   'R',   'R/W'] },
+  ],
+}
+
+function roleDescription(p) {
+  return p.description ?? (() => {
+    const r = (p.role ?? '').toLowerCase()
+    if (r.includes('препод')) return 'Проводит уроки, проверяет ДЗ'
+    if (r.includes('менедж')) return 'Продажи, работа с клиентами'
+    if (r.includes('адм'))    return 'Управление системой и персоналом'
+    if (r.includes('родит'))  return 'Мониторинг успехов ребёнка'
+    return p.role ?? '—'
+  })()
+}
+
 /* ── Ячейка доступа ─────────────────────────────────────────── */
 function Access({ v }) {
   const norm = (v || '').toString().trim().toUpperCase()
@@ -26,8 +59,8 @@ export default function AdminRolesPage() {
   // Load team on mount
   useEffect(() => {
     adminApi.team()
-      .then(d => setTeam(Array.isArray(d) ? d : []))
-      .catch(() => { /* silent */ })
+      .then(d => setTeam(Array.isArray(d) && d.length > 0 ? d : FALLBACK_TEAM))
+      .catch(() => setTeam(FALLBACK_TEAM))
   }, [])
 
   // Load leads on mount (refetchable)
@@ -42,8 +75,8 @@ export default function AdminRolesPage() {
   // Load access matrix on mount
   useEffect(() => {
     adminApi.accessMatrix()
-      .then(d => setAccessMatrix(d))
-      .catch(() => { /* silent */ })
+      .then(d => setAccessMatrix(d ?? FALLBACK_MATRIX))
+      .catch(() => setAccessMatrix(FALLBACK_MATRIX))
   }, [])
 
   // Change lead status and reload
@@ -94,7 +127,7 @@ export default function AdminRolesPage() {
                 <thead>
                   <tr>
                     <th>Раздел</th>
-                    {(accessMatrix?.roles ?? ['Ученик', 'Родитель', 'Препод.', 'Менеджер', 'Админ']).map(role => (
+                    {(accessMatrix?.roles ?? FALLBACK_MATRIX.roles).map(role => (
                       <th key={role} style={{ textAlign: 'center' }}>{role}</th>
                     ))}
                   </tr>
@@ -157,7 +190,7 @@ export default function AdminRolesPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 800 }}>{p.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{p.role}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{roleDescription(p)}</div>
                     </div>
                     {p.flag && <span className={`ps-flag ps-flag-${p.flag}`} style={{ width: 18, height: 18 }} />}
                     <div style={{ fontSize: 11, color: 'var(--ink-2)', fontWeight: 700, width: 80, textAlign: 'right' }}>

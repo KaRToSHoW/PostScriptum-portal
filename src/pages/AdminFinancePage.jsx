@@ -287,6 +287,10 @@ export default function AdminFinancePage() {
   const [loading,      setLoading]      = useState(false)
   const [showNewSub,   setShowNewSub]   = useState(false)
 
+  const [filterLang,    setFilterLang]   = useState('all')
+  const [filterStatus,  setFilterStatus] = useState('all')
+  const [filterSearch,  setFilterSearch] = useState('')
+
   const reloadPayments = () => adminApi.payments().then(d => setPaymentsData(d)).catch(() => {})
 
   // Load finance when period changes
@@ -313,6 +317,23 @@ export default function AdminFinancePage() {
   const paymentRows  = paymentsData?.content      ?? []
   const paymentTotal = paymentsData?.totalElements ?? 0
 
+  const LANG_OPTIONS   = ['all', 'fr', 'en', 'de', 'es']
+  const LANG_LABELS    = { all: 'Все языки', fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский' }
+  const STATUS_OPTIONS = ['all', 'paid', 'pending', 'overdue', 'refunded']
+  const STATUS_LABELS  = { all: 'Все статусы', paid: 'Оплачено', pending: 'Ожидает', overdue: 'Просрочено', refunded: 'Возврат' }
+
+  const filteredRows = paymentRows.filter(r => {
+    if (filterStatus !== 'all' && r.status !== filterStatus) return false
+    if (filterSearch && !((r.student ?? '').toLowerCase().includes(filterSearch.toLowerCase()))) return false
+    if (filterLang !== 'all') {
+      const sub = (r.subscription ?? '').toLowerCase()
+      const langMap = { fr: ['франц', 'french', 'fr'], en: ['англ', 'english', 'en'], de: ['нем', 'german', 'de'], es: ['исп', 'spanish', 'es'] }
+      const terms = langMap[filterLang] ?? []
+      if (!terms.some(t => sub.includes(t))) return false
+    }
+    return true
+  })
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
       <Sidebar role={sideRole} />
@@ -324,6 +345,7 @@ export default function AdminFinancePage() {
 
           {/* Фильтры */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Период */}
             <div style={{ display: 'inline-flex', padding: 4, background: '#fff', borderRadius: 999, border: '1px solid var(--border-soft)' }}>
               {PERIODS.map((t, i) => (
                 <button key={t} onClick={() => setPeriod(i)} style={{
@@ -334,10 +356,44 @@ export default function AdminFinancePage() {
                 }}>{t}</button>
               ))}
             </div>
-            <span className="ps-chip ps-chip-gray" style={{ cursor: 'pointer' }}>Все языки</span>
-            <span className="ps-chip ps-chip-gray" style={{ cursor: 'pointer' }}>Все преподаватели</span>
+
+            {/* Язык */}
+            <select
+              value={filterLang}
+              onChange={e => setFilterLang(e.target.value)}
+              style={{ padding: '8px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: '1px solid var(--border-soft)', background: filterLang !== 'all' ? 'var(--purple-soft)' : '#fff', color: filterLang !== 'all' ? 'var(--purple-deep)' : 'var(--ink-muted)', cursor: 'pointer', outline: 'none' }}
+            >
+              {LANG_OPTIONS.map(l => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
+            </select>
+
+            {/* Статус */}
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              style={{ padding: '8px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: '1px solid var(--border-soft)', background: filterStatus !== 'all' ? 'var(--orange-soft)' : '#fff', color: filterStatus !== 'all' ? 'var(--orange-deep)' : 'var(--ink-muted)', cursor: 'pointer', outline: 'none' }}
+            >
+              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+            </select>
+
+            {/* Поиск */}
+            <div style={{ position: 'relative' }}>
+              <Icon name="search" size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)', pointerEvents: 'none' }} />
+              <input
+                value={filterSearch}
+                onChange={e => setFilterSearch(e.target.value)}
+                placeholder="Поиск по ученику…"
+                style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, borderRadius: 999, fontSize: 12, fontWeight: 600, border: '1px solid var(--border-soft)', background: '#fff', color: 'var(--ink)', outline: 'none', width: 200 }}
+              />
+            </div>
+
+            {filterLang !== 'all' || filterStatus !== 'all' || filterSearch ? (
+              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => { setFilterLang('all'); setFilterStatus('all'); setFilterSearch('') }}>
+                Сбросить
+              </button>
+            ) : null}
+
             <div style={{ flex: 1 }} />
-            <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={() => exportPaymentsCsv(paymentRows)}><Icon name="download" size={12} /> Экспорт</button>
+            <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={() => exportPaymentsCsv(filteredRows)}><Icon name="download" size={12} /> Экспорт</button>
             <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowNewSub(true)}><Icon name="plus" size={12} /> Новый абонемент</button>
           </div>
 
@@ -364,7 +420,7 @@ export default function AdminFinancePage() {
           </div>
 
           {/* Таблица */}
-          <PaymentsTable rows={paymentRows} total={paymentTotal} />
+          <PaymentsTable rows={filteredRows} total={filteredRows.length} />
         </div>
       </main>
 

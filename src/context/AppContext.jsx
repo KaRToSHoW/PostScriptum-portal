@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { translate } from '../i18n'
 import { profileApi } from '../api/profile'
+import { fileUrl } from '../api/files'
 
 export const USER_PRESETS = {
   student: { name: 'Анна Соколова',   initials: 'АС', subtitle: 'Ученик · французский B1' },
@@ -36,7 +37,7 @@ export function AppProvider({ children }) {
       const fresh = { name: data.name, initials: data.name?.split(' ').map(s => s[0]).join('').toUpperCase().slice(0, 2), subtitle: data.email }
       localStorage.setItem('ps_user', JSON.stringify(fresh))
       setApiUser(fresh)
-      if (data.avatarUrl) setPhoto(data.avatarUrl)
+      if (data.avatarUrl) setPhoto(fileUrl(data.avatarUrl))
     }).catch(() => {/* token may be stale — leave preset/cached data as-is */})
   }, [isAuth])
 

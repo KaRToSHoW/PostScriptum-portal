@@ -125,7 +125,7 @@ export default function ProfilePage() {
       if (data.phone)    setPhone(data.phone)
       if (data.timezone) setTz(data.timezone)
       if (data.role)     setRoleLabel(ROLE_LABEL[data.role] ?? data.role)
-      if (data.avatarUrl) setPhoto(data.avatarUrl)
+      if (data.avatarUrl) setPhoto(fileUrl(data.avatarUrl))
     }).catch(() => {/* backend may be down — keep local defaults */})
   }, [])
 

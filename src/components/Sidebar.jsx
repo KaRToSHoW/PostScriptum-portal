@@ -18,10 +18,10 @@ const ROUTE_MAP = {
   children:  '/children',
   leads:     '/leads',
   settings:  '/settings',
-  subs:      '/admin/finance',
+  subs:      '/admin/subscriptions',
   earnings:  '/billing',
   materials: '/homework',
-  reports:   '/admin/finance',
+  reports:   '/admin/reports',
 }
 
 function routeToItem(pathname) {
@@ -36,9 +36,11 @@ function routeToItem(pathname) {
   if (pathname === '/messages')      return 'chat'
   if (pathname === '/teachers')      return 'teachers'
   if (pathname === '/students')      return 'students'
-  if (pathname === '/admin/users')   return 'users'
-  if (pathname === '/children')      return 'children'
-  if (pathname === '/leads')         return 'leads'
+  if (pathname === '/admin/users')          return 'users'
+  if (pathname === '/children')             return 'children'
+  if (pathname === '/leads')                return 'leads'
+  if (pathname === '/admin/reports')        return 'reports'
+  if (pathname === '/admin/subscriptions')  return 'subs'
   return 'home'
 }
 
@@ -98,7 +100,6 @@ const NAV = {
       { id: 'students', label: 'Ученики',          icon: 'user'     },
       { id: 'teachers', label: 'Преподаватели',    icon: 'sparkle'  },
       { id: 'roles',    label: 'Роли и доступ',    icon: 'shield'   },
-      { id: 'leads',    label: 'Заявки',           icon: 'inbox' },
     ]},
     { sec: 'финансы', items: [
       { id: 'finance',  label: 'Финансы',          icon: 'wallet'   },
