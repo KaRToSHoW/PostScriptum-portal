@@ -88,19 +88,8 @@ export default function AdminSubscriptionsPage() {
   const [showNew,      setShowNew]      = useState(false)
 
   const load = () => {
-    subscriptionsApi.list()
-      .then(data => setSubs(Array.isArray(data) && data.length > 0 ? data.map(s => ({
-        id: s.id,
-        student: s.studentName ?? s.student ?? '—',
-        lang: s.lang,
-        langName: s.langName,
-        plan: `${s.total} уроков`,
-        used: s.used, total: s.total,
-        status: s.status,
-        expires: s.endDate ? new Date(s.endDate).toLocaleDateString('ru-RU') : '—',
-        daysLeft: s.daysLeft ?? 0,
-        price: `₽ ${Number(s.price ?? 0).toLocaleString('ru-RU')}`,
-      })) : FALLBACK_SUBS))
+    adminApi.allSubscriptions()
+      .then(data => setSubs(Array.isArray(data) && data.length > 0 ? data : FALLBACK_SUBS))
       .catch(() => setSubs(FALLBACK_SUBS))
   }
 

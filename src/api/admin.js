@@ -25,4 +25,10 @@ export const adminApi = {
   // Связи
   assignTeacher: (body) => api.post('/api/admin/assign-teacher', body),       // {studentId, teacherId, languageCode, level}
   linkParent:    (body) => api.post('/api/admin/link-parent', body),          // {parentId, studentId}
+
+  // Абонементы (все, для админа)
+  allSubscriptions: () => api.get('/api/admin/subscriptions'),
+
+  // Отчёты
+  reports: (months = 6) => api.get(`/api/admin/reports?months=${months}`),
 }

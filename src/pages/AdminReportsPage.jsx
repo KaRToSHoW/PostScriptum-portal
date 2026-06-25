@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
@@ -63,12 +63,26 @@ export default function AdminReportsPage() {
   const [monthly,      setMonthly]      = useState(FALLBACK_MONTHLY)
   const [teachers,     setTeachers]     = useState(FALLBACK_TEACHERS)
   const [langs,        setLangs]        = useState(FALLBACK_LANGS)
+  const [loading,      setLoading]      = useState(false)
 
-  const PERIODS = ['Полугодие', 'Квартал', 'Месяц']
+  const PERIODS       = ['Полугодие', 'Квартал', 'Месяц']
+  const PERIOD_MONTHS = [6, 3, 1]
 
-  const displayed = reportPeriod === 2 ? monthly.slice(-1)
-    : reportPeriod === 1 ? monthly.slice(-3)
-    : monthly
+  const loadReports = useCallback((periodIdx) => {
+    setLoading(true)
+    adminApi.reports(PERIOD_MONTHS[periodIdx])
+      .then(data => {
+        if (data.monthly?.length   > 0) setMonthly(data.monthly)
+        if (data.langs?.length     > 0) setLangs(data.langs)
+        if (data.teachers?.length  > 0) setTeachers(data.teachers)
+      })
+      .catch(() => {/* keep fallback data */})
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { loadReports(reportPeriod) }, [reportPeriod, loadReports])
+
+  const displayed = monthly
 
   const totLessons  = displayed.reduce((s, m) => s + m.lessons, 0)
   const avgAttend   = Math.round(displayed.reduce((s, m) => s + m.attendance, 0) / (displayed.length || 1))
@@ -96,7 +110,7 @@ export default function AdminReportsPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Отчёты и аналитика" />
 
-        <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22, opacity: loading ? 0.6 : 1, transition: 'opacity .2s' }}>
 
           {/* Шапка с периодом */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
