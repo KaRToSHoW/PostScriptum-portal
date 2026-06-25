@@ -49,66 +49,6 @@ function RevenueChart({ months }) {
   )
 }
 
-/* ── Пончик структуры абонементов ──────────────────────────── */
-function SubsDonut({ subscriptions }) {
-  const COLORS = ['var(--purple)', 'var(--orange)', '#9DC4A2', '#D7A87E']
-  const labels = subscriptions?.labels ?? []
-  const counts = subscriptions?.counts ?? []
-  const active = subscriptions?.active ?? 0
-
-  // Build tiers array from labels/counts
-  const TIERS = labels.map((label, i) => ({
-    l: label,
-    n: counts[i] ?? 0,
-    c: COLORS[i % COLORS.length],
-    price: '',
-  }))
-
-  // Compute donut segments
-  const total = counts.reduce((a, b) => a + b, 0) || 1
-  let offset = 0
-  const segments = TIERS.map((t) => {
-    const pct = (t.n / total) * 100
-    const seg = { ...t, pct, offset }
-    offset += pct
-    return seg
-  })
-
-  return (
-    <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', height: 340 }}>
-      <span className="ps-eyebrow">тарифы</span>
-      <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 16px' }}>Структура абонементов</h3>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24, flex: 1 }}>
-        {/* SVG-пончик */}
-        <svg width={150} height={150} viewBox="0 0 42 42" style={{ flexShrink: 0 }}>
-          {segments.map((s, i) => (
-            <circle key={i} cx="21" cy="21" r="15.9" fill="none" stroke={s.c} strokeWidth="6"
-              strokeDasharray={`${s.pct} 100`} strokeDashoffset={`${-s.offset}`} />
-          ))}
-          <text x="21" y="20" textAnchor="middle" fontSize="6"   fontWeight="800" fill="var(--ink)"      fontFamily="var(--font-display)">{active}</text>
-          <text x="21" y="25" textAnchor="middle" fontSize="2.4" fontWeight="700" fill="var(--ink-muted)">абонементов</text>
-        </svg>
-
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {TIERS.length === 0 && (
-            <div style={{ color: 'var(--ink-muted)', fontSize: 13 }}>Нет данных</div>
-          )}
-          {TIERS.map(t => (
-            <div key={t.l} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: t.c, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', flex: 1 }}>{t.l}</span>
-              <span style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{t.price}</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: t.c, width: 36, textAlign: 'right' }}>{t.n}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-    </div>
-  )
-}
-
 /* ── Статус оплаты → цвет чипа ─────────────────────────────── */
 function statusChip(status) {
   switch ((status || '').toLowerCase()) {
@@ -296,7 +236,6 @@ export default function AdminFinancePage() {
 
   const kpi          = financeData?.kpi          ?? []
   const revenueRows  = financeData?.revenue       ?? []
-  const subscriptions = financeData?.subscriptions ?? null
   const paymentRows  = paymentsData?.content      ?? []
   const paymentTotal = paymentsData?.totalElements ?? 0
 
@@ -380,10 +319,7 @@ export default function AdminFinancePage() {
           </div>
 
           {/* Графики */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
-            <RevenueChart months={revenueRows} />
-            <SubsDonut subscriptions={subscriptions} />
-          </div>
+          <RevenueChart months={revenueRows} />
 
           {/* Таблица */}
           <PaymentsTable rows={filteredRows} total={filteredRows.length} />
