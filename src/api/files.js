@@ -12,6 +12,8 @@ export async function uploadFile(file, purpose = 'GENERAL') {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
   })
+
+  if (res.status === 401) throw new Error('Сессия истекла, попробуйте обновить страницу или войти снова')
   if (!res.ok) throw new Error('Не удалось загрузить файл')
   return res.json()   // { id, url, name, size }
 }
