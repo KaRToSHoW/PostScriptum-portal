@@ -15,6 +15,7 @@ import StudentsPage       from './pages/StudentsPage'
 import AdminUsersPage     from './pages/AdminUsersPage'
 import AdminReportsPage        from './pages/AdminReportsPage'
 import AdminSubscriptionsPage  from './pages/AdminSubscriptionsPage'
+import TeacherEarningsPage     from './pages/TeacherEarningsPage'
 import ParentPage         from './pages/ParentPage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
@@ -31,6 +32,15 @@ function StudentOnly({ children }) {
   const location = useLocation()
   if (!isAuth) return <Navigate to="/login" state={{ from: location }} replace />
   if (role === 'admin' || role === 'manager') return <Navigate to="/dashboard" replace />
+  return children
+}
+
+/* Управление пользователями — только администратор, менеджеру недоступно */
+function AdminOnly({ children }) {
+  const { isAuth, role } = useApp()
+  const location = useLocation()
+  if (!isAuth) return <Navigate to="/login" state={{ from: location }} replace />
+  if (role !== 'admin') return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -70,13 +80,16 @@ function AppRoutes() {
         <Protected><StudentsPage /></Protected>
       } />
       <Route path="/admin/users" element={
-        <Protected><AdminUsersPage /></Protected>
+        <AdminOnly><AdminUsersPage /></AdminOnly>
       } />
       <Route path="/admin/reports" element={
         <Protected><AdminReportsPage /></Protected>
       } />
       <Route path="/admin/subscriptions" element={
         <Protected><AdminSubscriptionsPage /></Protected>
+      } />
+      <Route path="/teacher/earnings" element={
+        <Protected><TeacherEarningsPage /></Protected>
       } />
       <Route path="/children" element={
         <Protected><ParentPage /></Protected>

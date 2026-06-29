@@ -2,6 +2,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Icon from './Icon'
 import Logo from './Logo'
 import { useApp } from '../context/AppContext'
+import { supportApi } from '../api/support'
+import { toast } from './Toast'
 
 const ROUTE_MAP = {
   home:      '/dashboard',
@@ -19,7 +21,7 @@ const ROUTE_MAP = {
   leads:     '/leads',
   settings:  '/settings',
   subs:      '/admin/subscriptions',
-  earnings:  '/billing',
+  earnings:  '/teacher/earnings',
   materials: '/homework',
   reports:   '/admin/reports',
 }
@@ -41,6 +43,7 @@ function routeToItem(pathname) {
   if (pathname === '/leads')                return 'leads'
   if (pathname === '/admin/reports')        return 'reports'
   if (pathname === '/admin/subscriptions')  return 'subs'
+  if (pathname === '/teacher/earnings')     return 'earnings'
   return 'home'
 }
 
@@ -79,7 +82,6 @@ const NAV = {
       { id: 'home',      label: 'Главная',         icon: 'home'     },
       { id: 'calendar',  label: 'Расписание',      icon: 'calendar' },
       { id: 'students',  label: 'Мои ученики',     icon: 'users'    },
-      { id: 'materials', label: 'Материалы',       icon: 'book'     },
     ]},
     { sec: 'общение', items: [
       { id: 'chat',     label: 'Сообщения',        icon: 'chat' },
@@ -97,6 +99,28 @@ const NAV = {
     ]},
     { sec: 'люди', items: [
       { id: 'users',    label: 'Пользователи',     icon: 'users'    },
+      { id: 'students', label: 'Ученики',          icon: 'user'     },
+      { id: 'teachers', label: 'Преподаватели',    icon: 'sparkle'  },
+      { id: 'roles',    label: 'Роли и доступ',    icon: 'shield'   },
+    ]},
+    { sec: 'общение', items: [
+      { id: 'chat',     label: 'Сообщения',        icon: 'chat'     },
+    ]},
+    { sec: 'финансы', items: [
+      { id: 'finance',  label: 'Финансы',          icon: 'wallet'   },
+      { id: 'subs',     label: 'Абонементы',       icon: 'bookmark' },
+      { id: 'reports',  label: 'Отчёты',           icon: 'chart'    },
+    ]},
+    { sec: 'система', items: [
+      { id: 'settings', label: 'Настройки',        icon: 'cog'      },
+    ]},
+  ],
+  manager: [
+    { sec: 'обзор', items: [
+      { id: 'home',     label: 'Дашборд',          icon: 'grid'     },
+      { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
+    ]},
+    { sec: 'люди', items: [
       { id: 'students', label: 'Ученики',          icon: 'user'     },
       { id: 'teachers', label: 'Преподаватели',    icon: 'sparkle'  },
       { id: 'roles',    label: 'Роли и доступ',    icon: 'shield'   },
@@ -147,6 +171,12 @@ export default function Sidebar({ role = 'student' }) {
     if (route) navigate(route)
   }
 
+  function handleSupportClick() {
+    supportApi.start()
+      .then(({ conversationId }) => navigate('/messages', { state: { conversationId } }))
+      .catch(() => toast('Не удалось открыть чат с поддержкой', 'error'))
+  }
+
   return (
     <aside className="ps-side">
       <div
@@ -172,11 +202,15 @@ export default function Sidebar({ role = 'student' }) {
         </div>
       ))}
 
-      <div style={{
-        marginTop: 'auto', padding: 12, borderRadius: 14,
-        background: 'var(--purple-tint)',
-        display: 'flex', gap: 10, alignItems: 'center',
-      }}>
+      <div
+        onClick={handleSupportClick}
+        style={{
+          marginTop: 'auto', padding: 12, borderRadius: 14,
+          background: 'var(--purple-tint)',
+          display: 'flex', gap: 10, alignItems: 'center',
+          cursor: 'pointer',
+        }}
+      >
         <span style={{ fontSize: 22 }}>🐧</span>
         <div style={{ fontSize: 12, color: 'var(--purple-deep)', fontWeight: 700, lineHeight: 1.3 }}>
           {t('Нужна помощь?')}<br />

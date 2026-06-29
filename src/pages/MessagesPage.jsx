@@ -90,32 +90,46 @@ export default function MessagesPage() {
   // ---------- on mount: load conversations, auto-select first ----------
 
   useEffect(() => {
+    // если переход с другой страницы несёт намерение открыть конкретный чат —
+    // не перетирай выбор первым диалогом, второй эффект ниже сам разберётся
+    const hasNavIntent = !!(location.state?.userId || location.state?.teacherName || location.state?.conversationId)
     loadConversations()
       .then(mapped => {
         setConvs(mapped)
-        if (mapped.length > 0) setActiveId(mapped[0].id)
+        if (!hasNavIntent && mapped.length > 0) setActiveId(mapped[0].id)
       })
       .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadConversations])
 
   // ---------- location.state: navigate from another page ----------
 
+  const selectConversation = useCallback((conversationId) => {
+    // reload conversations + the thread together, so an already-active
+    // conversation (activeId unchanged) still gets its messages refilled
+    return Promise.all([loadConversations(), loadThread(conversationId)])
+      .then(([mapped, msgs]) => {
+        setConvs(mapped.map(c => c.id === conversationId ? { ...c, msgs, unread: 0 } : c))
+        setActiveId(conversationId)
+        messagesApi.markRead(conversationId).catch(() => {})
+      })
+  }, [loadConversations, loadThread])
+
   useEffect(() => {
     const state = location.state ?? {}
-    const { teacherName, teacherInitials, teacherColor, teacherRole, userId } = state
+    const { teacherName, teacherInitials, teacherColor, teacherRole, userId, conversationId } = state
 
-    if (!teacherName && !userId) return
+    if (!teacherName && !userId && !conversationId) return
+
+    if (conversationId) {
+      selectConversation(conversationId).catch(() => {})
+      return
+    }
 
     if (userId) {
       // start or get existing conversation by userId
       messagesApi.start(userId)
-        .then(({ conversationId }) => {
-          // reload conversations to include the new/existing one
-          return loadConversations().then(mapped => {
-            setConvs(mapped)
-            setActiveId(conversationId)
-          })
-        })
+        .then(({ conversationId }) => selectConversation(conversationId))
         .catch(() => {})
       return
     }
@@ -145,7 +159,7 @@ export default function MessagesPage() {
         return [newConv, ...prev]
       })
     }
-  }, [location.state, loadConversations])
+  }, [location.state, loadConversations, selectConversation])
 
   // ---------- load thread + markRead when active conversation changes ----------
 

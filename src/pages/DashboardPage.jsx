@@ -350,7 +350,7 @@ function DashTeacher({ t, data }) {
             <h3 className="ps-display ps-display-purple" style={{ fontSize: 22, margin: '4px 0 14px' }}>На этой неделе</h3>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
               {(workload.days.length ? workload.days : [0,0,0,0,0,0,0].map((_, i) => ({ label: ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'][i], pct: 0 }))).map((b, i) => (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: '100%', height: `${b.pct}%`, minHeight: 3, background: b.today ? 'var(--orange)' : 'rgba(255,255,255,0.3)', borderRadius: '6px 6px 3px 3px' }} />
                   <span style={{ fontSize: 10, fontWeight: 800, color: b.today ? '#fff' : 'rgba(255,255,255,0.65)' }}>{b.label}</span>
                 </div>

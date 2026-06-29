@@ -23,7 +23,7 @@ function ProgressBar({ value, color }) {
   )
 }
 
-function StudentCard({ s, onMessage }) {
+function StudentCard({ s, onMessage, onSchedule }) {
   const color = LANG_COLOR[s.lang] || 'var(--purple)'
   return (
     <div className="ps-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -64,13 +64,145 @@ function StudentCard({ s, onMessage }) {
         ) : (
           <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Уроки не запланированы</span>
         )}
-        <button
-          className="ps-btn ps-btn-ghost ps-btn-sm"
-          onClick={() => onMessage(s)}
-          style={{ flexShrink: 0 }}
-        >
-          <Icon name="chat" size={13} /> Написать
-        </button>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <button
+            className="ps-btn ps-btn-ghost ps-btn-sm"
+            onClick={() => onSchedule(s)}
+          >
+            <Icon name="calendar" size={13} /> Запланировать
+          </button>
+          <button
+            className="ps-btn ps-btn-ghost ps-btn-sm"
+            onClick={() => onMessage(s)}
+          >
+            <Icon name="chat" size={13} /> Написать
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const DAYS_OF_WEEK = [
+  { value: 1, label: 'Понедельник' }, { value: 2, label: 'Вторник' },
+  { value: 3, label: 'Среда' },        { value: 4, label: 'Четверг' },
+  { value: 5, label: 'Пятница' },      { value: 6, label: 'Субота' },
+  { value: 7, label: 'Воскресенье' },
+]
+
+function ScheduleLessonModal({ student, onClose, onDone }) {
+  const [mode, setMode] = useState('once')   // 'once' | 'recurring'
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
+  const [dayOfWeek, setDayOfWeek] = useState(1)
+  const [weeksCount, setWeeksCount] = useState(8)
+  const [saving, setSaving] = useState(false)
+
+  async function submit() {
+    if (mode === 'once') {
+      if (!date || !time) { toast('Укажите дату и время', 'warning'); return }
+      setSaving(true)
+      try {
+        await teachersApi.createLesson({ studentId: student.id, scheduledAt: `${date}T${time}:00` })
+        toast('Занятие назначено ✓', 'success')
+        onDone()
+        onClose()
+      } catch (e) {
+        toast(e.message || 'Не удалось назначить занятие', 'error')
+      } finally {
+        setSaving(false)
+      }
+    } else {
+      if (!time) { toast('Укажите время', 'warning'); return }
+      setSaving(true)
+      try {
+        await teachersApi.createRecurringLessons({ studentId: student.id, dayOfWeek: Number(dayOfWeek), time, weeksCount: Number(weeksCount) })
+        toast(`Занятия на ${weeksCount} недель назначены ✓`, 'success')
+        onDone()
+        onClose()
+      } catch (e) {
+        toast(e.message || 'Не удалось назначить занятия', 'error')
+      } finally {
+        setSaving(false)
+      }
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 460, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
+          <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>расписание</span>
+          <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Занятие · {student.name}</h3>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setMode('once')}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                background: mode === 'once' ? 'var(--purple)' : 'var(--bg-cream-soft)',
+                color: mode === 'once' ? '#fff' : 'var(--ink-muted)',
+                border: mode === 'once' ? '2px solid var(--purple)' : '2px solid var(--border)',
+              }}
+            >Разовое занятие</button>
+            <button
+              onClick={() => setMode('recurring')}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                background: mode === 'recurring' ? 'var(--purple)' : 'var(--bg-cream-soft)',
+                color: mode === 'recurring' ? '#fff' : 'var(--ink-muted)',
+                border: mode === 'recurring' ? '2px solid var(--purple)' : '2px solid var(--border)',
+              }}
+            >Каждую неделю</button>
+          </div>
+
+          {mode === 'once' ? (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Дата</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, outline: 'none' }} />
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Время</label>
+                <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, outline: 'none' }} />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>День недели</label>
+                <select value={dayOfWeek} onChange={e => setDayOfWeek(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14 }}>
+                  {DAYS_OF_WEEK.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Время</label>
+                  <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                    style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, outline: 'none' }} />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Недель вперёд</label>
+                  <input type="number" min={1} max={26} value={weeksCount} onChange={e => setWeeksCount(e.target.value)}
+                    style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, outline: 'none' }} />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+            <button className="ps-btn ps-btn-primary" onClick={submit} disabled={saving} style={{ flex: 1, justifyContent: 'center' }}>
+              <Icon name="check" size={14} /> {saving ? 'Сохранение...' : 'Назначить'}
+            </button>
+            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -83,13 +215,16 @@ function TeacherStudents() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState(null)
   const [langFilter, setLangFilter] = useState('all')
+  const [scheduleFor, setScheduleFor] = useState(null)
 
-  useEffect(() => {
+  function loadStudents() {
     teachersApi.myStudents()
       .then(setStudents)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadStudents() }, [])
 
   function handleMessage(s) {
     navigate('/messages', { state: {
@@ -159,12 +294,20 @@ function TeacherStudents() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
               {filtered.map(s => (
-                <StudentCard key={s.id} s={s} onMessage={handleMessage} />
+                <StudentCard key={s.id} s={s} onMessage={handleMessage} onSchedule={setScheduleFor} />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      {scheduleFor && (
+        <ScheduleLessonModal
+          student={scheduleFor}
+          onClose={() => setScheduleFor(null)}
+          onDone={loadStudents}
+        />
+      )}
     </div>
   )
 }

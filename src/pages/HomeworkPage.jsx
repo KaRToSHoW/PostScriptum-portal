@@ -6,6 +6,7 @@ import Icon      from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 import { homeworkApi } from '../api/homework'
+import { teachersApi } from '../api/teachers'
 import { uploadFile, fileUrl } from '../api/files'
 
 // ─── shared maps ─────────────────────────────────────────────────────────────
@@ -19,16 +20,18 @@ const STATUS_MAP = {
 
 function mapHw(h) {
   return {
-    id:       h.id,
-    title:    h.title,
-    state:    STATUS_MAP[h.status] ?? 'new',
-    lang:     h.lang ?? 'fr',
-    due:      h.due ?? '',
-    dueLabel: h.due ?? '',
-    grade:    h.grade ?? null,
-    comment:  h.feedback ?? null,
-    teacher:  h.teacher ?? '',
-    course:   h.course ?? '',
+    id:            h.id,
+    title:         h.title,
+    description:   h.description ?? '',
+    state:         STATUS_MAP[h.status] ?? 'new',
+    lang:          h.lang ?? 'fr',
+    due:           h.due ?? '',
+    dueLabel:      h.due ?? '',
+    grade:         h.grade ?? null,
+    comment:       h.feedback ?? null,
+    teacher:       h.teacher ?? '',
+    course:        h.course ?? '',
+    attachmentUrl: h.attachmentUrl ?? null,
   }
 }
 
@@ -196,6 +199,25 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Курс: </span>{hw.course}</div>
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Преподаватель: </span>{hw.teacher}</div>
           </div>
+
+          {hw.description && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 4 }}>Описание</div>
+              <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>{hw.description}</div>
+            </div>
+          )}
+
+          {hw.attachmentUrl && (
+            <a
+              href={fileUrl(hw.attachmentUrl)}
+              target="_blank"
+              rel="noreferrer"
+              className="ps-btn ps-btn-ghost ps-btn-sm"
+              style={{ alignSelf: 'flex-start', textDecoration: 'none' }}
+            >
+              <Icon name="file" size={13} /> Материал от преподавателя
+            </a>
+          )}
 
           {hw.grade !== null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'var(--success-soft)' }}>
@@ -481,6 +503,19 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
             </div>
           )}
 
+          {/* attachment provided to the student */}
+          {item.attachmentUrl && (
+            <a
+              href={fileUrl(item.attachmentUrl)}
+              target="_blank"
+              rel="noreferrer"
+              className="ps-btn ps-btn-ghost ps-btn-sm"
+              style={{ alignSelf: 'flex-start', textDecoration: 'none' }}
+            >
+              <Icon name="file" size={13} /> Материал к заданию
+            </a>
+          )}
+
           {/* student's answer */}
           {item.text && (
             <div>
@@ -558,12 +593,159 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
   )
 }
 
+function CreateHomeworkModal({ onClose, onDone }) {
+  const [students, setStudents]   = useState([])
+  const [studentId, setStudentId] = useState('')
+  const [title, setTitle]         = useState('')
+  const [description, setDescription] = useState('')
+  const [dueAt, setDueAt]         = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [saving, setSaving]       = useState(false)
+  const [attachedFile, setAttachedFile] = useState(null)
+  const fileRef = useRef()
+
+  useEffect(() => { teachersApi.myStudents().then(setStudents).catch(() => {}) }, [])
+
+  async function handleFilePick(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const res = await uploadFile(file, 'HOMEWORK')
+      setAttachedFile({ url: res.url, name: res.name ?? file.name })
+      toast('Файл прикреплён ✓', 'success')
+    } catch {
+      toast('Не удалось загрузить файл', 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleCreate() {
+    if (!studentId) { toast('Выберите ученика', 'warning'); return }
+    if (!title.trim()) { toast('Укажите название задания', 'warning'); return }
+    setSaving(true)
+    try {
+      await homeworkApi.create({
+        studentId: Number(studentId),
+        title: title.trim(),
+        description: description.trim() || null,
+        dueAt: dueAt || null,
+        attachmentUrl: attachedFile?.url ?? null,
+      })
+      toast('Задание создано ✓', 'success')
+      onDone()
+      onClose()
+    } catch {
+      toast('Ошибка при создании задания', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 520, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>новое задание</span>
+              <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Создать домашнее задание</h3>
+            </div>
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
+              <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} />
+            </button>
+          </div>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Ученик</label>
+            <select
+              className="ps-input"
+              value={studentId}
+              onChange={e => setStudentId(e.target.value)}
+              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14 }}
+            >
+              <option value="">Выберите ученика</option>
+              {students.map(s => (
+                <option key={s.id} value={s.id}>{s.name} · {s.language}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Название задания</label>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Например: Эссе про путешествия"
+              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Описание</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Что нужно сделать..."
+              rows={3}
+              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', resize: 'none', outline: 'none', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Срок сдачи</label>
+            <input
+              type="date"
+              value={dueAt}
+              onChange={e => setDueAt(e.target.value)}
+              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Прикрепить материал</label>
+            <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={handleFilePick} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                className="ps-btn ps-btn-ghost ps-btn-sm"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                style={{ flexShrink: 0 }}
+              >
+                <Icon name="upload" size={13} />
+                {uploading ? 'Загрузка...' : 'Выбрать файл'}
+              </button>
+              {attachedFile && (
+                <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  ✓ {attachedFile.name}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+            <button className="ps-btn ps-btn-primary" onClick={handleCreate} disabled={saving} style={{ flex: 1, justifyContent: 'center' }}>
+              <Icon name="plus" size={14} /> {saving ? 'Создание...' : 'Создать задание'}
+            </button>
+            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TeacherHomework() {
   const { sideRole } = useApp()
   const [tab, setTab]           = useState('all')
   const [expanded, setExpanded] = useState(null)
   const [list, setList]         = useState([])
   const [loading, setLoading]   = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [openStudents, setOpenStudents] = useState(new Set())
 
   function loadList() {
     setLoading(true)
@@ -582,12 +764,32 @@ function TeacherHomework() {
   const activeTab = TEACHER_TABS.find(t => t.id === tab)
   const items = list.filter(activeTab.filter)
 
+  // Группировка по ученику
+  const groups = []
+  const groupIndex = new Map()
+  for (const item of items) {
+    const key = item.studentId ?? item.student
+    if (!groupIndex.has(key)) {
+      groupIndex.set(key, groups.length)
+      groups.push({ studentId: item.studentId, student: item.student, studentInitials: item.studentInitials, items: [] })
+    }
+    groups[groupIndex.get(key)].items.push(item)
+  }
+
+  function toggleStudent(key) {
+    setOpenStudents(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
       <Sidebar role={sideRole} />
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <TopBar title="Проверка заданий" />
+        <TopBar title="Домашние задания" />
 
         <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
@@ -611,48 +813,85 @@ function TeacherHomework() {
 
           {/* List */}
           <div className="ps-card" style={{ padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Работы учеников</h3>
-              <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-                {TEACHER_TABS.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    style={{
-                      padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                      border: 'none', cursor: 'pointer', transition: 'background .12s, color .12s',
-                      background: tab === t.id ? 'var(--purple)' : 'transparent',
-                      color:      tab === t.id ? '#fff' : 'var(--ink-muted)',
-                    }}
-                  >{t.label}</button>
-                ))}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+              <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Работы по ученикам</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
+                  {TEACHER_TABS.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTab(t.id)}
+                      style={{
+                        padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+                        border: 'none', cursor: 'pointer', transition: 'background .12s, color .12s',
+                        background: tab === t.id ? 'var(--purple)' : 'transparent',
+                        color:      tab === t.id ? '#fff' : 'var(--ink-muted)',
+                      }}
+                    >{t.label}</button>
+                  ))}
+                </div>
+                <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowCreate(true)}>
+                  <Icon name="plus" size={13} /> Новое задание
+                </button>
               </div>
             </div>
 
             {loading ? (
               <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>Загрузка...</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {items.length === 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {groups.length === 0 && (
                   <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
                     Работ в этой категории нет
                   </div>
                 )}
-                {items.map(item => (
-                  <TeacherRow
-                    key={item.id}
-                    item={item}
-                    expanded={expanded === item.id}
-                    onToggle={() => setExpanded(expanded === item.id ? null : item.id)}
-                    onReviewed={loadList}
-                  />
-                ))}
+                {groups.map(g => {
+                  const key = g.studentId ?? g.student
+                  const isOpen = openStudents.has(key)
+                  const pendingInGroup = g.items.filter(i => i.status === 'SUBMITTED').length
+                  return (
+                    <div key={key} style={{ borderRadius: 16, border: '1px solid var(--border-soft)', overflow: 'hidden' }}>
+                      <div
+                        onClick={() => toggleStudent(key)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', cursor: 'pointer', userSelect: 'none', background: 'var(--bg-cream-soft)' }}
+                      >
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                          {g.studentInitials ?? (g.student ?? '?').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{g.student}</div>
+                        <span className="ps-chip ps-chip-gray">{g.items.length} {g.items.length === 1 ? 'задание' : 'заданий'}</span>
+                        {pendingInGroup > 0 && <span className="ps-chip ps-chip-orange">{pendingInGroup} на проверке</span>}
+                        <Icon name={isOpen ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />
+                      </div>
+                      {isOpen && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: '#fff' }}>
+                          {g.items.map(item => (
+                            <TeacherRow
+                              key={item.id}
+                              item={item}
+                              expanded={expanded === item.id}
+                              onToggle={() => setExpanded(expanded === item.id ? null : item.id)}
+                              onReviewed={loadList}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
 
         </div>
       </main>
+
+      {showCreate && (
+        <CreateHomeworkModal
+          onClose={() => setShowCreate(false)}
+          onDone={loadList}
+        />
+      )}
     </div>
   )
 }

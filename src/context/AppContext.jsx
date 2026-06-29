@@ -8,6 +8,7 @@ export const USER_PRESETS = {
   teacher: { name: 'Софья Фролова',   initials: 'СФ', subtitle: 'Преподаватель · фр, англ'  },
   parent:  { name: 'Ирина Соколова',  initials: 'ИС', subtitle: 'Родитель · Анна Соколова'  },
   admin:   { name: 'Софья Фролова',   initials: 'СФ', subtitle: 'Администратор · Post Scriptum' },
+  manager: { name: 'Михаил Фролов',   initials: 'МФ', subtitle: 'Менеджер · Post Scriptum' },
 }
 
 export const SIDE_ROLE = {
@@ -15,7 +16,7 @@ export const SIDE_ROLE = {
   teacher: 'teacher',
   parent:  'parent',
   admin:   'admin',
-  manager: 'admin',
+  manager: 'manager',
 }
 
 const AppContext = createContext(null)
