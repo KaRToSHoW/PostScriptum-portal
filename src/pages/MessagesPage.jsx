@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
@@ -54,7 +54,6 @@ function mapMessages(msgs) {
 export default function MessagesPage() {
   const { sideRole } = useApp()
   const location  = useLocation()
-  const navigate  = useNavigate()
   const [activeId, setActiveId] = useState(null)
   const [text, setText]         = useState('')
   const [convs, setConvs]       = useState([])
@@ -344,12 +343,6 @@ export default function MessagesPage() {
                     {active.online ? 'Онлайн' : 'Был(а) недавно'}{active.role ? ` · ${active.role}` : ''}
                   </div>
                 </div>
-                <button
-                  className="ps-btn ps-btn-ghost ps-btn-sm"
-                  onClick={() => navigate('/calendar', { state: { teacherName: active.name } })}
-                >
-                  <Icon name="calendar" size={14} /> Записаться
-                </button>
               </div>
             )}
 

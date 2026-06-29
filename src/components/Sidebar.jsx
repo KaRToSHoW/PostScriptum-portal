@@ -101,6 +101,9 @@ const NAV = {
       { id: 'teachers', label: 'Преподаватели',    icon: 'sparkle'  },
       { id: 'roles',    label: 'Роли и доступ',    icon: 'shield'   },
     ]},
+    { sec: 'общение', items: [
+      { id: 'chat',     label: 'Сообщения',        icon: 'chat'     },
+    ]},
     { sec: 'финансы', items: [
       { id: 'finance',  label: 'Финансы',          icon: 'wallet'   },
       { id: 'subs',     label: 'Абонементы',       icon: 'bookmark' },
