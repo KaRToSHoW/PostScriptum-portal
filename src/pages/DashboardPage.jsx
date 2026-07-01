@@ -27,23 +27,6 @@ function FlameIcon({ size = 22 }) {
   )
 }
 
-/* ── Прогресс-кольцо ──────────────────────────────────────── */
-function ProgressRing({ value = 65, size = 56, color = 'var(--purple)' }) {
-  const r = size / 2 - 6
-  const c = 2 * Math.PI * r
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={size/2} cy={size/2} r={r} stroke="var(--purple-soft)" strokeWidth="6" fill="none" />
-      <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth="6" fill="none"
-        strokeDasharray={`${c*value/100} ${c}`} strokeLinecap="round"
-        transform={`rotate(-90 ${size/2} ${size/2})`} />
-      <text x="50%" y="52%" textAnchor="middle" dominantBaseline="middle"
-        fontSize="13" fontWeight="800" fill="var(--purple-deep)"
-        fontFamily="var(--font-display)">{value}%</text>
-    </svg>
-  )
-}
-
 /* ── Переключатель ролей ──────────────────────────────────── */
 function RoleSwitcher({ role, onChange, t }) {
   const roles = [
@@ -168,7 +151,7 @@ function DashStudent({ t, data }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <span className="ps-eyebrow">{t('мои курсы')}</span>
-              <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Прогресс по языкам</h3>
+              <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Мои языки</h3>
             </div>
             <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/billing')}>{t('Все курсы')} <Icon name="arrow" size={12} /></button>
           </div>
@@ -181,7 +164,9 @@ function DashStudent({ t, data }) {
               const color = LANG_COLOR[c.lang] || 'var(--purple)'
               return (
                 <div key={c.id} style={{ padding: 16, borderRadius: 16, border: '1px solid var(--border-soft)', display: 'flex', gap: 14, alignItems: 'center', background: 'var(--bg-cream-soft)' }}>
-                  <ProgressRing value={c.progress ?? 0} color={color} size={64} />
+                  <div style={{ width: 56, height: 56, borderRadius: 14, flexShrink: 0, background: color + '18', border: `2px solid ${color}33`, display: 'grid', placeItems: 'center' }}>
+                    <span className={`ps-flag ps-flag-${c.lang}`} style={{ fontSize: 26 }} />
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.language}</div>
                     <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>с {c.teacher}</div>
@@ -257,6 +242,14 @@ function DashTeacher({ t, data }) {
   const workload  = data?.workload  ?? { days: [], totalHours: 0, capacity: 0 }
   const students  = new Set(schedule.map(s => s.student)).size
 
+  // Группируем уроки по дате
+  const scheduleByDay = schedule.reduce((acc, s) => {
+    const key = s.dateKey ?? s.date
+    if (!acc[key]) acc[key] = { date: s.date, month: s.month, dayLabel: s.dayLabel, items: [] }
+    acc[key].items.push(s)
+    return acc
+  }, {})
+
   const ATTN_COLOR = { orange: 'var(--orange-soft)', red: 'var(--danger-soft)', purple: 'var(--purple-tint)', green: 'var(--success-soft)' }
 
   return (
@@ -265,7 +258,7 @@ function DashTeacher({ t, data }) {
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {[
-          { l: t('Уроков на неделе'),    v: schedule.length,                     d: 'предстоит',     icon: 'calendar' },
+          { l: t('Уроков на 7 дней'),     v: schedule.length,                     d: 'предстоит',     icon: 'calendar' },
           { l: t('Активных учеников'),   v: students,                            d: 'в расписании',  icon: 'users'    },
           { l: t('Часов на неделе'),     v: `${workload.totalHours} / ${workload.capacity}`, d: 'загрузка', icon: 'clock' },
           { l: t('Требует внимания'),    v: attention.length,                    d: 'событий',       icon: 'warning'  },
@@ -288,9 +281,9 @@ function DashTeacher({ t, data }) {
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <div>
-              <span className="ps-eyebrow">ближайшие уроки</span>
+              <span className="ps-eyebrow">ближайшие 7 дней</span>
               <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>
-                {schedule.length > 0 ? `${schedule.length} уроков` : 'Нет уроков'}
+                {schedule.length > 0 ? `${schedule.length} ${schedule.length === 1 ? 'урок' : schedule.length < 5 ? 'урока' : 'уроков'}` : 'Нет уроков'}
               </h3>
             </div>
             <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}>
@@ -298,22 +291,58 @@ function DashTeacher({ t, data }) {
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto', maxHeight: 420 }}>
             {schedule.length === 0 && (
               <div style={{ color: 'var(--ink-muted)', fontSize: 13, padding: '8px 0' }}>Запланированных уроков нет</div>
             )}
-            {schedule.map((s, i, arr) => (
-              <div key={i} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px dashed var(--border)' : 'none', alignItems: 'center' }}>
-                <div style={{ width: 54, flexShrink: 0, textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--ink)', letterSpacing: '-0.02em' }}>{s.date}</div>
-                  <div style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{s.dayLabel}</div>
+            {Object.values(scheduleByDay).map((day, di, dayArr) => (
+              <div key={day.dateKey ?? di}>
+                {/* Заголовок дня */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: di === 0 ? '0 0 10px' : '14px 0 10px',
+                  borderTop: di > 0 ? '1.5px solid var(--border)' : 'none',
+                }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'baseline', gap: 5,
+                    fontFamily: 'var(--font-display)', fontWeight: 900,
+                    fontSize: 20, color: 'var(--purple-deep)', letterSpacing: '-0.02em',
+                  }}>
+                    {day.date}
+                    <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)', fontFamily: 'inherit' }}>{day.month}</span>
+                  </div>
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, letterSpacing: '.1em',
+                    textTransform: 'uppercase', color: 'var(--ink-muted)',
+                  }}>{day.dayLabel}</span>
+                  <span style={{
+                    marginLeft: 'auto', fontSize: 10, fontWeight: 800,
+                    color: 'var(--purple)', background: 'var(--purple-soft)',
+                    padding: '2px 8px', borderRadius: 999,
+                  }}>{day.items.length} {day.items.length === 1 ? 'урок' : day.items.length < 5 ? 'урока' : 'уроков'}</span>
                 </div>
-                <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: 'var(--purple-soft)', flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, letterSpacing: '.08em' }}>{s.timeFrom} → {s.timeTo}</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{s.student}</div>
+
+                {/* Уроки дня */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 4 }}>
+                  {day.items.map((s, i) => (
+                    <div key={i} style={{
+                      display: 'flex', gap: 12, padding: '10px 12px',
+                      borderRadius: 12, alignItems: 'center',
+                      background: 'var(--bg-cream-soft)',
+                      border: '1px solid var(--border-soft)',
+                    }}>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontWeight: 800,
+                        fontSize: 13, color: 'var(--purple-deep)', letterSpacing: '.02em',
+                        flexShrink: 0, whiteSpace: 'nowrap',
+                      }}>{s.timeFrom}<span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>–</span>{s.timeTo}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.student}</div>
+                      </div>
+                      <span className={`ps-flag ps-flag-${s.lang}`} style={{ flexShrink: 0 }} />
+                    </div>
+                  ))}
                 </div>
-                <span className={`ps-flag ps-flag-${s.lang}`} />
               </div>
             ))}
           </div>

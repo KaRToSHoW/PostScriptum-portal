@@ -3,8 +3,11 @@ import Icon from './Icon'
 import { teachersApi } from '../api/teachers'
 import { calendarApi } from '../api/calendar'
 import { toast } from './Toast'
+import { api } from '../api/client'
 
 /* ── Константы ───────────────────────────────────────────────── */
+const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
+
 const DAYS_OF_WEEK = [
   { v: 1, s: 'ПН', full: 'Понедельник' },
   { v: 2, s: 'ВТ', full: 'Вторник'     },
@@ -130,8 +133,8 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
   const endMin  = value ? timeToMin(value) + duration : null
   const endTime = endMin !== null ? minToTime(endMin) : null
 
-  const totalMin = (22 - 8) * 60
-  const barLeft  = value ? Math.max(0, (timeToMin(value) - 480) / totalMin * 100) : 0
+  const totalMin = 24 * 60
+  const barLeft  = value ? timeToMin(value) / totalMin * 100 : 0
   const barWidth = duration / totalMin * 100
 
   const btnArrow = {
@@ -166,7 +169,7 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
             style={{
               fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 44, lineHeight: 1,
               color: curH !== null ? (conflict ? 'var(--danger)' : 'var(--purple-deep)') : 'var(--border)',
-              width: 68, textAlign: 'center', letterSpacing: '-0.02em',
+              width: 82, textAlign: 'center', letterSpacing: '-0.02em',
               background: 'transparent', border: 'none', outline: 'none',
               appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none',
             }}
@@ -190,7 +193,7 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
             style={{
               fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 44, lineHeight: 1,
               color: curM !== null ? (conflict ? 'var(--danger)' : 'var(--purple-deep)') : 'var(--border)',
-              width: 68, textAlign: 'center', letterSpacing: '-0.02em',
+              width: 82, textAlign: 'center', letterSpacing: '-0.02em',
               background: 'transparent', border: 'none', outline: 'none',
               appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none',
             }}
@@ -238,34 +241,158 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
         </div>
       )}
 
-      {/* Визуальный блок занятия */}
-      {value && endTime && !conflict && (
-        <div style={{ background: 'rgba(96,80,181,.07)', border: '1.5px solid rgba(96,80,181,.2)', borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Визуальный таймлайн */}
+      {(value || busySlots.length > 0) && (
+        <div style={{
+          background: conflict ? 'rgba(210,80,80,.04)' : 'rgba(96,80,181,.05)',
+          border: `1.5px solid ${conflict ? 'rgba(210,80,80,.2)' : 'rgba(96,80,181,.15)'}`,
+          borderRadius: 14, padding: '14px 16px 12px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
 
-          {/* Шкала 08:00-22:00 */}
-          <div style={{ position: 'relative', height: 28 }}>
-            <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 4, borderRadius: 2, background: 'var(--border)', transform: 'translateY(-50%)' }} />
+          {/* ── Bar area: 64px tall ── */}
+          <div style={{ position: 'relative', height: 64 }}>
+
+            {/* Track */}
             <div style={{
-              position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-              left: `${barLeft}%`, width: `${barWidth}%`,
-              height: 16, borderRadius: 8, background: 'var(--purple)', minWidth: 24,
+              position: 'absolute', left: 0, right: 0,
+              top: 30, height: 8, borderRadius: 4,
+              background: 'rgba(0,0,0,.08)',
             }} />
-            <div style={{ position: 'absolute', left: `${barLeft}%`, top: -2, transform: 'translateX(-50%)', fontSize: 9, fontWeight: 800, color: 'var(--purple-deep)', whiteSpace: 'nowrap' }}>{value}</div>
-            <div style={{ position: 'absolute', left: `${Math.min(barLeft + barWidth, 98)}%`, top: -2, transform: 'translateX(-50%)', fontSize: 9, fontWeight: 800, color: 'var(--purple-deep)', whiteSpace: 'nowrap' }}>{endTime}</div>
+
+            {/* Hour tick marks + labels */}
+            {[4, 8, 12, 16, 20].map(h => {
+              const pct = (h * 60) / totalMin * 100
+              return (
+                <div key={h}>
+                  <div style={{
+                    position: 'absolute', left: `${pct}%`, top: 40,
+                    width: 1, height: 6, background: 'rgba(0,0,0,.12)',
+                    transform: 'translateX(-50%)',
+                  }} />
+                  <div style={{
+                    position: 'absolute', left: `${pct}%`, top: 48,
+                    fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)',
+                    transform: 'translateX(-50%)',
+                    whiteSpace: 'nowrap',
+                  }}>{h}:00</div>
+                </div>
+              )
+            })}
+            {/* Edges */}
+            <div style={{ position: 'absolute', left: 0, top: 48, fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)' }}>00</div>
+            <div style={{ position: 'absolute', right: 0, top: 48, fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)' }}>24</div>
+
+            {/* Busy slots — on the track */}
+            {busySlots.map((b, i) => {
+              const bLeft = Math.max(0, timeToMin(b.start) / totalMin * 100)
+              const bW    = Math.min((b.durationMin ?? 60) / totalMin * 100, 100 - bLeft)
+              const bEnd  = minToTime(timeToMin(b.start) + (b.durationMin ?? 60))
+              return (
+                <div key={i} title={`${b.start}–${bEnd}${b.label ? ' · ' + b.label : ''}`} style={{
+                  position: 'absolute', top: 26,
+                  left: `${bLeft}%`, width: `${Math.max(bW, 1.2)}%`,
+                  height: 16, borderRadius: 5,
+                  background: 'rgba(210,80,80,.38)',
+                  border: '1.5px solid rgba(210,80,80,.55)',
+                  zIndex: 1,
+                }} />
+              )
+            })}
+
+            {/* Selected lesson block */}
+            {value && (
+              <>
+                {/* Anchor lines: label → block top */}
+                <div style={{
+                  position: 'absolute', left: `${barLeft}%`, top: 12, height: 12,
+                  borderLeft: `1.5px dashed ${conflict ? 'rgba(210,80,80,.5)' : 'rgba(96,80,181,.4)'}`,
+                }} />
+                {endTime && (
+                  <div style={{
+                    position: 'absolute',
+                    left: `${Math.min(barLeft + barWidth, 99)}%`, top: 12, height: 12,
+                    borderLeft: `1.5px dashed ${conflict ? 'rgba(210,80,80,.5)' : 'rgba(96,80,181,.4)'}`,
+                  }} />
+                )}
+
+                {/* Block */}
+                <div style={{
+                  position: 'absolute', top: 22,
+                  left: `${barLeft}%`, width: `${Math.max(barWidth, 1.5)}%`,
+                  height: 24, borderRadius: 8, minWidth: 10, zIndex: 2,
+                  background: conflict ? 'var(--danger)' : 'var(--purple)',
+                  boxShadow: `0 3px 10px ${conflict ? 'rgba(210,80,80,.4)' : 'rgba(96,80,181,.45)'}`,
+                  transition: 'left .15s, width .15s',
+                }} />
+
+                {/* Time labels above anchor lines */}
+                <div style={{
+                  position: 'absolute', left: `${barLeft}%`, top: 0,
+                  transform: 'translateX(-50%)',
+                  fontSize: 10, fontWeight: 800,
+                  color: conflict ? 'var(--danger)' : 'var(--purple-deep)',
+                  whiteSpace: 'nowrap',
+                }}>{value}</div>
+                {endTime && (
+                  <div style={{
+                    position: 'absolute',
+                    left: `${Math.min(barLeft + barWidth, 97)}%`, top: 0,
+                    transform: 'translateX(-50%)',
+                    fontSize: 10, fontWeight: 800,
+                    color: conflict ? 'var(--danger)' : 'var(--purple-deep)',
+                    whiteSpace: 'nowrap',
+                  }}>{endTime}</div>
+                )}
+              </>
+            )}
           </div>
 
-          {/* Итог */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--purple-deep)' }}>{value}</span>
-              <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>→</span>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--purple-deep)' }}>{endTime}</span>
-              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)', background: 'var(--purple-soft)', padding: '2px 8px', borderRadius: 999 }}>{duration} мин</span>
+          {/* Busy slots list */}
+          {busySlots.length > 0 && (
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {busySlots.map((b, i) => {
+                const bEnd = minToTime(timeToMin(b.start) + (b.durationMin ?? 60))
+                const ov   = value && (() => {
+                  const s = timeToMin(value); const e = s + duration
+                  const bs = timeToMin(b.start); const be = bs + (b.durationMin ?? 60)
+                  return s < be && e > bs
+                })()
+                return (
+                  <span key={i} style={{
+                    fontSize: 10, fontWeight: 800,
+                    padding: '3px 9px', borderRadius: 7,
+                    background: ov ? 'rgba(210,80,80,.14)' : 'rgba(210,80,80,.07)',
+                    border: `1px solid ${ov ? 'rgba(210,80,80,.4)' : 'rgba(210,80,80,.2)'}`,
+                    color: ov ? 'var(--danger)' : 'rgba(150,50,50,.85)',
+                  }}>
+                    {b.start}–{bEnd}{b.label ? ` · ${b.label}` : ''}
+                  </span>
+                )
+              })}
             </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-muted)' }}>
-              Следующий урок: <span style={{ color: 'var(--purple-deep)', fontWeight: 800 }}>с {endTime}</span>
+          )}
+
+          {/* Summary row */}
+          {value && endTime && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              flexWrap: 'wrap', gap: 8,
+              borderTop: '1px solid rgba(96,80,181,.12)', paddingTop: 8,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 22, color: conflict ? 'var(--danger)' : 'var(--purple-deep)' }}>{value}</span>
+                <span style={{ color: 'var(--ink-muted)', fontWeight: 800 }}>→</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 22, color: conflict ? 'var(--danger)' : 'var(--purple-deep)' }}>{endTime}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 9px', borderRadius: 999, background: conflict ? 'rgba(210,80,80,.1)' : 'var(--purple-soft)', color: conflict ? 'var(--danger)' : 'var(--purple-deep)' }}>{duration} мин</span>
+              </div>
+              {!conflict && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-muted)' }}>
+                  Следующий урок: <b style={{ color: 'var(--purple-deep)', fontWeight: 800 }}>с {endTime}</b>
+                </span>
+              )}
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
@@ -275,7 +402,7 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
 /* ================================================================
    Основная модалка
    ================================================================ */
-export default function ScheduleLessonModal({ student, students, initialDate, onClose, onDone }) {
+export default function ScheduleLessonModal({ student, students: studentsProp, teachers, initialDate, onClose, onDone }) {
   const today    = new Date()
   today.setHours(0, 0, 0, 0)
   const todayStr = toStr(today.getFullYear(), today.getMonth() + 1, today.getDate())
@@ -283,7 +410,21 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
   const initDate = initialDate ? new Date(initialDate + 'T12:00:00') : today
   const [ym, setYm] = useState({ y: initDate.getFullYear(), m: initDate.getMonth() + 1 })
 
+  const isManagerMode = !!(teachers?.length)
+  const [selectedTeacherId, setSelectedTeacherId] = useState('')
+  const [teacherStudents,   setTeacherStudents]   = useState([])
+
+  const students = isManagerMode ? teacherStudents : studentsProp
+
+  useEffect(() => {
+    if (!selectedTeacherId) { setTeacherStudents([]); return }
+    api.get(`/api/manager/teacher/${selectedTeacherId}/students`)
+      .then(d => { setTeacherStudents(d); setStudentId('') })
+      .catch(() => {})
+  }, [selectedTeacherId])
+
   const [studentId,     setStudentId]     = useState(student?.id ?? '')
+  const [langCode,      setLangCode]      = useState(student?.langCodes?.[0] ?? '')
   const [mode,          setMode]          = useState('dates')
   const [selectedDays,  setSelectedDays]  = useState(new Set())
   const [selectedDates, setSelectedDates] = useState(new Set())
@@ -295,6 +436,14 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
   const [saving,        setSaving]        = useState(false)
 
   const pickedStudent = student ?? students?.find(s => String(s.id) === String(studentId))
+
+  // Sync langCode when picked student changes
+  useEffect(() => {
+    const codes = pickedStudent?.langCodes ?? []
+    if (codes.length > 0 && !codes.includes(langCode)) {
+      setLangCode(codes[0])
+    }
+  }, [pickedStudent?.id])
   const lessonsLeft   = pickedStudent?.lessonsLeft ?? null
 
   useEffect(() => {
@@ -377,7 +526,15 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
   function prevMonth() { setYm(p => p.m === 1 ? { y: p.y - 1, m: 12 } : { ...p, m: p.m - 1 }) }
   function nextMonth() { setYm(p => p.m === 12 ? { y: p.y + 1, m: 1 } : { ...p, m: p.m + 1 }) }
 
+  const batchLessons = isManagerMode
+    ? (body) => api.post('/api/manager/lessons/batch', { teacherId: Number(selectedTeacherId), ...body })
+    : (body) => teachersApi.createBatchLessons(body)
+  const recurringLessons = isManagerMode
+    ? (body) => api.post('/api/manager/lessons/recurring', { teacherId: Number(selectedTeacherId), ...body })
+    : (body) => teachersApi.createRecurringLessons(body)
+
   async function submit() {
+    if (isManagerMode && !selectedTeacherId) { toast('Выберите преподавателя', 'warning'); return }
     if (!studentId) { toast('Выберите ученика', 'warning'); return }
     if (!time)      { toast('Выберите время занятия', 'warning'); return }
 
@@ -386,11 +543,11 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
       setSaving(true)
       try {
         if (periodMode === 'subscription') {
-          // Batch с точным количеством дат по абонементу
-          const res = await teachersApi.createBatchLessons({
+          const res = await batchLessons({
             studentId: Number(studentId),
             dates: [...previewDates].sort(),
             time, durationMin: Number(duration),
+            languageCode: langCode || undefined,
           })
           if (res?.skipped?.length) {
             toast(`Создано ${res.createdCount} занятий, конфликты: ${res.skipped.join(', ')}`, 'warning')
@@ -401,9 +558,10 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
           let totalCreated = 0
           const allSkipped = []
           for (const dow of selectedDays) {
-            const res = await teachersApi.createRecurringLessons({
+            const res = await recurringLessons({
               studentId: Number(studentId), dayOfWeek: dow, time,
               weeksCount: effectiveWeeks, durationMin: Number(duration),
+              languageCode: langCode || undefined,
             })
             totalCreated += res?.createdCount ?? 0
             if (res?.skipped?.length) allSkipped.push(...res.skipped)
@@ -423,8 +581,9 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
       if (selectedDates.size === 0) { toast('Выберите хотя бы одну дату', 'warning'); return }
       setSaving(true)
       try {
-        const res = await teachersApi.createBatchLessons({
+        const res = await batchLessons({
           studentId: Number(studentId), dates: sortedDates, time, durationMin: Number(duration),
+          languageCode: langCode || undefined,
         })
         if (res?.skipped?.length) {
           toast(`Создано ${res.createdCount} занятий, конфликты: ${res.skipped.join(', ')}`, 'warning')
@@ -477,8 +636,24 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
         <div style={{ overflowY: 'auto', flex: 1 }}>
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+            {/* Выбор преподавателя (только для менеджера) */}
+            {isManagerMode && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="ps-field-label">Преподаватель</label>
+                <select
+                  value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14 }}
+                >
+                  <option value="">Выберите преподавателя</option>
+                  {(teachers ?? []).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}{t.langs ? ` · ${t.langs}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Выбор ученика */}
-            {!student && (
+            {!student && (!isManagerMode || selectedTeacherId) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label className="ps-field-label">Ученик</label>
                 <select
@@ -488,10 +663,31 @@ export default function ScheduleLessonModal({ student, students, initialDate, on
                   <option value="">Выберите ученика</option>
                   {(students ?? []).map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.name}{s.language ? ` · ${s.language}` : ''}{s.lessonsLeft ? ` · ${s.lessonsLeft} ур.` : ''}
+                      {s.name}{s.langs?.length ? ' · ' + s.langs.join(', ') : ''}{s.lessonsLeft ? ` · ${s.lessonsLeft} ур.` : ''}
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {/* Выбор языка — только если у ученика 2+ языка */}
+            {pickedStudent && (pickedStudent.langCodes ?? []).length > 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="ps-field-label">Язык урока</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {(pickedStudent.langCodes ?? []).map((code, i) => {
+                    const name = (pickedStudent.langs ?? [])[i] || code
+                    const c = LANG_COLOR[code] || 'var(--purple)'
+                    const sel = langCode === code
+                    return (
+                      <button key={code} onClick={() => setLangCode(code)} style={{
+                        padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer', border: 'none',
+                        background: sel ? c : c + '18', color: sel ? '#fff' : c,
+                        outline: sel ? `2px solid ${c}` : 'none', outlineOffset: 1,
+                      }}>{name}</button>
+                    )
+                  })}
+                </div>
               </div>
             )}
 

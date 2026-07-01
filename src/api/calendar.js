@@ -25,5 +25,5 @@ import { api } from './client'
 
 export const calendarApi = {
   getMonth:      (year, month) => api.get(`/api/calendar?year=${year}&month=${month}`),
-  getAdminMonth: (year, month) => api.get(`/api/calendar/admin?year=${year}&month=${month}`),
+  getAdminMonth: (year, month, teacherId) => api.get(`/api/calendar/admin?year=${year}&month=${month}${teacherId ? `&teacherId=${teacherId}` : ''}`),
 }

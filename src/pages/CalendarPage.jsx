@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext'
 import { calendarApi } from '../api/calendar'
 import { teachersApi } from '../api/teachers'
 import { toast } from '../components/Toast'
+import { api } from '../api/client'
 import ScheduleLessonModal from '../components/ScheduleLessonModal'
 
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: '#9DC4A2', es: '#D7A87E', it: '#C9A0DC' }
@@ -40,7 +41,7 @@ function buildCells(year, month) {
 }
 
 /* ── Перенос урока на другое время ─────────────────────────────── */
-function RescheduleModal({ lesson, onClose, onDone }) {
+function RescheduleModal({ lesson, onClose, onDone, rescheduleUrl }) {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [saving, setSaving] = useState(false)
@@ -49,7 +50,11 @@ function RescheduleModal({ lesson, onClose, onDone }) {
     if (!date || !time) { toast('Укажите дату и время', 'warning'); return }
     setSaving(true)
     try {
-      await teachersApi.rescheduleLesson(lesson.id, `${date}T${time}:00`)
+      if (rescheduleUrl) {
+        await api.post(rescheduleUrl, { scheduledAt: `${date}T${time}:00` })
+      } else {
+        await teachersApi.rescheduleLesson(lesson.id, `${date}T${time}:00`)
+      }
       toast('Урок перенесён ✓', 'success')
       onDone()
       onClose()
@@ -94,13 +99,13 @@ function RescheduleModal({ lesson, onClose, onDone }) {
 }
 
 /* ── Отметка посещаемости ──────────────────────────────────────── */
-function AttendanceModal({ lesson, onClose, onDone }) {
+function AttendanceModal({ lesson, onClose, onDone, rosterUrl, attendanceUrl }) {
   const [roster, setRoster] = useState(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    teachersApi.getRoster(lesson.id)
-      .then(setRoster)
+    const fetch = rosterUrl ? api.get(rosterUrl) : teachersApi.getRoster(lesson.id)
+    fetch.then(setRoster)
       .catch(() => { toast('Не удалось загрузить список учеников', 'error'); setRoster([]) })
   }, [lesson.id])
 
@@ -111,7 +116,12 @@ function AttendanceModal({ lesson, onClose, onDone }) {
   async function submit() {
     setSaving(true)
     try {
-      await teachersApi.markAttendance(lesson.id, roster.map(s => ({ studentId: s.studentId, attended: !!s.attended })))
+      const payload = roster.map(s => ({ studentId: s.studentId, attended: !!s.attended }))
+      if (attendanceUrl) {
+        await api.post(attendanceUrl, { records: payload })
+      } else {
+        await teachersApi.markAttendance(lesson.id, payload)
+      }
       toast('Посещение отмечено ✓', 'success')
       onDone()
       onClose()
@@ -474,17 +484,28 @@ function CalendarStudent() {
 /* ================================================================
    ВАРИАНТ АДМИНИСТРАТОРА
    ================================================================ */
-function CalendarAdmin() {
+function CalendarAdmin({ canCreate = false }) {
   const now = new Date()
   const TODAY = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() }
   const [ym, setYm]           = useState({ y: TODAY.y, m: TODAY.m })
   const [selectedDay, setSel] = useState(TODAY.d)
   const [days, setDays]       = useState({})
   const [totalLessons, setTotalLessons] = useState(0)
+  const [showSchedule,    setShowSchedule]    = useState(false)
+  const [teachers,        setTeachers]        = useState([])
+  const [filterTeacherId, setFilterTeacherId] = useState('')
+  const [rescheduleFor,   setRescheduleFor]   = useState(null)
+  const [attendanceFor,   setAttendanceFor]   = useState(null)
+
+  function loadEvents() {
+    calendarApi.getAdminMonth(ym.y, ym.m, filterTeacherId || undefined)
+      .then(d => { setDays(d?.days || {}); setTotalLessons(d?.totalLessons || 0) })
+      .catch(() => {})
+  }
 
   useEffect(() => {
     let alive = true
-    calendarApi.getAdminMonth(ym.y, ym.m)
+    calendarApi.getAdminMonth(ym.y, ym.m, filterTeacherId || undefined)
       .then(d => {
         if (!alive) return
         setDays(d?.days || {})
@@ -492,7 +513,13 @@ function CalendarAdmin() {
       })
       .catch(() => {})
     return () => { alive = false }
-  }, [ym.y, ym.m])
+  }, [ym.y, ym.m, filterTeacherId])
+
+  useEffect(() => {
+    if (canCreate) {
+      api.get('/api/manager/teachers').then(d => setTeachers(d)).catch(() => {})
+    }
+  }, [canCreate])
 
   const isToday = (d) => ym.y === TODAY.y && ym.m === TODAY.m && d === TODAY.d
   const isPast  = (d) => ym.y < TODAY.y || (ym.y === TODAY.y && ym.m < TODAY.m) || (ym.y === TODAY.y && ym.m === TODAY.m && d < TODAY.d)
@@ -528,7 +555,30 @@ function CalendarAdmin() {
           <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth}>›</button>
         </div>
         <div style={{ flex: 1 }} />
+        {canCreate && teachers.length > 0 && (
+          <select
+            value={filterTeacherId}
+            onChange={e => setFilterTeacherId(e.target.value)}
+            style={{
+              padding: '7px 12px', borderRadius: 10,
+              border: '1.5px solid var(--border)', background: filterTeacherId ? 'var(--purple-tint)' : 'var(--bg-cream-soft)',
+              fontSize: 13, color: filterTeacherId ? 'var(--purple-deep)' : 'var(--ink-muted)',
+              fontFamily: 'var(--font-body)', cursor: 'pointer', outline: 'none',
+              borderColor: filterTeacherId ? 'var(--purple)' : 'var(--border)',
+            }}
+          >
+            <option value="">Все преподаватели</option>
+            {teachers.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        )}
         <span className="ps-chip ps-chip-gray">Занятий за месяц · {totalLessons}</span>
+        {canCreate && (
+          <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowSchedule(true)}>
+            <Icon name="plus" size={14} /> Создать урок
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -558,9 +608,14 @@ function CalendarAdmin() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: today ? 'var(--orange-deep)' : sel ? 'var(--purple-deep)' : past ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
-                    {evs.length > 0 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>{evs.length} ур.</span>}
+                    {evs.length > 4
+                      ? <span style={{ fontSize: 10, fontWeight: 800, background: 'var(--purple)', color: '#fff', padding: '0px 5px', borderRadius: 999 }}>{evs.length}</span>
+                      : evs.length > 0
+                        ? <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>{evs.length} ур.</span>
+                        : null
+                    }
                   </div>
-                  {evs.slice(0, 7).map((e, ei) => {
+                  {evs.slice(0, 4).map((e, ei) => {
                     const st = eventStyle(e.s)
                     return (
                       <div key={ei} style={{
@@ -574,14 +629,13 @@ function CalendarAdmin() {
                       </div>
                     )
                   })}
-                  {evs.length > 2 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>+{evs.length - 2}</span>}
                 </div>
               )
             })}
           </div>
         </div>
 
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'auto' }}>
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', minHeight: 0 }}>
           <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0 }}>
             <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {selectedDay ? selLabel : 'выберите день'}
@@ -612,6 +666,27 @@ function CalendarAdmin() {
                     {live && <Icon name="play" size={14} />}
                     {it.s === 'done' && <span style={{ color: 'rgba(255,255,255,.8)' }}><Icon name="check" size={14} /></span>}
                     {it.s === 'missed' && <span style={{ color: '#ffaaaa' }}>✗</span>}
+                    {canCreate && it.s !== 'done' && it.s !== 'missed' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, width: '100%' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="ps-btn ps-btn-sm"
+                            style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none', fontSize: 10 }}
+                            onClick={() => setRescheduleFor(it)}>
+                            <Icon name="calendar" size={11} /> Перенести
+                          </button>
+                          <button className="ps-btn ps-btn-sm"
+                            style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,80,80,.25)', color: '#fff', border: 'none', fontSize: 10 }}
+                            onClick={async () => { try { await api.post(`/api/manager/lessons/${it.id}/cancel`, {}); toast('Урок отменён ✓', 'success'); loadEvents() } catch(e) { toast(e.message||'Ошибка', 'error') } }}>
+                            <Icon name="plus" size={11} style={{ transform: 'rotate(45deg)' }} /> Отменить
+                          </button>
+                        </div>
+                        <button className="ps-btn ps-btn-sm"
+                          style={{ justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none', fontSize: 10 }}
+                          onClick={() => setAttendanceFor(it)}>
+                          <Icon name="users" size={11} /> Отметить посещение
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -619,18 +694,44 @@ function CalendarAdmin() {
           </div>
         </aside>
       </div>
+
+      {showSchedule && (
+        <ScheduleLessonModal
+          teachers={teachers}
+          initialDate={selectedDay ? `${ym.y}-${String(ym.m).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}` : undefined}
+          onClose={() => setShowSchedule(false)}
+          onDone={loadEvents}
+        />
+      )}
+
+      {rescheduleFor && (
+        <RescheduleModal
+          lesson={rescheduleFor}
+          onClose={() => setRescheduleFor(null)}
+          onDone={loadEvents}
+          rescheduleUrl={`/api/manager/lessons/${rescheduleFor?.id}/reschedule`}
+        />
+      )}
+
+      {attendanceFor && (
+        <AttendanceModal
+          lesson={attendanceFor}
+          onClose={() => setAttendanceFor(null)}
+          onDone={loadEvents}
+          rosterUrl={`/api/manager/lessons/${attendanceFor?.id}/roster`}
+          attendanceUrl={`/api/manager/lessons/${attendanceFor?.id}/attendance`}
+        />
+      )}
     </div>
   )
 }
 
-/* ================================================================
-   СТРАНИЦА КАЛЕНДАРЯ
-   ================================================================ */
 export default function CalendarPage() {
   const { role, sideRole } = useApp()
 
-  const isAdmin = role === 'admin'
-  const title = isAdmin ? 'Расписание · все занятия' : 'Расписание'
+  const isAdmin   = role === 'admin'
+  const isManager = role === 'manager'
+  const title = (isAdmin || isManager) ? 'Расписание · все занятия' : 'Расписание'
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -638,7 +739,7 @@ export default function CalendarPage() {
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title={title} />
-        {isAdmin ? <CalendarAdmin /> : <CalendarStudent />}
+        {isAdmin ? <CalendarAdmin /> : isManager ? <CalendarAdmin canCreate /> : <CalendarStudent />}
       </main>
     </div>
   )

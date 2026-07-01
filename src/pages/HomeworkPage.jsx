@@ -596,6 +596,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
 function CreateHomeworkModal({ onClose, onDone }) {
   const [students, setStudents]   = useState([])
   const [studentId, setStudentId] = useState('')
+  const [langCode,  setLangCode]  = useState('')
   const [title, setTitle]         = useState('')
   const [description, setDescription] = useState('')
   const [dueAt, setDueAt]         = useState('')
@@ -605,6 +606,14 @@ function CreateHomeworkModal({ onClose, onDone }) {
   const fileRef = useRef()
 
   useEffect(() => { teachersApi.myStudents().then(setStudents).catch(() => {}) }, [])
+
+  const selectedStudent = students.find(s => String(s.id) === String(studentId))
+  const studentLangCodes = selectedStudent?.langCodes ?? []
+
+  // Reset langCode when student changes
+  useEffect(() => {
+    setLangCode(studentLangCodes[0] ?? '')
+  }, [studentId])
 
   async function handleFilePick(e) {
     const file = e.target.files?.[0]
@@ -632,6 +641,7 @@ function CreateHomeworkModal({ onClose, onDone }) {
         description: description.trim() || null,
         dueAt: dueAt || null,
         attachmentUrl: attachedFile?.url ?? null,
+        languageCode: langCode || undefined,
       })
       toast('Задание создано ✓', 'success')
       onDone()
@@ -669,10 +679,34 @@ function CreateHomeworkModal({ onClose, onDone }) {
             >
               <option value="">Выберите ученика</option>
               {students.map(s => (
-                <option key={s.id} value={s.id}>{s.name} · {s.language}</option>
+                <option key={s.id} value={s.id}>
+                  {s.name}{s.langs?.length ? ' · ' + s.langs.join(', ') : ''}
+                </option>
               ))}
             </select>
           </div>
+
+          {/* Язык — только если у ученика 2+ языка */}
+          {studentLangCodes.length > 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Язык задания</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {studentLangCodes.map((code, i) => {
+                  const name = (selectedStudent?.langs ?? [])[i] || code
+                  const LCOLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
+                  const c = LCOLOR[code] || 'var(--purple)'
+                  const sel = langCode === code
+                  return (
+                    <button key={code} onClick={() => setLangCode(code)} style={{
+                      padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer', border: 'none',
+                      background: sel ? c : c + '18', color: sel ? '#fff' : c,
+                      outline: sel ? `2px solid ${c}` : 'none', outlineOffset: 1,
+                    }}>{name}</button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Название задания</label>
@@ -738,14 +772,19 @@ function CreateHomeworkModal({ onClose, onDone }) {
   )
 }
 
+const HW_LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
+const HW_LANG_NAME  = { fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский', it: 'Итальянский' }
+
 function TeacherHomework() {
   const { sideRole } = useApp()
-  const [tab, setTab]           = useState('all')
-  const [expanded, setExpanded] = useState(null)
-  const [list, setList]         = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [tab, setTab]               = useState('all')
+  const [expanded, setExpanded]     = useState(null)
+  const [list, setList]             = useState([])
+  const [loading, setLoading]       = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [openStudents, setOpenStudents] = useState(new Set())
+  const [studentFilter, setStudentFilter] = useState('all')
+  const [langFilter, setLangFilter]       = useState('all')
 
   function loadList() {
     setLoading(true)
@@ -761,8 +800,15 @@ function TeacherHomework() {
   const pending  = list.filter(i => i.status === 'SUBMITTED').length
   const reviewed = list.filter(i => i.status === 'REVIEWED').length
 
+  // Уникальные ученики и языки для фильтров
+  const allStudents = [...new Map(list.map(i => [i.studentId, { id: i.studentId, name: i.student, initials: i.studentInitials }])).values()]
+  const allLangs    = [...new Set(list.map(i => i.lang).filter(Boolean))]
+
   const activeTab = TEACHER_TABS.find(t => t.id === tab)
-  const items = list.filter(activeTab.filter)
+  const items = list
+    .filter(activeTab.filter)
+    .filter(i => studentFilter === 'all' || String(i.studentId) === String(studentFilter))
+    .filter(i => langFilter === 'all' || i.lang === langFilter)
 
   // Группировка по ученику
   const groups = []
@@ -813,7 +859,7 @@ function TeacherHomework() {
 
           {/* List */}
           <div className="ps-card" style={{ padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
               <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Работы по ученикам</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
@@ -835,6 +881,64 @@ function TeacherHomework() {
                 </button>
               </div>
             </div>
+
+            {/* Фильтры */}
+            {(allStudents.length > 1 || allLangs.length > 1) && (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border-soft)', alignItems: 'center' }}>
+
+                {/* По ученику */}
+                {allStudents.length > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.1em', textTransform: 'uppercase', flexShrink: 0 }}>Ученик</span>
+                    <div style={{ display: 'inline-flex', padding: 2, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
+                      <button onClick={() => setStudentFilter('all')} style={{
+                        padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer',
+                        background: studentFilter === 'all' ? 'var(--purple)' : 'transparent',
+                        color: studentFilter === 'all' ? '#fff' : 'var(--ink-muted)',
+                      }}>Все</button>
+                      {allStudents.map(s => (
+                        <button key={s.id} onClick={() => setStudentFilter(String(s.id))} style={{
+                          padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer',
+                          background: studentFilter === String(s.id) ? 'var(--purple)' : 'transparent',
+                          color: studentFilter === String(s.id) ? '#fff' : 'var(--ink-muted)',
+                        }}>
+                          {s.initials ?? s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* По языку */}
+                {allLangs.length > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.1em', textTransform: 'uppercase', flexShrink: 0 }}>Язык</span>
+                    <div style={{ display: 'inline-flex', padding: 2, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
+                      <button onClick={() => setLangFilter('all')} style={{
+                        padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer',
+                        background: langFilter === 'all' ? 'var(--purple)' : 'transparent',
+                        color: langFilter === 'all' ? '#fff' : 'var(--ink-muted)',
+                      }}>Все</button>
+                      {allLangs.map(code => {
+                        const c = HW_LANG_COLOR[code] || 'var(--purple)'
+                        const sel = langFilter === code
+                        return (
+                          <button key={code} onClick={() => setLangFilter(code)} style={{
+                            padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                            background: sel ? c : 'transparent',
+                            color: sel ? '#fff' : c,
+                          }}>
+                            <span className={`ps-flag ps-flag-${code}`} style={{ fontSize: 12 }} />
+                            {HW_LANG_NAME[code] || code.toUpperCase()}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
 
             {loading ? (
               <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>Загрузка...</div>

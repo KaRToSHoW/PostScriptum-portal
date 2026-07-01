@@ -488,3 +488,7 @@ input, textarea { font-family: inherit; }
   box-shadow: inset 0 0 0 2px rgba(255,255,255,.2);
   flex-shrink: 0;
 }
+
+@keyframes ps-spin {
+  to { transform: rotate(360deg); }
+}

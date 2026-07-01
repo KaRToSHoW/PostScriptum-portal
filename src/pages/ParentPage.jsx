@@ -18,11 +18,7 @@ function ChildCard({ c, active, onClick }) {
       <div className="ps-avatar" style={{ width: 46, height: 46, fontSize: 15 }}>{c.initials}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{c.name}</div>
-        <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{c.courses} курс(ов) · стрик {c.streak} дн.</div>
-      </div>
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--purple-deep)' }}>{c.progress}%</div>
-        <div style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700, textTransform: 'uppercase' }}>прогресс</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{c.courses} язык(ов) · стрик {c.streak} дн.</div>
       </div>
     </div>
   )
@@ -71,10 +67,6 @@ function ChildDashboard({ data }) {
                 <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--ink)' }}>{c.language}</div>
                 <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>с {c.teacher}</div>
               </div>
-              <div style={{ width: 140, height: 6, background: 'var(--border-soft)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${c.progress ?? 0}%`, background: 'var(--purple)', borderRadius: 3 }} />
-              </div>
-              <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--purple-deep)', width: 40, textAlign: 'right' }}>{c.progress ?? 0}%</span>
             </div>
           ))}
         </div>

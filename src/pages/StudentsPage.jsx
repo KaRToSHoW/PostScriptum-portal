@@ -16,16 +16,9 @@ const LANGS = [
   { code: 'de', name: 'Немецкий' },   { code: 'es', name: 'Испанский' }, { code: 'it', name: 'Итальянский' },
 ]
 
-function ProgressBar({ value, color }) {
-  return (
-    <div style={{ height: 6, background: 'var(--border-soft)', borderRadius: 3, overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${value}%`, background: color, borderRadius: 3, transition: 'width .4s' }} />
-    </div>
-  )
-}
-
 function StudentCard({ s, onMessage, onSchedule }) {
-  const color = LANG_COLOR[s.lang] || 'var(--purple)'
+  const firstCode = (s.langCodes ?? [])[0] || 'fr'
+  const color = LANG_COLOR[firstCode] || 'var(--purple)'
   return (
     <div className="ps-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -39,21 +32,18 @@ function StudentCard({ s, onMessage, onSchedule }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>
-            {s.language} · {s.level}
+          {s.showEmail && <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{s.email}</div>}
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+            {(s.langs ?? []).map((lang, i) => {
+              const code = (s.langCodes ?? [])[i] || ''
+              const c = LANG_COLOR[code] || 'var(--purple)'
+              return <span key={code || i} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: c + '18', color: c, border: `1px solid ${c}33` }}>{lang}</span>
+            })}
           </div>
         </div>
         <span className={`ps-chip ps-chip-${s.status === 'ACTIVE' ? 'green' : s.status === 'PAUSED' ? 'orange' : 'gray'}`}>
           {s.status === 'ACTIVE' ? 'Активен' : s.status === 'PAUSED' ? 'Пауза' : 'Завершён'}
         </span>
-      </div>
-
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
-          <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Прогресс</span>
-          <span style={{ fontWeight: 800, color }}>{s.progress}%</span>
-        </div>
-        <ProgressBar value={s.progress} color={color} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border-soft)' }}>
@@ -103,16 +93,22 @@ function TeacherStudents() {
   useEffect(() => { loadStudents() }, [])
 
   function handleMessage(s) {
+    const firstCode = (s.langCodes ?? [])[0] || 'fr'
+    const firstLang = (s.langs ?? [])[0] || ''
     navigate('/messages', { state: {
       userId: s.id,
       teacherName: s.name, teacherInitials: s.initials,
-      teacherColor: LANG_COLOR[s.lang] || 'var(--purple)',
-      teacherRole: `${s.language} · ${s.level}`,
+      teacherColor: LANG_COLOR[firstCode] || 'var(--purple)',
+      teacherRole: firstLang,
     }})
   }
 
-  const langs = [...new Set(students.map(s => s.lang))]
-  const filtered = langFilter === 'all' ? students : students.filter(s => s.lang === langFilter)
+  const langs = [...new Set(students.flatMap(s => s.langCodes ?? []))]
+  const nameCounts = students.reduce((acc, s) => { acc[s.name] = (acc[s.name] || 0) + 1; return acc }, {})
+  const studentsWithDup = students.map(s => ({ ...s, showEmail: nameCounts[s.name] > 1 }))
+  const filtered = langFilter === 'all'
+    ? studentsWithDup
+    : studentsWithDup.filter(s => (s.langCodes ?? []).includes(langFilter))
   const active = students.filter(s => s.status === 'ACTIVE').length
 
   const LANG_LABEL = { fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский', it: 'Итальянский' }
@@ -128,14 +124,11 @@ function TeacherStudents() {
           {error && <ApiError message={error} />}
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {[
-              { l: 'Всего учеников',   v: students.length,   d: 'в базе',          icon: 'users',    color: 'var(--purple-deep)' },
-              { l: 'Активных',         v: active,            d: 'занимаются',       icon: 'sparkle',  color: 'var(--success)'     },
-              { l: 'Языков',           v: langs.length,      d: 'в работе',         icon: 'globe',    color: 'var(--orange-deep)' },
-              { l: 'Средний прогресс', v: students.length
-                ? Math.round(students.reduce((s,x) => s + x.progress, 0) / students.length) + '%'
-                : '—',                                        d: 'по всем курсам',  icon: 'chart',    color: 'var(--purple)'      },
+              { l: 'Всего учеников', v: students.length, d: 'в базе',    icon: 'users',   color: 'var(--purple-deep)' },
+              { l: 'Активных',       v: active,          d: 'занимаются', icon: 'sparkle', color: 'var(--success)'     },
+              { l: 'Языков',         v: langs.length,    d: 'в работе',   icon: 'globe',   color: 'var(--orange-deep)' },
             ].map((k, i) => (
               <div key={i} className="ps-kpi">
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}>
@@ -324,11 +317,10 @@ function AdminStudents() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Ученики" />
         <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
             {[
-              { l: 'Всего учеников', v: students.length, icon: 'users', color: 'var(--purple-deep)' },
-              { l: 'С преподавателем', v: students.filter(s => s.teachers).length, icon: 'sparkle', color: 'var(--success)' },
-              { l: 'Средний прогресс', v: students.length ? Math.round(students.reduce((a,s)=>a+(s.progress||0),0)/students.length)+'%' : '—', icon: 'chart', color: 'var(--orange-deep)' },
+              { l: 'Всего учеников',   v: students.length,                             icon: 'users',   color: 'var(--purple-deep)' },
+              { l: 'С преподавателем', v: students.filter(s => s.teachers).length,     icon: 'sparkle', color: 'var(--success)'     },
             ].map((k,i) => (
               <div key={i} className="ps-kpi">
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}><Icon name={k.icon} size={16} /><div className="label">{k.l}</div></div>
@@ -349,13 +341,11 @@ function AdminStudents() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{s.email}{s.parentName ? ` · родитель: ${s.parentName}` : ''}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--purple-deep)' }}>{s.progress ?? 0}%</div>
+                    {s.languages && <div style={{ fontSize: 11, color: 'var(--purple)', fontWeight: 700, marginTop: 2 }}>{s.languages}</div>}
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
-                  <Icon name="sparkle" size={11} /> {s.teachers || 'Преподаватель не назначен'} · {s.courses ?? 0} курс(ов)
+                  <Icon name="sparkle" size={11} /> {s.teachers || 'Преподаватель не назначен'} · {s.courses ?? 0} язык(ов)
                 </div>
                 <div style={{ display: 'flex', gap: 8, paddingTop: 8, borderTop: '1px solid var(--border-soft)', flexWrap: 'wrap' }}>
                   <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={() => setAssign(s)}><Icon name="plus" size={12} /> Преподаватель</button>

@@ -44,11 +44,13 @@ function formatTime(sentAt) {
 function mapMessages(msgs) {
   const myEmail = currentEmail()
   return msgs.map(m => ({
-    id:       m.id,
-    text:     m.body,
-    time:     formatTime(m.sentAt),
-    from:     myEmail && m.senderEmail === myEmail ? 'me' : 'them',
-    isSystem: !!m.isSystem,
+    id:         m.id,
+    text:       m.body,
+    time:       formatTime(m.sentAt),
+    from:       myEmail && m.senderEmail === myEmail ? 'me' : 'them',
+    isSystem:   !!m.isSystem,
+    senderRole: m.senderRole ?? '',
+    senderName: m.senderName ?? '',
   }))
 }
 
@@ -324,12 +326,16 @@ export default function MessagesPage() {
                   <Avatar initials={c.initials} color={c.color} online={c.online} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.name}</span>
+                        {c.role === 'MANAGER' && (
+                          <span style={{ fontSize: 9, fontWeight: 800, background: 'var(--warning-soft, #FFF3CD)', color: 'var(--warning-deep, #8a6d00)', padding: '1px 6px', borderRadius: 999, border: '1px solid rgba(200,160,0,.25)', flexShrink: 0 }}>
+                            Менеджер
+                          </span>
+                        )}
+                      </div>
                       <span style={{ fontSize: 11, color: 'var(--ink-muted)', flexShrink: 0 }}>{c.lastTime}</span>
                     </div>
-                    {c.role ? (
-                      <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{c.role}</div>
-                    ) : null}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                       <span style={{ fontSize: 12, color: 'var(--ink-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
                         {c.lastMsg}
@@ -362,7 +368,7 @@ export default function MessagesPage() {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{active.name}</div>
                   <div style={{ fontSize: 12, color: active.online ? 'var(--success)' : 'var(--ink-muted)', fontWeight: 700, marginTop: 1 }}>
-                    {active.online ? 'Онлайн' : 'Был(а) недавно'}{active.role ? ` · ${active.role}` : ''}
+                    {active.online ? 'Онлайн' : 'Был(а) недавно'}
                   </div>
                 </div>
               </div>
@@ -376,18 +382,49 @@ export default function MessagesPage() {
                     Нет сообщений
                   </div>
                 )}
-                {active.msgs.map(m => (
-                  m.isSystem ? (
-                    <div key={m.id} style={{ display: 'flex', justifyContent: 'center', margin: '4px 0' }}>
-                      <div style={{
-                        maxWidth: '80%', padding: '6px 14px', borderRadius: 999,
-                        background: 'rgba(0,0,0,.06)', color: 'var(--ink-muted)',
-                        fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.4,
-                      }}>
-                        {m.text} <span style={{ opacity: .7 }}>· {m.time}</span>
+                {active.msgs.map(m => {
+                  const isManagerMsg = m.senderRole === 'MANAGER' && m.from === 'them'
+
+                  if (m.isSystem) {
+                    return (
+                      <div key={m.id} style={{ display: 'flex', justifyContent: 'center', margin: '4px 0' }}>
+                        <div style={{
+                          maxWidth: '80%', padding: '6px 14px', borderRadius: 999,
+                          background: 'rgba(0,0,0,.06)', color: 'var(--ink-muted)',
+                          fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.4,
+                        }}>
+                          {m.text} <span style={{ opacity: .7 }}>· {m.time}</span>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
+                    )
+                  }
+
+                  if (isManagerMsg) {
+                    return (
+                      <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(246,173,61,.25)', display: 'grid', placeItems: 'center', fontSize: 10 }}>★</div>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(180,130,0,.9)', letterSpacing: '.05em', textTransform: 'uppercase' }}>Менеджер</span>
+                        </div>
+                        <div style={{ maxWidth: '70%' }}>
+                          <div style={{
+                            padding: '10px 14px', borderRadius: '4px 16px 16px 16px',
+                            background: 'rgba(246,173,61,.1)',
+                            border: '1.5px solid rgba(246,173,61,.3)',
+                            color: 'var(--ink)',
+                            fontSize: 14, lineHeight: 1.5, fontWeight: 500,
+                          }}>
+                            {m.text}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 4 }}>
+                            {m.time}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return (
                     <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
                       {m.from === 'them' && (
                         <Avatar initials={active.initials} color={active.color} online={false} size={32} />
@@ -408,7 +445,7 @@ export default function MessagesPage() {
                       </div>
                     </div>
                   )
-                ))}
+                })}
                 <div ref={bottomRef} />
               </div>
             )}
