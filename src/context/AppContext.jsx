@@ -3,6 +3,22 @@ import { translate } from '../i18n'
 import { profileApi } from '../api/profile'
 import { fileUrl } from '../api/files'
 
+// Роль читаем из самого JWT (подписан сервером, в localStorage не лежит отдельным
+// редактируемым ключом) — раньше ps_role можно было поменять руками и увидеть чужие вкладки.
+function roleFromToken(token) {
+  if (!token) return null
+  try {
+    const payload = token.split('.')[1]
+    const json = decodeURIComponent(
+      atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+        .split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+    )
+    return JSON.parse(json).role ?? null
+  } catch {
+    return null
+  }
+}
+
 export const USER_PRESETS = {
   student: { name: 'Анна Соколова',   initials: 'АС', subtitle: 'Ученик · французский B1' },
   teacher: { name: 'Софья Фролова',   initials: 'СФ', subtitle: 'Преподаватель · фр, англ'  },
@@ -22,7 +38,7 @@ export const SIDE_ROLE = {
 const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
-  const [role,    setRole]    = useState(() => localStorage.getItem('ps_role')   ?? 'student')
+  const [role,    setRole]    = useState(() => roleFromToken(localStorage.getItem('ps_token')) ?? 'student')
   const [isAuth,  setIsAuth]  = useState(() => !!localStorage.getItem('ps_token'))
   const [apiUser, setApiUser] = useState(() => {
     const raw = localStorage.getItem('ps_user')
@@ -37,7 +53,8 @@ export function AppProvider({ children }) {
     return stored
   })
 
-  // Re-fetch the real profile from the backend after reload so we don't show stale preset data
+  // Re-fetch the real profile from the backend after reload so we don't show stale preset data.
+  // Role is also re-confirmed here from the server response (belt-and-braces alongside the JWT decode).
   useEffect(() => {
     if (!isAuth) return
     profileApi.get().then(data => {
@@ -45,6 +62,7 @@ export function AppProvider({ children }) {
       localStorage.setItem('ps_user', JSON.stringify(fresh))
       setApiUser(fresh)
       if (data.avatarUrl) setPhoto(data.avatarUrl)
+      if (data.role) setRole(data.role.toLowerCase())
     }).catch(() => {/* token may be stale — leave preset/cached data as-is */})
   }, [isAuth])
 
@@ -65,9 +83,10 @@ export function AppProvider({ children }) {
   }
 
   function login({ token, role: r, name, initials, subtitle } = {}) {
-    const resolvedRole = r ?? 'student'
+    // Источник истины — роль из подписанного JWT; serverRole (r) только запасной вариант,
+    // если по какой-то причине токен не распарсился.
+    const resolvedRole = roleFromToken(token) ?? r ?? 'student'
     if (token) localStorage.setItem('ps_token', token)
-    localStorage.setItem('ps_role', resolvedRole)
     setRole(resolvedRole)
     setIsAuth(true)
     if (name) {
@@ -79,7 +98,7 @@ export function AppProvider({ children }) {
 
   function logout() {
     localStorage.removeItem('ps_token')
-    localStorage.removeItem('ps_role')
+    localStorage.removeItem('ps_role') // чистим хвост от старых версий, больше не пишем
     localStorage.removeItem('ps_user')
     localStorage.removeItem('ps_photo')
     setIsAuth(false)

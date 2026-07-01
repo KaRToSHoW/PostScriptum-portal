@@ -102,7 +102,7 @@ function TeacherCard({ t, onSelect }) {
   )
 }
 
-function TeacherDrawer({ t, onClose, onMessage, onBook }) {
+function TeacherDrawer({ t, onClose, onMessage, onBook, canBook }) {
   if (!t) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex' }}>
@@ -187,9 +187,11 @@ function TeacherDrawer({ t, onClose, onMessage, onBook }) {
 
           {/* Действия */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto' }}>
-            <button className="ps-btn ps-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }} onClick={() => onBook(t)}>
-              <Icon name="calendar" size={15} /> Записаться на урок
-            </button>
+            {canBook && (
+              <button className="ps-btn ps-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }} onClick={() => onBook(t)}>
+                <Icon name="calendar" size={15} /> Записаться на урок
+              </button>
+            )}
             <button className="ps-btn ps-btn-outline" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }} onClick={() => onMessage(t)}>
               <Icon name="chat" size={15} /> Написать сообщение
             </button>
@@ -201,7 +203,7 @@ function TeacherDrawer({ t, onClose, onMessage, onBook }) {
 }
 
 export default function TeachersPage() {
-  const { sideRole } = useApp()
+  const { sideRole, role } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
   const [teachers, setTeachers]     = useState([])
@@ -323,7 +325,7 @@ export default function TeachersPage() {
         </div>
       </main>
 
-      <TeacherDrawer t={selected} onClose={() => setSelected(null)} onMessage={handleMessage} onBook={handleBook} />
+      <TeacherDrawer t={selected} onClose={() => setSelected(null)} onMessage={handleMessage} onBook={handleBook} canBook={role === 'student'} />
     </div>
   )
 }

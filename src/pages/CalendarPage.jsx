@@ -4,6 +4,9 @@ import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { calendarApi } from '../api/calendar'
+import { teachersApi } from '../api/teachers'
+import { toast } from '../components/Toast'
+import ScheduleLessonModal from '../components/ScheduleLessonModal'
 
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: '#9DC4A2', es: '#D7A87E', it: '#C9A0DC' }
 
@@ -36,16 +39,158 @@ function buildCells(year, month) {
   return cells
 }
 
+/* ── Перенос урока на другое время ─────────────────────────────── */
+function RescheduleModal({ lesson, onClose, onDone }) {
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function submit() {
+    if (!date || !time) { toast('Укажите дату и время', 'warning'); return }
+    setSaving(true)
+    try {
+      await teachersApi.rescheduleLesson(lesson.id, `${date}T${time}:00`)
+      toast('Урок перенесён ✓', 'success')
+      onDone()
+      onClose()
+    } catch (e) {
+      toast(e.message || 'Не удалось перенести урок', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 400, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
+          <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>перенос урока</span>
+          <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Выберите новое время</h3>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Дата</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, outline: 'none' }} />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Время</label>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, outline: 'none' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="ps-btn ps-btn-primary" onClick={submit} disabled={saving} style={{ flex: 1, justifyContent: 'center' }}>
+              <Icon name="check" size={14} /> {saving ? 'Сохранение...' : 'Перенести'}
+            </button>
+            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Отметка посещаемости ──────────────────────────────────────── */
+function AttendanceModal({ lesson, onClose, onDone }) {
+  const [roster, setRoster] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    teachersApi.getRoster(lesson.id)
+      .then(setRoster)
+      .catch(() => { toast('Не удалось загрузить список учеников', 'error'); setRoster([]) })
+  }, [lesson.id])
+
+  function toggle(studentId) {
+    setRoster(prev => prev.map(s => s.studentId === studentId ? { ...s, attended: !s.attended } : s))
+  }
+
+  async function submit() {
+    setSaving(true)
+    try {
+      await teachersApi.markAttendance(lesson.id, roster.map(s => ({ studentId: s.studentId, attended: !!s.attended })))
+      toast('Посещение отмечено ✓', 'success')
+      onDone()
+      onClose()
+    } catch (e) {
+      toast(e.message || 'Не удалось сохранить', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 400, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
+          <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>посещение</span>
+          <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Кто был на уроке?</h3>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {roster === null && <div style={{ color: 'var(--ink-muted)', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>Загрузка...</div>}
+          {roster?.length === 0 && <div style={{ color: 'var(--ink-muted)', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>Нет учеников</div>}
+          {roster?.map(s => (
+            <div
+              key={s.studentId}
+              onClick={() => toggle(s.studentId)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, cursor: 'pointer',
+                border: `1.5px solid ${s.attended ? 'var(--success)' : 'var(--border)'}`,
+                background: s.attended ? 'var(--success-soft)' : 'var(--bg-cream-soft)',
+              }}
+            >
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, color: 'var(--ink)', flexShrink: 0 }}>
+                {s.initials}
+              </div>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{s.name}</span>
+              {s.attended
+                ? <span style={{ color: 'var(--success)', fontWeight: 800, fontSize: 12 }}>✓ Был(а)</span>
+                : <span style={{ color: 'var(--ink-muted)', fontWeight: 700, fontSize: 12 }}>Не был(а)</span>}
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+            <button className="ps-btn ps-btn-primary" onClick={submit} disabled={saving || !roster?.length} style={{ flex: 1, justifyContent: 'center' }}>
+              <Icon name="check" size={14} /> {saving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Закрыть</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ================================================================
-   ВАРИАНТ УЧЕНИКА
+   ВАРИАНТ УЧЕНИКА (и преподавателя — со своими действиями)
    ================================================================ */
 function CalendarStudent() {
+  const { role } = useApp()
+  const isTeacher = role === 'teacher'
   const now = new Date()
   const TODAY = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() }
   const [ym, setYm]             = useState({ y: TODAY.y, m: TODAY.m })
   const [selectedDay, setSel]   = useState(TODAY.d)
   const [langFilter, setLang]   = useState(new Set(['fr','en','de','es','it']))
   const [events, setEvents]     = useState({})
+  const [rescheduleFor, setRescheduleFor] = useState(null)
+  const [attendanceFor, setAttendanceFor] = useState(null)
+  const [showSchedule, setShowSchedule]   = useState(false)
+  const [myStudents, setMyStudents]       = useState([])
+
+  useEffect(() => {
+    if (!isTeacher) return
+    teachersApi.myStudents().then(setMyStudents).catch(() => {})
+  }, [isTeacher])
+
+  function loadEvents() {
+    return calendarApi.getMonth(ym.y, ym.m)
+      .then(d => { if (d?.events) setEvents(d.events) })
+      .catch(() => {})
+  }
 
   useEffect(() => {
     let alive = true
@@ -54,6 +199,22 @@ function CalendarStudent() {
       .catch(() => {})
     return () => { alive = false }
   }, [ym.y, ym.m])
+
+  async function handleCancel(it) {
+    const hoursUntil = it.scheduledAt ? (new Date(it.scheduledAt) - new Date()) / 36e5 : null
+    const willCharge = hoursUntil !== null && hoursUntil < 4
+    const warning = willCharge
+      ? 'До урока меньше 4 часов — он будет списан у ученика как проведённый. Отменить?'
+      : 'Отменить урок? Это больше чем за 4 часа до начала — урок не будет списан.'
+    if (!window.confirm(warning)) return
+    try {
+      const res = await teachersApi.cancelLesson(it.id)
+      toast(res?.lateCancel ? 'Урок отменён, списан ученику ✓' : 'Урок отменён ✓', 'success')
+      loadEvents()
+    } catch (e) {
+      toast(e.message || 'Не удалось отменить урок', 'error')
+    }
+  }
 
   const isToday = (d) => ym.y === TODAY.y && ym.m === TODAY.m && d === TODAY.d
   const isPast  = (d) => ym.y < TODAY.y || (ym.y === TODAY.y && ym.m < TODAY.m) || (ym.y === TODAY.y && ym.m === TODAY.m && d < TODAY.d)
@@ -98,6 +259,11 @@ function CalendarStudent() {
           <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth}>›</button>
         </div>
         <div style={{ flex: 1 }} />
+        {isTeacher && (
+          <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowSchedule(true)}>
+            <Icon name="plus" size={13} /> Запланировать урок
+          </button>
+        )}
         <div style={{ display: 'flex', gap: 8 }}>
           {['fr','en','de','es','it'].map(l => (
             <span
@@ -146,9 +312,9 @@ function CalendarStudent() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: today ? 'var(--orange-deep)' : sel ? 'var(--purple-deep)' : past ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
-                    {evs.length > 2 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>+{evs.length}</span>}
+                    {evs.length > 7 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>+{evs.length - 7}</span>}
                   </div>
-                  {evs.slice(0, 2).map((e, ei) => {
+                  {evs.slice(0, 7).map((e, ei) => {
                     const st = eventStyle(e.s)
                     return (
                       <div key={ei} style={{
@@ -169,10 +335,10 @@ function CalendarStudent() {
         </div>
 
         {/* Правая панель */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
 
           {/* Выбранный день */}
-          <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0 }}>
+          <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '70vh' }}>
             <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {selectedDay ? selLabel : 'выберите день'}
             </span>
@@ -182,25 +348,54 @@ function CalendarStudent() {
             {selEvs.length === 0 && selectedDay && (
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)' }}>В этот день занятий нет</div>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 340, paddingRight: 2 }}>
               {selEvs.map((it, i) => {
                 const live = it.s === 'now'
+                const canManage = isTeacher && it.s === 'planned'
                 return (
                   <div key={i} style={{
-                    display: 'flex', gap: 10, padding: 10, borderRadius: 10,
+                    display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 10,
                     background: live ? 'var(--orange)' : 'rgba(255,255,255,0.1)',
                     border: live ? 'none' : '1px solid rgba(255,255,255,0.18)',
-                    alignItems: 'center',
                   }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, width: 44, flexShrink: 0 }}>{it.t}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.2 }}>{LANG_NAME[it.l]}</div>
-                      <div style={{ fontSize: 11, opacity: 0.8, marginTop: 1 }}>{it.who}</div>
-                      <div style={{ fontSize: 10, opacity: 0.65, marginTop: 1 }}>{STATE_LABEL[it.s] || it.s}</div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, width: 44, flexShrink: 0 }}>{it.t}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.2 }}>{LANG_NAME[it.l]}</div>
+                        <div style={{ fontSize: 11, opacity: 0.8, marginTop: 1 }}>{it.who}</div>
+                        <div style={{ fontSize: 10, opacity: 0.65, marginTop: 1 }}>{STATE_LABEL[it.s] || it.s}</div>
+                      </div>
+                      {live && <Icon name="play" size={14} />}
+                      {it.s === 'done' && <span style={{ color: 'rgba(255,255,255,.8)' }}><Icon name="check" size={14} /></span>}
+                      {it.s === 'missed' && <span style={{ color: '#ffaaaa' }}>✗</span>}
                     </div>
-                    {live && <Icon name="play" size={14} />}
-                    {it.s === 'done' && <span style={{ color: 'rgba(255,255,255,.8)' }}><Icon name="check" size={14} /></span>}
-                    {it.s === 'missed' && <span style={{ color: '#ffaaaa' }}>✗</span>}
+                    {canManage && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="ps-btn ps-btn-sm"
+                          style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none' }}
+                          onClick={() => setRescheduleFor(it)}
+                        >
+                          <Icon name="calendar" size={12} /> Перенести
+                        </button>
+                        <button
+                          className="ps-btn ps-btn-sm"
+                          style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,80,80,.25)', color: '#fff', border: 'none' }}
+                          onClick={() => handleCancel(it)}
+                        >
+                          <Icon name="plus" size={12} style={{ transform: 'rotate(45deg)' }} /> Отменить
+                        </button>
+                      </div>
+                    )}
+                    {isTeacher && (
+                      <button
+                        className="ps-btn ps-btn-sm"
+                        style={{ justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none' }}
+                        onClick={() => setAttendanceFor(it)}
+                      >
+                        <Icon name="users" size={12} /> Отметить посещение
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -247,6 +442,31 @@ function CalendarStudent() {
           </div>
         </aside>
       </div>
+
+      {rescheduleFor && (
+        <RescheduleModal
+          lesson={rescheduleFor}
+          onClose={() => setRescheduleFor(null)}
+          onDone={loadEvents}
+        />
+      )}
+
+      {attendanceFor && (
+        <AttendanceModal
+          lesson={attendanceFor}
+          onClose={() => setAttendanceFor(null)}
+          onDone={loadEvents}
+        />
+      )}
+
+      {showSchedule && (
+        <ScheduleLessonModal
+          students={myStudents}
+          initialDate={selectedDay ? `${ym.y}-${String(ym.m).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}` : undefined}
+          onClose={() => setShowSchedule(false)}
+          onDone={loadEvents}
+        />
+      )}
     </div>
   )
 }
@@ -340,7 +560,7 @@ function CalendarAdmin() {
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: today ? 'var(--orange-deep)' : sel ? 'var(--purple-deep)' : past ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
                     {evs.length > 0 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>{evs.length} ур.</span>}
                   </div>
-                  {evs.slice(0, 2).map((e, ei) => {
+                  {evs.slice(0, 7).map((e, ei) => {
                     const st = eventStyle(e.s)
                     return (
                       <div key={ei} style={{

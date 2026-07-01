@@ -44,10 +44,11 @@ function formatTime(sentAt) {
 function mapMessages(msgs) {
   const myEmail = currentEmail()
   return msgs.map(m => ({
-    id:    m.id,
-    text:  m.body,
-    time:  formatTime(m.sentAt),
-    from:  myEmail && m.senderEmail === myEmail ? 'me' : 'them',
+    id:       m.id,
+    text:     m.body,
+    time:     formatTime(m.sentAt),
+    from:     myEmail && m.senderEmail === myEmail ? 'me' : 'them',
+    isSystem: !!m.isSystem,
   }))
 }
 
@@ -90,13 +91,20 @@ export default function MessagesPage() {
   // ---------- on mount: load conversations, auto-select first ----------
 
   useEffect(() => {
-    // если переход с другой страницы несёт намерение открыть конкретный чат —
-    // не перетирай выбор первым диалогом, второй эффект ниже сам разберётся
     const hasNavIntent = !!(location.state?.userId || location.state?.teacherName || location.state?.conversationId)
     loadConversations()
       .then(mapped => {
-        setConvs(mapped)
-        if (!hasNavIntent && mapped.length > 0) setActiveId(mapped[0].id)
+        if (!hasNavIntent && mapped.length > 0) {
+          const firstId = mapped[0].id
+          setActiveId(firstId)
+          // грузим сообщения первого чата сразу, не ждём второго эффекта
+          loadThread(firstId)
+            .then(msgs => setConvs(mapped.map(c => c.id === firstId ? { ...c, msgs, unread: 0 } : c)))
+            .catch(() => setConvs(mapped))
+          messagesApi.markRead(firstId).catch(() => {})
+        } else {
+          setConvs(mapped)
+        }
       })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -261,13 +269,13 @@ export default function MessagesPage() {
   // ---------- render ----------
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
+    <div style={{ height: '100vh', display: 'flex', background: 'var(--bg-cream)', overflow: 'hidden' }}>
       <Sidebar role={sideRole} />
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
         <TopBar title="Сообщения" />
 
-        <div style={{ flex: 1, display: 'flex', margin: 28, gap: 0, borderRadius: 20, boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', margin: 28, gap: 0, borderRadius: 20, boxShadow: 'var(--shadow-card)', overflow: 'hidden', minHeight: 0 }}>
 
           {/* Список диалогов */}
           <div style={{ width: 300, background: '#fff', borderRight: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -339,7 +347,7 @@ export default function MessagesPage() {
           </div>
 
           {/* Чат */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-cream-soft)', minWidth: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-cream-soft)', minWidth: 0, minHeight: 0 }}>
 
             {!active && (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
@@ -369,25 +377,37 @@ export default function MessagesPage() {
                   </div>
                 )}
                 {active.msgs.map(m => (
-                  <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
-                    {m.from === 'them' && (
-                      <Avatar initials={active.initials} color={active.color} online={false} size={32} />
-                    )}
-                    <div style={{ maxWidth: '65%' }}>
+                  m.isSystem ? (
+                    <div key={m.id} style={{ display: 'flex', justifyContent: 'center', margin: '4px 0' }}>
                       <div style={{
-                        padding: '10px 14px', borderRadius: m.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                        background: m.from === 'me' ? 'var(--purple)' : '#fff',
-                        color: m.from === 'me' ? '#fff' : 'var(--ink)',
-                        fontSize: 14, lineHeight: 1.5, fontWeight: 500,
-                        boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+                        maxWidth: '80%', padding: '6px 14px', borderRadius: 999,
+                        background: 'rgba(0,0,0,.06)', color: 'var(--ink-muted)',
+                        fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.4,
                       }}>
-                        {m.text}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 4, textAlign: m.from === 'me' ? 'right' : 'left' }}>
-                        {m.time}
+                        {m.text} <span style={{ opacity: .7 }}>· {m.time}</span>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
+                      {m.from === 'them' && (
+                        <Avatar initials={active.initials} color={active.color} online={false} size={32} />
+                      )}
+                      <div style={{ maxWidth: '65%' }}>
+                        <div style={{
+                          padding: '10px 14px', borderRadius: m.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                          background: m.from === 'me' ? 'var(--purple)' : '#fff',
+                          color: m.from === 'me' ? '#fff' : 'var(--ink)',
+                          fontSize: 14, lineHeight: 1.5, fontWeight: 500,
+                          boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+                        }}>
+                          {m.text}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 4, textAlign: m.from === 'me' ? 'right' : 'left' }}>
+                          {m.time}
+                        </div>
+                      </div>
+                    </div>
+                  )
                 ))}
                 <div ref={bottomRef} />
               </div>

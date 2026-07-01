@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
@@ -5,6 +6,7 @@ import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { useApi } from '../hooks/useApi'
 import { dashboardApi } from '../api/dashboard'
+import { adminApi } from '../api/admin'
 import ApiError from '../components/ApiError'
 import { toast } from '../components/Toast'
 
@@ -368,16 +370,142 @@ function DashTeacher({ t, data }) {
 }
 
 /* ================================================================
+   ДАШБОРД АДМИНА / МЕНЕДЖЕРА (бизнес-метрики, без уроков/нагрузки)
+   ================================================================ */
+function DashAdmin({ navigate }) {
+  const [finance, setFinance] = useState(null)
+  const [team, setTeam]       = useState([])
+  const [leads, setLeads]     = useState([])
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      adminApi.finance('MONTH').catch(() => null),
+      adminApi.team().catch(() => []),
+      adminApi.leads().catch(() => []),
+      adminApi.students().catch(() => []),
+    ]).then(([f, tm, ld, st]) => {
+      setFinance(f)
+      setTeam(Array.isArray(tm) ? tm : [])
+      setLeads(Array.isArray(ld) ? ld : [])
+      setStudents(Array.isArray(st) ? st : [])
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const newLeads = leads.filter(l => l.isNew)
+  const kpi = finance?.kpi ?? []
+
+  return (
+    <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+      {/* KPI */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        {[
+          { l: 'Учеников',       v: loading ? '…' : students.length, d: 'в базе',         icon: 'users'   },
+          { l: 'Сотрудников',    v: loading ? '…' : team.length,     d: 'преподаватели и менеджеры', icon: 'sparkle' },
+          { l: 'Новых заявок',   v: loading ? '…' : newLeads.length, d: 'требуют внимания', icon: 'inbox'  },
+          { l: kpi[0]?.l ?? 'Доход за месяц', v: loading ? '…' : (kpi[0]?.v ?? '—'), d: kpi[0]?.d ?? '', icon: 'wallet' },
+        ].map((k, i) => (
+          <div key={i} className="ps-kpi">
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--purple-deep)' }}>
+              <Icon name={k.icon} size={16} />
+              <div className="label">{k.l}</div>
+            </div>
+            <div className="val">{k.v}</div>
+            <div className="delta">{k.d}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 22 }}>
+
+        {/* Заявки, требующие внимания */}
+        <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <div>
+              <span className="ps-eyebrow">заявки</span>
+              <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>
+                {newLeads.length > 0 ? `${newLeads.length} новых` : 'Новых заявок нет'}
+              </h3>
+            </div>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/admin/roles')}>
+              <Icon name="inbox" size={12} /> Все заявки
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {!loading && leads.length === 0 && (
+              <div style={{ color: 'var(--ink-muted)', fontSize: 13, padding: '8px 0' }}>Заявок пока нет</div>
+            )}
+            {leads.slice(0, 6).map((l, i, arr) => (
+              <div key={l.id ?? i} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px dashed var(--border)' : 'none', alignItems: 'center' }}>
+                <span className={`ps-flag ps-flag-${l.lang}`} style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>{l.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{l.details}</div>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 700, flexShrink: 0 }}>{l.receivedAt}</span>
+                {l.isNew && <span className="ps-chip ps-chip-orange" style={{ flexShrink: 0 }}>NEW</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Правая колонка */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="ps-card" style={{ padding: 22 }}>
+            <h3 className="ps-display" style={{ fontSize: 18, margin: '0 0 14px' }}>Финансы за месяц</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {!loading && kpi.length === 0 && (
+                <div style={{ color: 'var(--ink-muted)', fontSize: 12 }}>Нет данных</div>
+              )}
+              {kpi.map((k, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>{k.l}</span>
+                  <span style={{ fontWeight: 800, color: 'var(--ink)' }}>{k.v}</span>
+                </div>
+              ))}
+            </div>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" style={{ marginTop: 14 }} onClick={() => navigate('/admin/finance')}>
+              <Icon name="wallet" size={12} /> Подробнее
+            </button>
+          </div>
+
+          <div className="ps-card-purple" style={{ padding: 22, flex: 1 }}>
+            <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>команда</span>
+            <h3 className="ps-display ps-display-purple" style={{ fontSize: 22, margin: '4px 0 14px' }}>{team.length} человек</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {team.slice(0, 5).map((p, i) => (
+                <div key={p.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', opacity: 0.7, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                  <span style={{ fontSize: 11, opacity: 0.7 }}>{p.role}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ================================================================
    СТРАНИЦА ДАШБОРДА
    ================================================================ */
-const DASH_TITLE = { student: 'Главная', teacher: 'Главная', parent: 'Главная', admin: 'Дашборд' }
+const DASH_TITLE = { student: 'Главная', teacher: 'Главная', parent: 'Главная', admin: 'Дашборд', manager: 'Дашборд' }
 
 export default function DashboardPage() {
   const { role, sideRole, t } = useApp()
+  const navigate = useNavigate()
 
-  const isTeacherSide = role === 'teacher' || role === 'manager' || role === 'admin'
+  const isTeacherSide = role === 'teacher'
+  const isAdminSide    = role === 'manager' || role === 'admin'
   const { data, error } = useApi(
-    () => (isTeacherSide ? dashboardApi.getTeacher() : dashboardApi.getStudent()),
+    () => {
+      if (isAdminSide) return Promise.resolve(null) // DashAdmin загружает свои данные сама
+      return isTeacherSide ? dashboardApi.getTeacher() : dashboardApi.getStudent()
+    },
     [role],
   )
 
@@ -391,14 +519,15 @@ export default function DashboardPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title={DASH_TITLE[role] || 'Главная'} />
 
-        {error && (
+        {!isAdminSide && error && (
           <div style={{ padding: '16px 28px 0' }}>
             <ApiError message={error} />
           </div>
         )}
 
-        {(role === 'student' || role === 'parent') && <DashStudent t={t} data={data} />}
-        {(role === 'teacher' || role === 'manager' || role === 'admin') && <DashTeacher t={t} data={data} />}
+        {role === 'student' && <DashStudent t={t} data={data} />}
+        {role === 'teacher' && <DashTeacher t={t} data={data} />}
+        {isAdminSide && <DashAdmin navigate={navigate} />}
       </main>
     </div>
   )
