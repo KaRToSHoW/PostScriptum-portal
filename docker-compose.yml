@@ -53,6 +53,9 @@ services:
       APP_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
       APP_S3_SECRET_KEY: ${S3_SECRET_KEY:-}
       APP_S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+      APP_TURN_URL: ${TURN_URL:-}
+      APP_TURN_USER: ${TURN_USER:-psportal}
+      APP_TURN_PASSWORD: ${TURN_PASSWORD:-}
       CORS_ALLOWED_ORIGINS: ${FRONTEND_URL:-http://localhost}
     volumes:
       - uploads_data:/app/uploads
@@ -68,6 +71,25 @@ services:
       - backend
     ports:
       - "80:80"
+
+  # TURN-сервер для видеоконференций (ретрансляция медиа при строгом NAT).
+  # Запускается только на сервере: docker compose up -d coturn
+  # Требует открытых портов: 3478/tcp+udp и 49160-49200/udp
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    network_mode: host
+    profiles: ["turn"]
+    command: >
+      -n --log-file=stdout
+      --listening-port=3478
+      --min-port=49160 --max-port=49200
+      --realm=psportal
+      --lt-cred-mech
+      --user=${TURN_USER:-psportal}:${TURN_PASSWORD:-}
+      --fingerprint
+      --no-tls --no-dtls
+      --no-cli
 
   dozzle:
     image: amir20/dozzle:latest

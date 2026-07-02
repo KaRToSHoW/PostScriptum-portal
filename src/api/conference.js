@@ -1,6 +1,7 @@
 import { api } from './client'
 
 export const conferenceApi = {
+  ice:     ()               => api.get('/api/conference/ice'),
   lessons: ()               => api.get('/api/conference/lessons'),
   info:    (lessonId)       => api.get(`/api/conference/${lessonId}/info`),
   join:    (lessonId)       => api.post(`/api/conference/${lessonId}/join`, {}),

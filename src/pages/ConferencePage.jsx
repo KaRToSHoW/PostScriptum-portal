@@ -119,6 +119,7 @@ function ConferenceRoom({ lessonId }) {
 
   const localVideoRef = useRef(null)
   const localStreamRef = useRef(null)
+  const rtcConfigRef = useRef(RTC_CONFIG)
   const peersRef = useRef({})   // peerId -> RTCPeerConnection
   const pollRef  = useRef(null)
   const meRef    = useRef(null)
@@ -132,16 +133,22 @@ function ConferenceRoom({ lessonId }) {
 
   const createPeer = useCallback((peerId) => {
     if (peersRef.current[peerId]) return peersRef.current[peerId]
-    const pc = new RTCPeerConnection(RTC_CONFIG)
+    const pc = new RTCPeerConnection(rtcConfigRef.current)
     peersRef.current[peerId] = pc
 
     localStreamRef.current?.getTracks().forEach(tr => pc.addTrack(tr, localStreamRef.current))
+
+    // даже без своей камеры/микрофона должны принимать медиа собеседника
+    const kinds = new Set((localStreamRef.current?.getTracks() ?? []).map(t => t.kind))
+    if (!kinds.has('audio')) pc.addTransceiver('audio', { direction: 'recvonly' })
+    if (!kinds.has('video')) pc.addTransceiver('video', { direction: 'recvonly' })
 
     pc.onicecandidate = e => {
       if (e.candidate) sendSignal('ice', JSON.stringify(e.candidate), peerId)
     }
     pc.ontrack = e => {
-      setRemotes(prev => ({ ...prev, [peerId]: e.streams[0] }))
+      const stream = (e.streams && e.streams[0]) ? e.streams[0] : new MediaStream([e.track])
+      setRemotes(prev => ({ ...prev, [peerId]: stream }))
     }
     pc.onconnectionstatechange = () => {
       if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
@@ -206,15 +213,31 @@ function ConferenceRoom({ lessonId }) {
       if (cancelled) return
       setMe(joined); meRef.current = joined
 
+      // ICE-конфиг с сервера (STUN + TURN, если настроен) — до создания соединений
+      try {
+        const ice = await conferenceApi.ice()
+        if (ice?.iceServers?.length) rtcConfigRef.current = ice
+      } catch { /* остаёмся на STUN по умолчанию */ }
+
       conferenceApi.info(lessonId).then(d => { if (!cancelled) setInfo(d) }).catch(() => {})
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+      // пробуем видео+звук, потом только звук, потом только видео —
+      // на одном компьютере камеру может занять другой браузер
+      let stream = null
+      for (const constraints of [{ video: true, audio: true }, { video: false, audio: true }, { video: true, audio: false }]) {
+        try { stream = await navigator.mediaDevices.getUserMedia(constraints); break } catch { /* следующий вариант */ }
+      }
+      if (cancelled) { stream?.getTracks().forEach(t => t.stop()); return }
+      if (stream) {
         localStreamRef.current = stream
         if (localVideoRef.current) localVideoRef.current.srcObject = stream
-      } catch {
-        toast('Нет доступа к камере/микрофону', 'error')
+        const hasAudio = stream.getAudioTracks().length > 0
+        const hasVideo = stream.getVideoTracks().length > 0
+        setMicOn(hasAudio)
+        setCamOn(hasVideo)
+        if (!hasVideo) toast('Камера занята или недоступна — вы в эфире только со звуком', 'info')
+      } else {
+        toast('Камера и микрофон недоступны — вы будете видеть и слышать собеседника', 'error')
       }
 
       pollRef.current = setInterval(async () => {
@@ -228,7 +251,15 @@ function ConferenceRoom({ lessonId }) {
           // инициатор соединения — участник с меньшим id (детерминированно)
           const myId = meRef.current?.userId
           for (const peerId of (d.online || [])) {
-            if (peerId === myId || peersRef.current[peerId]) continue
+            if (peerId === myId) continue
+            // мёртвое соединение (собеседник перезагрузил страницу) — пересоздаём
+            const existing = peersRef.current[peerId]
+            if (existing && ['failed', 'closed', 'disconnected'].includes(existing.connectionState)) {
+              existing.close()
+              delete peersRef.current[peerId]
+              setRemotes(prev => { const n = { ...prev }; delete n[peerId]; return n })
+            }
+            if (peersRef.current[peerId]) continue
             if (myId < peerId) {
               const pc = createPeer(peerId)
               const offer = await pc.createOffer()
