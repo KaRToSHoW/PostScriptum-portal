@@ -17,6 +17,7 @@ import AdminReportsPage        from './pages/AdminReportsPage'
 import AdminSubscriptionsPage  from './pages/AdminSubscriptionsPage'
 import TeacherEarningsPage     from './pages/TeacherEarningsPage'
 import ParentPage         from './pages/ParentPage'
+import ConferencePage     from './pages/ConferencePage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
 function Protected({ children }) {
@@ -93,6 +94,12 @@ function AppRoutes() {
       } />
       <Route path="/children" element={
         <Protected><ParentPage /></Protected>
+      } />
+      <Route path="/conference" element={
+        <Protected><ConferencePage /></Protected>
+      } />
+      <Route path="/conference/:lessonId" element={
+        <Protected><ConferencePage /></Protected>
       } />
       <Route path="/settings" element={
         <Protected><ProfilePage /></Protected>

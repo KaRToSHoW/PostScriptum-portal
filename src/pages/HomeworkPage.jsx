@@ -884,57 +884,70 @@ function TeacherHomework() {
 
             {/* Фильтры */}
             {(allStudents.length > 1 || allLangs.length > 1) && (
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border-soft)', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border-soft)', alignItems: 'center' }}>
 
-                {/* По ученику */}
                 {allStudents.length > 1 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.1em', textTransform: 'uppercase', flexShrink: 0 }}>Ученик</span>
-                    <div style={{ display: 'inline-flex', padding: 2, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-                      <button onClick={() => setStudentFilter('all')} style={{
-                        padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer',
-                        background: studentFilter === 'all' ? 'var(--purple)' : 'transparent',
-                        color: studentFilter === 'all' ? '#fff' : 'var(--ink-muted)',
-                      }}>Все</button>
-                      {allStudents.map(s => (
-                        <button key={s.id} onClick={() => setStudentFilter(String(s.id))} style={{
-                          padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer',
-                          background: studentFilter === String(s.id) ? 'var(--purple)' : 'transparent',
-                          color: studentFilter === String(s.id) ? '#fff' : 'var(--ink-muted)',
-                        }}>
-                          {s.initials ?? s.name}
-                        </button>
-                      ))}
+                    <div style={{ position: 'relative' }}>
+                      <svg style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      <select
+                        value={studentFilter}
+                        onChange={e => setStudentFilter(e.target.value)}
+                        style={{
+                          appearance: 'none', WebkitAppearance: 'none',
+                          padding: '6px 32px 6px 12px', borderRadius: 10,
+                          border: studentFilter !== 'all' ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
+                          background: studentFilter !== 'all' ? 'var(--purple-tint)' : 'var(--bg-cream-soft)',
+                          color: studentFilter !== 'all' ? 'var(--purple-deep)' : 'var(--ink)',
+                          fontSize: 12, fontWeight: 800, cursor: 'pointer', outline: 'none',
+                          fontFamily: 'var(--font-body)',
+                        }}
+                      >
+                        <option value="all">Все ученики</option>
+                        {allStudents.map(s => (
+                          <option key={s.id} value={String(s.id)}>{s.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 )}
 
-                {/* По языку */}
                 {allLangs.length > 1 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.1em', textTransform: 'uppercase', flexShrink: 0 }}>Язык</span>
-                    <div style={{ display: 'inline-flex', padding: 2, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-                      <button onClick={() => setLangFilter('all')} style={{
-                        padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer',
-                        background: langFilter === 'all' ? 'var(--purple)' : 'transparent',
-                        color: langFilter === 'all' ? '#fff' : 'var(--ink-muted)',
-                      }}>Все</button>
-                      {allLangs.map(code => {
-                        const c = HW_LANG_COLOR[code] || 'var(--purple)'
-                        const sel = langFilter === code
-                        return (
-                          <button key={code} onClick={() => setLangFilter(code)} style={{
-                            padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                            background: sel ? c : 'transparent',
-                            color: sel ? '#fff' : c,
-                          }}>
-                            <span className={`ps-flag ps-flag-${code}`} style={{ fontSize: 12 }} />
-                            {HW_LANG_NAME[code] || code.toUpperCase()}
-                          </button>
-                        )
-                      })}
+                    <div style={{ position: 'relative' }}>
+                      <svg style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      <select
+                        value={langFilter}
+                        onChange={e => setLangFilter(e.target.value)}
+                        style={{
+                          appearance: 'none', WebkitAppearance: 'none',
+                          padding: '6px 32px 6px 12px', borderRadius: 10,
+                          border: langFilter !== 'all' ? `1.5px solid ${HW_LANG_COLOR[langFilter] || 'var(--purple)'}` : '1.5px solid var(--border)',
+                          background: langFilter !== 'all' ? (HW_LANG_COLOR[langFilter] || 'var(--purple)') + '12' : 'var(--bg-cream-soft)',
+                          color: langFilter !== 'all' ? (HW_LANG_COLOR[langFilter] || 'var(--purple-deep)') : 'var(--ink)',
+                          fontSize: 12, fontWeight: 800, cursor: 'pointer', outline: 'none',
+                          fontFamily: 'var(--font-body)',
+                        }}
+                      >
+                        <option value="all">Все языки</option>
+                        {allLangs.map(code => (
+                          <option key={code} value={code}>{HW_LANG_NAME[code] || code.toUpperCase()}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
+                )}
+
+                {(studentFilter !== 'all' || langFilter !== 'all') && (
+                  <button
+                    onClick={() => { setStudentFilter('all'); setLangFilter('all') }}
+                    style={{ padding: '6px 12px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'transparent', fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Сбросить
+                  </button>
                 )}
 
               </div>

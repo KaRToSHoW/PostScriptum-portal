@@ -5,7 +5,6 @@ import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import ApiError from '../components/ApiError'
 import { useApp } from '../context/AppContext'
-import { toast } from '../components/Toast'
 import { teachersApi } from '../api/teachers'
 
 const LANG_COLOR = {
@@ -38,14 +37,14 @@ function Stars({ rating }) {
   )
 }
 
-function TeacherCard({ t, onSelect }) {
+function TeacherCard({ t, onSelect, showMineBadge = true }) {
   return (
     <div
       onClick={() => onSelect(t)}
       className="ps-card"
       style={{ padding: 22, cursor: 'pointer', transition: 'box-shadow .15s', position: 'relative' }}
     >
-      {t.myTeacher && (
+      {t.myTeacher && showMineBadge && (
         <div style={{ position: 'absolute', top: 14, right: 14 }}>
           <span className="ps-chip ps-chip-purple">Мой преподаватель</span>
         </div>
@@ -67,7 +66,7 @@ function TeacherCard({ t, onSelect }) {
             </div>
           )}
         </div>
-        <div style={{ flex: 1, minWidth: 0, paddingRight: t.myTeacher ? 120 : 0 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: t.myTeacher && showMineBadge ? 120 : 0 }}>
           <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--ink)' }}>{t.name}</div>
           <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{t.role}</div>
           <div style={{ marginTop: 6 }}><Stars rating={t.rating} /></div>
@@ -102,12 +101,12 @@ function TeacherCard({ t, onSelect }) {
   )
 }
 
-function TeacherDrawer({ t, onClose, onMessage, onBook, canBook }) {
+function TeacherDrawer({ t, onClose, onMessage }) {
   if (!t) return null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex' }}>
       <div onClick={onClose} style={{ flex: 1, background: 'rgba(31,27,58,.35)', backdropFilter: 'blur(2px)' }} />
-      <div style={{ width: 420, background: '#fff', overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-pop)' }}>
+      <div style={{ width: 420, background: '#fff', overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-pop)', borderRadius: '20px 0 0 20px' }}>
 
         {/* Шапка */}
         <div className="ps-card-purple" style={{ padding: 28, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
@@ -154,44 +153,22 @@ function TeacherDrawer({ t, onClose, onMessage, onBook, canBook }) {
               {t.langs.map(l => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'var(--bg-cream-soft)', border: '1px solid var(--border-soft)' }}>
                   <span className={`ps-flag ps-flag-${t.flag}`} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{l}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{l.replace(/\s+[A-C][12]\s*$/, '').trim()}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Теги */}
-          <div>
-            <span className="ps-eyebrow">специализация</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-              {t.tags.map(tag => (
-                <span key={tag} style={{ padding: '6px 14px', borderRadius: 999, background: 'var(--purple-soft)', fontSize: 12, fontWeight: 800, color: 'var(--purple-deep)' }}>
-                  {tag}
-                </span>
               ))}
             </div>
           </div>
 
           {/* Ближайший урок */}
           {t.next && (
-            <div style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--success-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Следующий урок</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{t.next}</div>
-              </div>
-              <button className="ps-btn ps-btn-sm" style={{ background: 'var(--success)', color: '#fff', border: 'none' }}>
-                <Icon name="play" size={13} /> Войти
-              </button>
+            <div style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--success-soft)' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Следующий урок</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink)', marginTop: 2 }}>{t.next}</div>
             </div>
           )}
 
           {/* Действия */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto' }}>
-            {canBook && (
-              <button className="ps-btn ps-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }} onClick={() => onBook(t)}>
-                <Icon name="calendar" size={15} /> Записаться на урок
-              </button>
-            )}
             <button className="ps-btn ps-btn-outline" style={{ width: '100%', justifyContent: 'center', padding: '13px 0' }} onClick={() => onMessage(t)}>
               <Icon name="chat" size={15} /> Написать сообщение
             </button>
@@ -211,7 +188,6 @@ export default function TeachersPage() {
   const [apiError, setApiError]     = useState(null)
   const [langFilter, setLangFilter] = useState('all')
   const [selected, setSelected]     = useState(null)
-  const [onlyMine, setOnlyMine]     = useState(false)
 
   useEffect(() => {
     teachersApi.list()
@@ -235,18 +211,10 @@ export default function TeachersPage() {
     }})
   }
 
-  async function handleBook(t) {
-    try {
-      await teachersApi.enroll({ teacherId: t.id, language: t.flag, level: '' })
-      toast(`Записались к ${t.name.split(' ')[0]}! Выберите время в расписании`, 'success')
-    } catch {
-      toast('Запись к ' + t.name.split(' ')[0] + ' — выберите время в расписании')
-    }
-    navigate('/calendar')
-  }
+  // Ученик видит только назначенных ему преподавателей
+  const visible = role === 'student' ? teachers.filter(t => t.myTeacher) : teachers
 
-  const filtered = teachers
-    .filter(t => onlyMine ? t.myTeacher : true)
+  const filtered = visible
     .filter(t => langFilter === 'all' || t.flag === langFilter)
 
   return (
@@ -261,12 +229,13 @@ export default function TeachersPage() {
           {apiError && <ApiError message={apiError} />}
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
             {[
-              { l: 'Мои преподаватели', v: teachers.filter(t=>t.myTeacher).length, d: 'активные курсы',  icon: 'users',   color: 'var(--purple-deep)' },
-              { l: 'Носители языка',    v: teachers.filter(t=>t.native).length,    d: 'в школе',         icon: 'sparkle', color: 'var(--orange-deep)' },
-              { l: 'Средний рейтинг',   v: teachers.length ? (teachers.reduce((s,t)=>s+t.rating,0)/teachers.length).toFixed(1) : '—', d: 'из 5', icon: 'star', color: 'var(--warning)' },
-              { l: 'Преподавателей',    v: teachers.length,                        d: 'всего в школе',   icon: 'grid',    color: 'var(--ink-muted)'   },
+              ...(role === 'student'
+                ? [{ l: 'Мои преподаватели', v: visible.length, d: 'активные курсы', icon: 'users', color: 'var(--purple-deep)' }]
+                : [{ l: 'Преподавателей',    v: visible.length, d: 'всего в школе',  icon: 'grid',  color: 'var(--ink-muted)'   }]),
+              { l: 'Носители языка',    v: visible.filter(t=>t.native).length,    d: role === 'student' ? 'среди моих' : 'в школе', icon: 'sparkle', color: 'var(--orange-deep)' },
+              { l: 'Средний рейтинг',   v: visible.length ? (visible.reduce((s,t)=>s+t.rating,0)/visible.length).toFixed(1) : '—', d: 'из 5', icon: 'star', color: 'var(--warning)' },
             ].map((k,i) => (
               <div key={i} className="ps-kpi">
                 <div style={{ display:'flex', gap:10, alignItems:'center', color: k.color }}>
@@ -291,19 +260,6 @@ export default function TeachersPage() {
                 }}>{f.l}</button>
               ))}
             </div>
-            <button
-              onClick={() => setOnlyMine(!onlyMine)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', border: '1.5px solid',
-                transition: 'all .12s',
-                background:   onlyMine ? 'var(--purple)' : 'transparent',
-                color:        onlyMine ? '#fff' : 'var(--purple)',
-                borderColor:  'var(--purple)',
-              }}
-            >
-              <Icon name="user" size={13} /> Только мои
-            </button>
           </div>
 
           {/* Сетка */}
@@ -314,7 +270,7 @@ export default function TeachersPage() {
               </div>
             )}
             {!loading && filtered.map(t => (
-              <TeacherCard key={t.id} t={t} onSelect={setSelected} />
+              <TeacherCard key={t.id} t={t} onSelect={setSelected} showMineBadge={role !== 'student'} />
             ))}
             {!loading && filtered.length === 0 && !apiError && (
               <div style={{ gridColumn: '1/-1', padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
@@ -325,7 +281,7 @@ export default function TeachersPage() {
         </div>
       </main>
 
-      <TeacherDrawer t={selected} onClose={() => setSelected(null)} onMessage={handleMessage} onBook={handleBook} canBook={role === 'student'} />
+      <TeacherDrawer t={selected} onClose={() => setSelected(null)} onMessage={handleMessage} />
     </div>
   )
 }

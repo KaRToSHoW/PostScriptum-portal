@@ -72,6 +72,7 @@ function DashStudent({ t, data }) {
   const next  = data?.nextLesson   ?? null
   const sub   = data?.subscription ?? { used: 0, total: 0 }
   const streak = data?.streak      ?? 0
+  const missed = data?.missed      ?? 0
   const courses  = data?.courses   ?? []
   const homework = data?.homework  ?? []
   const schedule = data?.schedule  ?? []
@@ -95,8 +96,8 @@ function DashStudent({ t, data }) {
           )}
           {next && (
             <div style={{ display: 'flex', gap: 12 }}>
-              <button className="ps-btn ps-btn-primary" onClick={() => next.zoomUrl && window.open(next.zoomUrl, '_blank')}>
-                <Icon name="play" size={14} /> {t('Войти в Zoom')}
+              <button className="ps-btn ps-btn-primary" onClick={() => navigate(next.id ? `/conference/${next.id}` : '/conference')}>
+                <Icon name="play" size={14} /> {t('Войти на урок')}
               </button>
               <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/homework')}>
                 <Icon name="file" size={14} /> {t('Подготовиться')}
@@ -118,13 +119,14 @@ function DashStudent({ t, data }) {
                 <FlameIcon size={14} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--ink)', letterSpacing: '-0.02em', marginTop: 2 }}>
-                {streak} дней <FlameIcon size={28} />
+                {streak} {streak % 10 === 1 && streak % 100 !== 11 ? 'занятие' : streak % 10 >= 2 && streak % 10 <= 4 && (streak % 100 < 10 || streak % 100 >= 20) ? 'занятия' : 'занятий'} <FlameIcon size={28} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 3 }}>
-              {[0,1,0,1,0,1,0].map((d, i) => (
-                <div key={i} style={{ width: 8, height: 22, borderRadius: 3, background: d ? 'var(--orange)' : 'var(--orange-soft)' }} />
-              ))}
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: missed > 0 ? 'var(--danger)' : 'var(--success)' }}>{missed}</div>
+              <div style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                {missed % 10 === 1 && missed % 100 !== 11 ? 'пропуск' : missed % 10 >= 2 && missed % 10 <= 4 && (missed % 100 < 10 || missed % 100 >= 20) ? 'пропуска' : 'пропусков'}
+              </div>
             </div>
           </div>
           <div className="ps-card" style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -170,7 +172,7 @@ function DashStudent({ t, data }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.language}</div>
                     <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>с {c.teacher}</div>
-                    <div style={{ fontSize: 11, marginTop: 8, color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.1em' }}>{c.nextDate ?? '—'}</div>
+                    {c.nextDate && <div style={{ fontSize: 11, marginTop: 8, color, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.1em' }}>{c.nextDate}</div>}
                   </div>
                 </div>
               )

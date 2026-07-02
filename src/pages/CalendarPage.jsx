@@ -496,6 +496,7 @@ function CalendarAdmin({ canCreate = false }) {
   const [filterTeacherId, setFilterTeacherId] = useState('')
   const [rescheduleFor,   setRescheduleFor]   = useState(null)
   const [attendanceFor,   setAttendanceFor]   = useState(null)
+  const [showAllPanel,    setShowAllPanel]    = useState(false)
 
   function loadEvents() {
     calendarApi.getAdminMonth(ym.y, ym.m, filterTeacherId || undefined)
@@ -598,7 +599,7 @@ function CalendarAdmin({ canCreate = false }) {
               return (
                 <div
                   key={i}
-                  onClick={() => setSel(c.d)}
+                  onClick={() => { setSel(c.d); setShowAllPanel(false) }}
                   style={{
                     borderRadius: 10, cursor: 'pointer',
                     border: today ? '2px solid var(--orange)' : sel ? '2px solid var(--purple)' : '1px solid var(--border-soft)',
@@ -608,14 +609,14 @@ function CalendarAdmin({ canCreate = false }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: today ? 'var(--orange-deep)' : sel ? 'var(--purple-deep)' : past ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
-                    {evs.length > 4
-                      ? <span style={{ fontSize: 10, fontWeight: 800, background: 'var(--purple)', color: '#fff', padding: '0px 5px', borderRadius: 999 }}>{evs.length}</span>
+                    {evs.length > 6
+                      ? <span style={{ fontSize: 10, fontWeight: 800, background: 'var(--purple)', color: '#fff', padding: '0px 5px', borderRadius: 999 }}>+{evs.length - 6}</span>
                       : evs.length > 0
                         ? <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>{evs.length} ур.</span>
                         : null
                     }
                   </div>
-                  {evs.slice(0, 4).map((e, ei) => {
+                  {evs.slice(0, 6).map((e, ei) => {
                     const st = eventStyle(e.s)
                     return (
                       <div key={ei} style={{
@@ -636,7 +637,9 @@ function CalendarAdmin({ canCreate = false }) {
         </div>
 
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', minHeight: 0 }}>
-          <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0 }}>
+
+          {/* Выбранный день */}
+          <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
             <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {selectedDay ? selLabel : 'выберите день'}
             </span>
@@ -646,44 +649,48 @@ function CalendarAdmin({ canCreate = false }) {
             {selEvs.length === 0 && selectedDay && (
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)' }}>В этот день занятий нет</div>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {selEvs.map((it, i) => {
-                const live = it.s === 'now'
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 2 }}>
+              {(showAllPanel ? selEvs : selEvs.slice(0, 3)).map((it, i) => {
+                const live   = it.s === 'now'
+                const canAct = canCreate && it.s !== 'done' && it.s !== 'missed'
+                const stateColor = it.s === 'done' ? '#6ee7a0' : it.s === 'missed' ? '#ffaaaa' : 'rgba(255,255,255,.55)'
                 return (
                   <div key={i} style={{
-                    display: 'flex', gap: 10, padding: 10, borderRadius: 10,
+                    display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', borderRadius: 12,
                     background: live ? 'var(--orange)' : 'rgba(255,255,255,0.1)',
-                    border: live ? 'none' : '1px solid rgba(255,255,255,0.18)',
-                    alignItems: 'center',
+                    border: live ? 'none' : '1px solid rgba(255,255,255,0.15)',
                   }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, width: 44, flexShrink: 0 }}>{it.t}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.2 }}>{LANG_NAME[it.l]}</div>
-                      <div style={{ fontSize: 11, opacity: 0.8, marginTop: 1 }}>{it.who}{it.room ? ` · ${it.room}` : ''}</div>
-                      <div style={{ fontSize: 10, opacity: 0.65, marginTop: 1 }}>{it.students}</div>
-                      <div style={{ fontSize: 10, opacity: 0.65, marginTop: 1 }}>{STATE_LABEL[it.s] || it.s}</div>
+                    {/* Верхняя строка: время + язык + статус */}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, color: '#fff', flexShrink: 0, minWidth: 42 }}>{it.t}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{LANG_NAME[it.l]}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.75)', marginTop: 2 }}>{it.who}</div>
+                        {it.students && <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', marginTop: 1 }}>{it.students}</div>}
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: stateColor, flexShrink: 0, paddingTop: 2 }}>
+                        {it.s === 'done' ? '✓' : it.s === 'missed' ? '✗' : it.s === 'now' ? '●' : ''}
+                      </span>
                     </div>
-                    {live && <Icon name="play" size={14} />}
-                    {it.s === 'done' && <span style={{ color: 'rgba(255,255,255,.8)' }}><Icon name="check" size={14} /></span>}
-                    {it.s === 'missed' && <span style={{ color: '#ffaaaa' }}>✗</span>}
-                    {canCreate && it.s !== 'done' && it.s !== 'missed' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, width: '100%' }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="ps-btn ps-btn-sm"
-                            style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none', fontSize: 10 }}
-                            onClick={() => setRescheduleFor(it)}>
-                            <Icon name="calendar" size={11} /> Перенести
-                          </button>
-                          <button className="ps-btn ps-btn-sm"
-                            style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,80,80,.25)', color: '#fff', border: 'none', fontSize: 10 }}
-                            onClick={async () => { try { await api.post(`/api/manager/lessons/${it.id}/cancel`, {}); toast('Урок отменён ✓', 'success'); loadEvents() } catch(e) { toast(e.message||'Ошибка', 'error') } }}>
-                            <Icon name="plus" size={11} style={{ transform: 'rotate(45deg)' }} /> Отменить
-                          </button>
-                        </div>
+                    {/* Статус текст */}
+                    <div style={{ fontSize: 10, color: stateColor, fontWeight: 700 }}>{STATE_LABEL[it.s] || it.s}</div>
+                    {/* Кнопки действий */}
+                    {canAct && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 2 }}>
                         <button className="ps-btn ps-btn-sm"
-                          style={{ justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none', fontSize: 10 }}
+                          style={{ justifyContent: 'center', background: 'rgba(255,255,255,.15)', color: '#fff', border: 'none', fontSize: 11 }}
+                          onClick={() => setRescheduleFor(it)}>
+                          <Icon name="calendar" size={11} /> Перенести
+                        </button>
+                        <button className="ps-btn ps-btn-sm"
+                          style={{ justifyContent: 'center', background: 'rgba(255,255,255,.15)', color: '#fff', border: 'none', fontSize: 11 }}
                           onClick={() => setAttendanceFor(it)}>
-                          <Icon name="users" size={11} /> Отметить посещение
+                          <Icon name="users" size={11} /> Посещение
+                        </button>
+                        <button className="ps-btn ps-btn-sm"
+                          style={{ gridColumn: '1 / -1', justifyContent: 'center', background: 'rgba(255,80,80,.22)', color: '#ffb3b3', border: 'none', fontSize: 11 }}
+                          onClick={async () => { try { await api.post(`/api/manager/lessons/${it.id}/cancel`, {}); toast('Урок отменён ✓', 'success'); loadEvents() } catch(e) { toast(e.message||'Ошибка', 'error') } }}>
+                          <Icon name="plus" size={11} style={{ transform: 'rotate(45deg)' }} /> Отменить
                         </button>
                       </div>
                     )}
@@ -691,7 +698,55 @@ function CalendarAdmin({ canCreate = false }) {
                 )
               })}
             </div>
+            {selEvs.length > 3 && (
+              <button
+                onClick={() => setShowAllPanel(v => !v)}
+                style={{ marginTop: 4, background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', width: '100%' }}
+              >
+                {showAllPanel ? 'Свернуть' : `Ещё ${selEvs.length - 3} ${selEvs.length - 3 === 1 ? 'урок' : selEvs.length - 3 < 5 ? 'урока' : 'уроков'}`}
+              </button>
+            )}
           </div>
+
+          {/* Статистика за месяц */}
+          {(() => {
+            const allEvs = Object.values(days).flat()
+            const done    = allEvs.filter(e => e.s === 'done').length
+            const missed  = allEvs.filter(e => e.s === 'missed').length
+            const planned = allEvs.filter(e => e.s === 'planned' || e.s === 'today').length
+            return (
+              <div className="ps-card" style={{ padding: 18, flexShrink: 0 }}>
+                <span className="ps-eyebrow">посещаемость за месяц</span>
+                <h3 className="ps-display" style={{ fontSize: 18, margin: '6px 0 14px' }}>Статистика</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+                  {[
+                    { v: done,    l: 'Проведено', c: 'var(--success)'     },
+                    { v: missed,  l: 'Пропуск',   c: 'var(--danger)'      },
+                    { v: planned, l: 'Впереди',   c: 'var(--purple-deep)' },
+                  ].map(s => (
+                    <div key={s.l}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, color: s.c }}>{s.v}</div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8, paddingTop: 12, borderTop: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
+                  {[
+                    { c: 'var(--success)',     l: 'Проведено' },
+                    { c: 'var(--danger)',      l: 'Пропущено' },
+                    { c: 'var(--purple-deep)', l: 'Запланировано' },
+                    { c: 'var(--orange)',      l: 'Сейчас' },
+                  ].map(L => (
+                    <div key={L.l} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: L.c, flexShrink: 0 }} />
+                      <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>{L.l}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
         </aside>
       </div>
 
@@ -739,7 +794,7 @@ export default function CalendarPage() {
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title={title} />
-        {isAdmin ? <CalendarAdmin /> : isManager ? <CalendarAdmin canCreate /> : <CalendarStudent />}
+        {isAdmin || isManager ? <CalendarAdmin canCreate /> : <CalendarStudent />}
       </main>
     </div>
   )

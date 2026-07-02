@@ -7,6 +7,7 @@ import ApiError  from '../components/ApiError'
 import { useApp } from '../context/AppContext'
 import { teachersApi } from '../api/teachers'
 import { adminApi } from '../api/admin'
+import { api } from '../api/client'
 import { toast } from '../components/Toast'
 import ScheduleLessonModal from '../components/ScheduleLessonModal'
 
@@ -16,9 +17,13 @@ const LANGS = [
   { code: 'de', name: 'Немецкий' },   { code: 'es', name: 'Испанский' }, { code: 'it', name: 'Итальянский' },
 ]
 
-function StudentCard({ s, onMessage, onSchedule }) {
+function StudentCard({ s, onMessage, onSchedule, extraActions }) {
   const firstCode = (s.langCodes ?? [])[0] || 'fr'
   const color = LANG_COLOR[firstCode] || 'var(--purple)'
+  const langs = Array.isArray(s.langs)
+    ? s.langs
+    : ((s.langs ?? s.languages ?? '')).split(', ').filter(Boolean)
+  const langCodes = Array.isArray(s.langCodes) ? s.langCodes : []
   return (
     <div className="ps-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -32,42 +37,48 @@ function StudentCard({ s, onMessage, onSchedule }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
-          {s.showEmail && <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{s.email}</div>}
+          {(s.showEmail || s.email) && <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{s.email}</div>}
+          {s.parentName && <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>Родитель: {s.parentName}</div>}
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-            {(s.langs ?? []).map((lang, i) => {
-              const code = (s.langCodes ?? [])[i] || ''
+            {langs.map((lang, i) => {
+              const code = langCodes[i] || ''
               const c = LANG_COLOR[code] || 'var(--purple)'
               return <span key={code || i} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: c + '18', color: c, border: `1px solid ${c}33` }}>{lang}</span>
             })}
           </div>
         </div>
-        <span className={`ps-chip ps-chip-${s.status === 'ACTIVE' ? 'green' : s.status === 'PAUSED' ? 'orange' : 'gray'}`}>
-          {s.status === 'ACTIVE' ? 'Активен' : s.status === 'PAUSED' ? 'Пауза' : 'Завершён'}
-        </span>
+        {s.status && (
+          <span className={`ps-chip ps-chip-${s.status === 'ACTIVE' ? 'green' : s.status === 'PAUSED' ? 'orange' : 'gray'}`}>
+            {s.status === 'ACTIVE' ? 'Активен' : s.status === 'PAUSED' ? 'Пауза' : 'Завершён'}
+          </span>
+        )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border-soft)' }}>
-        {s.nextLesson ? (
-          <div style={{ fontSize: 12 }}>
-            <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Следующий урок: </span>
-            <span style={{ color, fontWeight: 800 }}>{s.nextLesson}</span>
-          </div>
-        ) : (
-          <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Уроки не запланированы</span>
+      <div style={{ paddingTop: 8, borderTop: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {(s.nextLesson || s.teachers) && (
+          s.nextLesson ? (
+            <div style={{ fontSize: 12 }}>
+              <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Следующий урок: </span>
+              <span style={{ color, fontWeight: 800 }}>{s.nextLesson}</span>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+              <Icon name="sparkle" size={11} /> {s.teachers}
+            </div>
+          )
         )}
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <button
-            className="ps-btn ps-btn-ghost ps-btn-sm"
-            onClick={() => onSchedule(s)}
-          >
-            <Icon name="calendar" size={13} /> Запланировать
-          </button>
-          <button
-            className="ps-btn ps-btn-ghost ps-btn-sm"
-            onClick={() => onMessage(s)}
-          >
-            <Icon name="chat" size={13} /> Написать
-          </button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {extraActions}
+          {onSchedule && (
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => onSchedule(s)}>
+              <Icon name="calendar" size={13} /> Запланировать
+            </button>
+          )}
+          {onMessage && (
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => onMessage(s)}>
+              <Icon name="chat" size={13} /> Написать
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -300,16 +311,29 @@ function ModalActions({ busy, onSubmit, onClose, label }) {
 function AdminStudents() {
   const { sideRole } = useApp()
   const navigate = useNavigate()
-  const [students, setStudents] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [assign, setAssign]     = useState(null)
-  const [link, setLink]         = useState(null)
+  const [teachers, setTeachers]       = useState([])
+  const [teacherId, setTeacherId]     = useState('')
+  const [students, setStudents]       = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [assign, setAssign]           = useState(null)
+  const [link, setLink]               = useState(null)
+  const [scheduleFor, setScheduleFor] = useState(null)
+
+  useEffect(() => {
+    api.get('/api/manager/teachers').then(setTeachers).catch(() => {})
+  }, [])
 
   function load() {
     setLoading(true)
-    adminApi.students().then(setStudents).catch(() => {}).finally(() => setLoading(false))
+    const req = teacherId
+      ? api.get(`/api/manager/teacher/${teacherId}/students`)
+      : adminApi.students()
+    req
+      .then(r => setStudents(Array.isArray(r) ? r : []))
+      .catch(() => setStudents([]))
+      .finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(load, [teacherId])
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -317,11 +341,12 @@ function AdminStudents() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Ученики" />
         <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
             {[
-              { l: 'Всего учеников',   v: students.length,                             icon: 'users',   color: 'var(--purple-deep)' },
-              { l: 'С преподавателем', v: students.filter(s => s.teachers).length,     icon: 'sparkle', color: 'var(--success)'     },
-            ].map((k,i) => (
+              { l: 'Всего учеников',   v: students.length,                         icon: 'users',   color: 'var(--purple-deep)' },
+              { l: 'С преподавателем', v: students.filter(s => s.teachers || teacherId).length, icon: 'sparkle', color: 'var(--success)' },
+            ].map((k, i) => (
               <div key={i} className="ps-kpi">
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}><Icon name={k.icon} size={16} /><div className="label">{k.l}</div></div>
                 <div className="val">{loading ? '…' : k.v}</div>
@@ -329,30 +354,59 @@ function AdminStudents() {
             ))}
           </div>
 
+          {/* Фильтр по преподавателю */}
+          {teachers.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '.1em', flexShrink: 0 }}>Преподаватель</span>
+              <div style={{ position: 'relative' }}>
+                <svg style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                <select
+                  value={teacherId}
+                  onChange={e => setTeacherId(e.target.value)}
+                  style={{
+                    appearance: 'none', WebkitAppearance: 'none',
+                    padding: '6px 32px 6px 12px', borderRadius: 10,
+                    border: teacherId ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
+                    background: teacherId ? 'var(--purple-tint)' : 'var(--bg-cream-soft)',
+                    color: teacherId ? 'var(--purple-deep)' : 'var(--ink)',
+                    fontSize: 12, fontWeight: 800, cursor: 'pointer', outline: 'none',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  <option value="">Все преподаватели</option>
+                  {teachers.map(t => (
+                    <option key={t.id} value={String(t.id)}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              {teacherId && (
+                <button onClick={() => setTeacherId('')} style={{ padding: '6px 10px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'transparent', fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Сбросить
+                </button>
+              )}
+            </div>
+          )}
+
           {!loading && students.length === 0 && (
             <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)' }}>Учеников пока нет</div>
+          )}
+          {loading && (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)' }}>Загрузка...</div>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
             {students.map(s => (
-              <div key={s.id} className="ps-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="ps-avatar" style={{ width: 44, height: 44, fontSize: 14 }}>{s.initials}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{s.email}{s.parentName ? ` · родитель: ${s.parentName}` : ''}</div>
-                    {s.languages && <div style={{ fontSize: 11, color: 'var(--purple)', fontWeight: 700, marginTop: 2 }}>{s.languages}</div>}
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
-                  <Icon name="sparkle" size={11} /> {s.teachers || 'Преподаватель не назначен'} · {s.courses ?? 0} язык(ов)
-                </div>
-                <div style={{ display: 'flex', gap: 8, paddingTop: 8, borderTop: '1px solid var(--border-soft)', flexWrap: 'wrap' }}>
+              <StudentCard
+                key={s.id}
+                s={s}
+                onMessage={s2 => navigate('/messages', { state: { userId: s2.id, teacherName: s2.name, teacherInitials: s2.initials } })}
+                onSchedule={setScheduleFor}
+                extraActions={<>
                   <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={() => setAssign(s)}><Icon name="plus" size={12} /> Преподаватель</button>
                   <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => setLink(s)}><Icon name="users" size={12} /> Родитель</button>
-                  <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/messages', { state: { userId: s.id, teacherName: s.name, teacherInitials: s.initials } })}><Icon name="chat" size={12} /></button>
-                </div>
-              </div>
+                </>}
+              />
             ))}
           </div>
         </div>
@@ -360,12 +414,136 @@ function AdminStudents() {
 
       {assign && <AssignModal student={assign} onClose={() => setAssign(null)} onDone={load} />}
       {link && <LinkParentModal student={link} onClose={() => setLink(null)} onDone={load} />}
+      {scheduleFor && (
+        <ScheduleLessonModal
+          student={scheduleFor}
+          teachers={teachers}
+          defaultTeacherId={teacherId || ''}
+          initialDate={null}
+          onClose={() => setScheduleFor(null)}
+          onDone={load}
+        />
+      )}
+    </div>
+  )
+}
+
+function ManagerStudents() {
+  const { sideRole } = useApp()
+  const navigate = useNavigate()
+  const [teachers, setTeachers]       = useState([])
+  const [teacherId, setTeacherId]     = useState('')
+  const [students, setStudents]       = useState([])
+  const [loading, setLoading]         = useState(false)
+  const [scheduleFor, setScheduleFor] = useState(null)
+
+  useEffect(() => {
+    api.get('/api/manager/teachers').then(setTeachers).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    const req = teacherId
+      ? api.get(`/api/manager/teacher/${teacherId}/students`)
+      : adminApi.students()
+    req
+      .then(r => setStudents(Array.isArray(r) ? r : []))
+      .catch(() => setStudents([]))
+      .finally(() => setLoading(false))
+  }, [teacherId])
+
+  const selectedTeacher = teachers.find(t => String(t.id) === String(teacherId))
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
+      <Sidebar role={sideRole} />
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <TopBar title="Ученики" />
+        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+          {/* KPI */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+            {[
+              { l: 'Всего учеников',   v: students.length,                         icon: 'users',   color: 'var(--purple-deep)' },
+              { l: 'С преподавателем', v: students.filter(s => s.teachers || selectedTeacher).length, icon: 'sparkle', color: 'var(--success)' },
+            ].map((k, i) => (
+              <div key={i} className="ps-kpi">
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}>
+                  <Icon name={k.icon} size={16} />
+                  <div className="label">{k.l}</div>
+                </div>
+                <div className="val">{loading ? '…' : k.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Фильтр по преподавателю */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Преподаватель</span>
+            <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
+              <button
+                onClick={() => setTeacherId('')}
+                style={{
+                  padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+                  border: 'none', cursor: 'pointer', transition: 'all .12s',
+                  background: !teacherId ? 'var(--purple)' : 'transparent',
+                  color: !teacherId ? '#fff' : 'var(--ink-muted)',
+                }}
+              >Все</button>
+              {teachers.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTeacherId(String(t.id))}
+                  style={{
+                    padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+                    border: 'none', cursor: 'pointer', transition: 'all .12s',
+                    background: teacherId === String(t.id) ? 'var(--purple)' : 'transparent',
+                    color: teacherId === String(t.id) ? '#fff' : 'var(--ink-muted)',
+                  }}
+                >{t.name}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Список */}
+          {loading ? (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)' }}>Загрузка...</div>
+          ) : students.length === 0 ? (
+            <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
+              {teacherId ? 'У этого преподавателя пока нет учеников' : 'Учеников пока нет'}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+              {students.map(s => (
+                <StudentCard
+                  key={s.id}
+                  s={s}
+                  onMessage={s2 => navigate('/messages', { state: { userId: s2.id, teacherName: s2.name, teacherInitials: s2.initials } })}
+                  onSchedule={setScheduleFor}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {scheduleFor && (
+        <ScheduleLessonModal
+          student={scheduleFor}
+          teachers={teachers}
+          defaultTeacherId={teacherId || ''}
+          initialDate={null}
+          onClose={() => setScheduleFor(null)}
+          onDone={() => {}}
+        />
+      )}
     </div>
   )
 }
 
 export default function StudentsPage() {
   const { role } = useApp()
-  if (role === 'admin' || role === 'manager') return <AdminStudents />
+  if (role === 'admin') return <AdminStudents />
+  if (role === 'manager') return <ManagerStudents />
   return <TeacherStudents />
 }

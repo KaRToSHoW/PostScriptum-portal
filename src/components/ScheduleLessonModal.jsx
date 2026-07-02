@@ -402,7 +402,7 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
 /* ================================================================
    Основная модалка
    ================================================================ */
-export default function ScheduleLessonModal({ student, students: studentsProp, teachers, initialDate, onClose, onDone }) {
+export default function ScheduleLessonModal({ student, students: studentsProp, teachers, initialDate, onClose, onDone, defaultTeacherId }) {
   const today    = new Date()
   today.setHours(0, 0, 0, 0)
   const todayStr = toStr(today.getFullYear(), today.getMonth() + 1, today.getDate())
@@ -411,7 +411,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
   const [ym, setYm] = useState({ y: initDate.getFullYear(), m: initDate.getMonth() + 1 })
 
   const isManagerMode = !!(teachers?.length)
-  const [selectedTeacherId, setSelectedTeacherId] = useState('')
+  const [selectedTeacherId, setSelectedTeacherId] = useState(defaultTeacherId ?? '')
   const [teacherStudents,   setTeacherStudents]   = useState([])
 
   const students = isManagerMode ? teacherStudents : studentsProp
@@ -419,7 +419,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
   useEffect(() => {
     if (!selectedTeacherId) { setTeacherStudents([]); return }
     api.get(`/api/manager/teacher/${selectedTeacherId}/students`)
-      .then(d => { setTeacherStudents(d); setStudentId('') })
+      .then(d => { setTeacherStudents(d); if (!student) setStudentId('') })
       .catch(() => {})
   }, [selectedTeacherId])
 
@@ -437,13 +437,41 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
 
   const pickedStudent = student ?? students?.find(s => String(s.id) === String(studentId))
 
-  // Sync langCode when picked student changes
+  function normLangs(s) {
+    if (!s) return []
+    return Array.isArray(s.langs) ? s.langs : (s.langs ?? '').split(', ').filter(Boolean)
+  }
+
+  // Ученик в списке текущего преподавателя (содержит только языки зачисления к нему)
+  const teacherEnrolledStudent = selectedTeacherId && pickedStudent
+    ? teacherStudents.find(s => String(s.id) === String(pickedStudent.id))
+    : null
+
+  // Если нашли в списке преподавателя — берём его enrolled-языки (гарантированно есть enrollment)
+  // Если нет — студент не зачислен к этому преподавателю, показываем языки препода (создать не выйдет)
+  const selectedTeacher = isManagerMode
+    ? (teachers ?? []).find(t => String(t.id) === selectedTeacherId)
+    : null
+
+  const activeLangCodes = teacherEnrolledStudent
+    ? (Array.isArray(teacherEnrolledStudent.langCodes) ? teacherEnrolledStudent.langCodes : [])
+    : selectedTeacher
+      ? (Array.isArray(selectedTeacher.langCodes) ? selectedTeacher.langCodes : [])
+      : (pickedStudent?.langCodes ?? [])
+  const activeLangs = teacherEnrolledStudent
+    ? normLangs(teacherEnrolledStudent)
+    : selectedTeacher
+      ? normLangs(selectedTeacher)
+      : normLangs(pickedStudent)
+
+  const studentNotEnrolledWithTeacher = isManagerMode && selectedTeacherId && pickedStudent && teacherStudents.length > 0 && !teacherEnrolledStudent
+
+  // Sync langCode when teacher or student changes
   useEffect(() => {
-    const codes = pickedStudent?.langCodes ?? []
-    if (codes.length > 0 && !codes.includes(langCode)) {
-      setLangCode(codes[0])
+    if (activeLangCodes.length > 0 && !activeLangCodes.includes(langCode)) {
+      setLangCode(activeLangCodes[0])
     }
-  }, [pickedStudent?.id])
+  }, [selectedTeacherId, pickedStudent?.id])
   const lessonsLeft   = pickedStudent?.lessonsLeft ?? null
 
   useEffect(() => {
@@ -453,10 +481,11 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
   }, [studentId, lessonsLeft, periodMode])
 
   useEffect(() => {
-    calendarApi.getMonth(ym.y, ym.m)
-      .then(d => setEvents(d?.events ?? {}))
-      .catch(() => setEvents({}))
-  }, [ym.y, ym.m])
+    const p = isManagerMode && selectedTeacherId
+      ? calendarApi.getAdminMonth(ym.y, ym.m, selectedTeacherId).then(d => d?.days ?? {})
+      : calendarApi.getMonth(ym.y, ym.m).then(d => d?.events ?? {})
+    p.then(setEvents).catch(() => setEvents({}))
+  }, [ym.y, ym.m, selectedTeacherId])
 
   const autoWeeks      = selectedDays.size > 0 && lessonsLeft ? Math.ceil(lessonsLeft / selectedDays.size) : 0
   const effectiveWeeks = periodMode === 'subscription' ? autoWeeks : weeksCount
@@ -663,20 +692,27 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
                   <option value="">Выберите ученика</option>
                   {(students ?? []).map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.name}{s.langs?.length ? ' · ' + s.langs.join(', ') : ''}{s.lessonsLeft ? ` · ${s.lessonsLeft} ур.` : ''}
+                      {s.name}{s.langs?.length ? ' · ' + (Array.isArray(s.langs) ? s.langs.join(', ') : s.langs) : ''}{s.lessonsLeft ? ` · ${s.lessonsLeft} ур.` : ''}
                     </option>
                   ))}
                 </select>
               </div>
             )}
 
-            {/* Выбор языка — только если у ученика 2+ языка */}
-            {pickedStudent && (pickedStudent.langCodes ?? []).length > 1 && (
+            {/* Предупреждение: ученик не зачислен к этому преподавателю */}
+            {studentNotEnrolledWithTeacher && (
+              <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(210,80,80,.08)', border: '1.5px solid rgba(210,80,80,.25)', fontSize: 13, fontWeight: 700, color: 'var(--danger)' }}>
+                ⚠ Этот ученик не зачислен к выбранному преподавателю. Урок создать не получится.
+              </div>
+            )}
+
+            {/* Выбор языка — только если у ученика/преподавателя 2+ языка */}
+            {pickedStudent && activeLangCodes.length > 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label className="ps-field-label">Язык урока</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {(pickedStudent.langCodes ?? []).map((code, i) => {
-                    const name = (pickedStudent.langs ?? [])[i] || code
+                  {activeLangCodes.map((code, i) => {
+                    const name = activeLangs[i] || code
                     const c = LANG_COLOR[code] || 'var(--purple)'
                     const sel = langCode === code
                     return (

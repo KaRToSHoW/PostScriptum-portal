@@ -325,23 +325,30 @@ export default function MessagesPage() {
                 >
                   <Avatar initials={c.initials} color={c.color} online={c.online} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                        <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{c.name}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                      <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{c.name}</span>
+                      <span style={{ fontSize: 11, color: 'var(--ink-muted)', flexShrink: 0 }}>{c.lastTime}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: 1 }}>
                         {c.role === 'MANAGER' && (
-                          <span style={{ fontSize: 9, fontWeight: 800, background: 'var(--warning-soft, #FFF3CD)', color: 'var(--warning-deep, #8a6d00)', padding: '1px 6px', borderRadius: 999, border: '1px solid rgba(200,160,0,.25)', flexShrink: 0 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, background: 'rgba(246,173,61,.15)', color: '#7a5500', padding: '2px 6px', borderRadius: 999, border: '1px solid rgba(230,152,0,.3)', flexShrink: 0, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                             Менеджер
                           </span>
                         )}
+                        {c.role === 'ADMIN' && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 800, background: 'rgba(96,80,181,.12)', color: 'var(--purple-deep, #4a3a9e)', padding: '2px 6px', borderRadius: 999, border: '1px solid rgba(96,80,181,.28)', flexShrink: 0, letterSpacing: '.05em', textTransform: 'uppercase' }}>
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            Админ
+                          </span>
+                        )}
+                        <span style={{ fontSize: 12, color: 'var(--ink-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.lastMsg}
+                        </span>
                       </div>
-                      <span style={{ fontSize: 11, color: 'var(--ink-muted)', flexShrink: 0 }}>{c.lastTime}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                      <span style={{ fontSize: 12, color: 'var(--ink-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                        {c.lastMsg}
-                      </span>
                       {c.unread > 0 && (
-                        <span style={{ background: 'var(--purple)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 999, flexShrink: 0, marginLeft: 6 }}>
+                        <span style={{ background: 'var(--purple)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 999, flexShrink: 0 }}>
                           {c.unread}
                         </span>
                       )}
@@ -384,6 +391,7 @@ export default function MessagesPage() {
                 )}
                 {active.msgs.map(m => {
                   const isManagerMsg = m.senderRole === 'MANAGER' && m.from === 'them'
+                  const isAdminMsg   = m.senderRole === 'ADMIN'   && m.from === 'them'
 
                   if (m.isSystem) {
                     return (
@@ -399,26 +407,55 @@ export default function MessagesPage() {
                     )
                   }
 
-                  if (isManagerMsg) {
+                  if (isManagerMsg || isAdminMsg) {
+                    const isAdmin    = isAdminMsg
+                    const accent     = isAdmin ? 'var(--purple)'              : '#e09800'
+                    const bg         = isAdmin ? 'rgba(96,80,181,.06)'        : 'rgba(246,173,61,.07)'
+                    const borderClr  = isAdmin ? 'rgba(96,80,181,.22)'        : 'rgba(230,152,0,.28)'
+                    const badgeClr   = isAdmin ? 'var(--purple-deep)'         : '#7a5500'
+                    const badgeBg    = isAdmin ? 'rgba(96,80,181,.12)'        : 'rgba(246,173,61,.18)'
+                    const badgeBord  = isAdmin ? 'rgba(96,80,181,.3)'         : 'rgba(230,152,0,.35)'
+                    const label      = isAdmin ? 'Администратор'              : 'Менеджер'
+                    const roleIcon   = isAdmin
+                      ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+
                     return (
-                      <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(246,173,61,.25)', display: 'grid', placeItems: 'center', fontSize: 10 }}>★</div>
-                          <span style={{ fontSize: 10, fontWeight: 800, color: 'rgba(180,130,0,.9)', letterSpacing: '.05em', textTransform: 'uppercase' }}>Менеджер</span>
-                        </div>
-                        <div style={{ maxWidth: '70%' }}>
-                          <div style={{
-                            padding: '10px 14px', borderRadius: '4px 16px 16px 16px',
-                            background: 'rgba(246,173,61,.1)',
-                            border: '1.5px solid rgba(246,173,61,.3)',
-                            color: 'var(--ink)',
-                            fontSize: 14, lineHeight: 1.5, fontWeight: 500,
+                      <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5, maxWidth: '72%' }}>
+                        {/* Badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 4 }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            fontSize: 10, fontWeight: 800, letterSpacing: '.07em',
+                            color: badgeClr, background: badgeBg,
+                            padding: '3px 9px 3px 7px', borderRadius: 999,
+                            border: `1px solid ${badgeBord}`,
+                            textTransform: 'uppercase',
                           }}>
-                            {m.text}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 4 }}>
-                            {m.time}
-                          </div>
+                            {roleIcon} {label}
+                          </span>
+                          {m.senderName && (
+                            <span style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 600 }}>
+                              {m.senderName}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Bubble */}
+                        <div style={{
+                          padding: '10px 15px',
+                          borderRadius: '4px 16px 16px 16px',
+                          background: bg,
+                          border: `1.5px solid ${borderClr}`,
+                          borderLeft: `3px solid ${accent}`,
+                          color: 'var(--ink)',
+                          fontSize: 14, lineHeight: 1.55, fontWeight: 500,
+                          boxShadow: '0 1px 6px rgba(0,0,0,.04)',
+                        }}>
+                          {m.text}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-muted)', paddingLeft: 4 }}>
+                          {m.time}
                         </div>
                       </div>
                     )

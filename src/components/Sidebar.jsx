@@ -24,6 +24,7 @@ const ROUTE_MAP = {
   earnings:  '/teacher/earnings',
   materials: '/homework',
   reports:   '/admin/reports',
+  conference: '/conference',
 }
 
 function routeToItem(pathname) {
@@ -44,15 +45,17 @@ function routeToItem(pathname) {
   if (pathname === '/admin/reports')        return 'reports'
   if (pathname === '/admin/subscriptions')  return 'subs'
   if (pathname === '/teacher/earnings')     return 'earnings'
+  if (pathname.startsWith('/conference'))   return 'conference'
   return 'home'
 }
 
 const NAV = {
   student: [
     { sec: 'обучение', items: [
-      { id: 'home',     label: 'Главная',         icon: 'home'     },
-      { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
-      { id: 'homework', label: 'Домашние задания', icon: 'file' },
+      { id: 'home',       label: 'Главная',          icon: 'home'     },
+      { id: 'calendar',   label: 'Расписание',       icon: 'calendar' },
+      { id: 'conference', label: 'Конференции',      icon: 'play'     },
+      { id: 'homework',   label: 'Домашние задания', icon: 'file' },
     ]},
     { sec: 'общение', items: [
       { id: 'chat',     label: 'Сообщения',        icon: 'chat' },
@@ -79,9 +82,10 @@ const NAV = {
   ],
   teacher: [
     { sec: 'работа', items: [
-      { id: 'home',      label: 'Главная',         icon: 'home'     },
-      { id: 'calendar',  label: 'Расписание',      icon: 'calendar' },
-      { id: 'students',  label: 'Мои ученики',     icon: 'users'    },
+      { id: 'home',       label: 'Главная',         icon: 'home'     },
+      { id: 'calendar',   label: 'Расписание',      icon: 'calendar' },
+      { id: 'conference', label: 'Конференции',     icon: 'play'     },
+      { id: 'students',   label: 'Мои ученики',     icon: 'users'    },
     ]},
     { sec: 'общение', items: [
       { id: 'chat',     label: 'Сообщения',        icon: 'chat' },
