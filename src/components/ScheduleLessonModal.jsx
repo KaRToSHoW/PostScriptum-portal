@@ -419,11 +419,11 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
   useEffect(() => {
     if (!selectedTeacherId) { setTeacherStudents([]); return }
     api.get(`/api/manager/teacher/${selectedTeacherId}/students`)
-      .then(d => { setTeacherStudents(d); if (!student) setStudentId('') })
+      .then(d => { setTeacherStudents(d); if (!student) setStudentIds(new Set()) })
       .catch(() => {})
   }, [selectedTeacherId])
 
-  const [studentId,     setStudentId]     = useState(student?.id ?? '')
+  const [studentIds,    setStudentIds]    = useState(() => new Set(student ? [student.id] : []))
   const [langCode,      setLangCode]      = useState(student?.langCodes?.[0] ?? '')
   const [mode,          setMode]          = useState('dates')
   const [selectedDays,  setSelectedDays]  = useState(new Set())
@@ -435,7 +435,16 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
   const [events,        setEvents]        = useState({})
   const [saving,        setSaving]        = useState(false)
 
-  const pickedStudent = student ?? students?.find(s => String(s.id) === String(studentId))
+  const firstSelectedId = [...studentIds][0]
+  const pickedStudent = student ?? students?.find(s => String(s.id) === String(firstSelectedId))
+
+  function toggleStudent(id) {
+    setStudentIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   function normLangs(s) {
     if (!s) return []
@@ -472,13 +481,14 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
       setLangCode(activeLangCodes[0])
     }
   }, [selectedTeacherId, pickedStudent?.id])
-  const lessonsLeft   = pickedStudent?.lessonsLeft ?? null
+  // Режим «по абонементу» имеет смысл только для одного ученика
+  const lessonsLeft   = studentIds.size === 1 ? (pickedStudent?.lessonsLeft ?? null) : null
 
   useEffect(() => {
     if (periodMode === 'subscription' && (lessonsLeft === null || lessonsLeft === undefined)) {
       setPeriodMode('weeks')
     }
-  }, [studentId, lessonsLeft, periodMode])
+  }, [studentIds, lessonsLeft, periodMode])
 
   useEffect(() => {
     const p = isManagerMode && selectedTeacherId
@@ -564,8 +574,9 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
 
   async function submit() {
     if (isManagerMode && !selectedTeacherId) { toast('Выберите преподавателя', 'warning'); return }
-    if (!studentId) { toast('Выберите ученика', 'warning'); return }
+    if (studentIds.size === 0) { toast('Выберите хотя бы одного ученика', 'warning'); return }
     if (!time)      { toast('Выберите время занятия', 'warning'); return }
+    const studentIdsPayload = [...studentIds].map(Number)
 
     if (mode === 'regular') {
       if (selectedDays.size === 0) { toast('Выберите хотя бы один день недели', 'warning'); return }
@@ -573,7 +584,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
       try {
         if (periodMode === 'subscription') {
           const res = await batchLessons({
-            studentId: Number(studentId),
+            studentIds: studentIdsPayload,
             dates: [...previewDates].sort(),
             time, durationMin: Number(duration),
             languageCode: langCode || undefined,
@@ -588,7 +599,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
           const allSkipped = []
           for (const dow of selectedDays) {
             const res = await recurringLessons({
-              studentId: Number(studentId), dayOfWeek: dow, time,
+              studentIds: studentIdsPayload, dayOfWeek: dow, time,
               weeksCount: effectiveWeeks, durationMin: Number(duration),
               languageCode: langCode || undefined,
             })
@@ -611,7 +622,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
       setSaving(true)
       try {
         const res = await batchLessons({
-          studentId: Number(studentId), dates: sortedDates, time, durationMin: Number(duration),
+          studentIds: studentIdsPayload, dates: sortedDates, time, durationMin: Number(duration),
           languageCode: langCode || undefined,
         })
         if (res?.skipped?.length) {
@@ -652,7 +663,9 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
           <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.65)' }}>расписание</span>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
             <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: 0 }}>
-              {pickedStudent ? `${pickedStudent.name}` : 'Новое занятие'}
+              {studentIds.size > 1
+                ? `Групповое занятие · ${studentIds.size} ${studentIds.size < 5 ? 'ученика' : 'учеников'}`
+                : pickedStudent ? `${pickedStudent.name}` : 'Новое занятие'}
             </h3>
             {lessonsLeft !== null && lessonsLeft !== undefined && (
               <span style={{ fontSize: 12, fontWeight: 800, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999, color: '#fff' }}>
@@ -681,21 +694,46 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
               </div>
             )}
 
-            {/* Выбор ученика */}
+            {/* Выбор учеников (можно несколько — групповой урок) */}
             {!student && (!isManagerMode || selectedTeacherId) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="ps-field-label">Ученик</label>
-                <select
-                  value={studentId} onChange={e => setStudentId(e.target.value)}
-                  style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14 }}
-                >
-                  <option value="">Выберите ученика</option>
-                  {(students ?? []).map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}{s.langs?.length ? ' · ' + (Array.isArray(s.langs) ? s.langs.join(', ') : s.langs) : ''}{s.lessonsLeft ? ` · ${s.lessonsLeft} ур.` : ''}
-                    </option>
-                  ))}
-                </select>
+                <label className="ps-field-label">
+                  Ученики
+                  {studentIds.size > 0 && <span style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>— выбрано {studentIds.size}</span>}
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto', border: '1.5px solid var(--border)', borderRadius: 12, background: 'var(--bg-cream-soft)', padding: 6 }}>
+                  {(students ?? []).length === 0 && (
+                    <div style={{ fontSize: 13, color: 'var(--ink-muted)', padding: '8px 10px' }}>У преподавателя пока нет учеников</div>
+                  )}
+                  {(students ?? []).map(s => {
+                    const sel = studentIds.has(s.id)
+                    return (
+                      <div key={s.id} onClick={() => toggleStudent(s.id)} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 9,
+                        cursor: 'pointer', transition: 'background .1s',
+                        background: sel ? 'var(--purple-soft)' : 'transparent',
+                      }}>
+                        <span style={{
+                          width: 18, height: 18, borderRadius: 6, flexShrink: 0,
+                          border: sel ? 'none' : '2px solid var(--border)',
+                          background: sel ? 'var(--purple)' : '#fff',
+                          display: 'grid', placeItems: 'center', color: '#fff', fontSize: 11, fontWeight: 900,
+                        }}>{sel ? '✓' : ''}</span>
+                        <span style={{ fontSize: 13, fontWeight: sel ? 800 : 600, color: sel ? 'var(--purple-deep)' : 'var(--ink)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {s.name}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--ink-muted)', flexShrink: 0 }}>
+                          {s.langs?.length ? (Array.isArray(s.langs) ? s.langs.join(', ') : s.langs) : ''}{s.lessonsLeft ? ` · ${s.lessonsLeft} ур.` : ''}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+                {studentIds.size > 1 && (
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--purple-deep)', background: 'rgba(96,80,181,.08)', border: '1px dashed rgba(96,80,181,.3)', borderRadius: 10, padding: '7px 12px' }}>
+                    👥 Групповой урок: все выбранные ученики будут на одном занятии
+                  </div>
+                )}
               </div>
             )}
 

@@ -116,6 +116,11 @@ function ConferenceRoom({ lessonId }) {
   const [chat, setChat]         = useState([])
   const [chatInput, setChatInput] = useState('')
   const [finished, setFinished] = useState(false)
+  const [noiseOn, setNoiseOn]   = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [sharing, setSharing]   = useState(false)
+  const videoAreaRef = useRef(null)
+  const screenStreamRef = useRef(null)
 
   const localVideoRef = useRef(null)
   const localStreamRef = useRef(null)
@@ -127,6 +132,13 @@ function ConferenceRoom({ lessonId }) {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chat])
 
+  // следим за выходом из полноэкранного режима (Esc и т.п.)
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
   const sendSignal = useCallback((type, payload, to) => {
     conferenceApi.signal(lessonId, { type, payload, to }).catch(() => {})
   }, [lessonId])
@@ -136,15 +148,27 @@ function ConferenceRoom({ lessonId }) {
     const pc = new RTCPeerConnection(rtcConfigRef.current)
     peersRef.current[peerId] = pc
 
-    localStreamRef.current?.getTracks().forEach(tr => pc.addTrack(tr, localStreamRef.current))
+    // исходящие треки: звук с микрофона, видео — экран (если идёт демонстрация) или камера
+    const audioTrack = localStreamRef.current?.getAudioTracks()[0]
+    const videoTrack = screenStreamRef.current?.getVideoTracks()[0] ?? localStreamRef.current?.getVideoTracks()[0]
+    if (audioTrack) pc.addTrack(audioTrack, localStreamRef.current)
+    if (videoTrack) pc.addTrack(videoTrack, screenStreamRef.current ?? localStreamRef.current)
 
     // даже без своей камеры/микрофона должны принимать медиа собеседника
-    const kinds = new Set((localStreamRef.current?.getTracks() ?? []).map(t => t.kind))
-    if (!kinds.has('audio')) pc.addTransceiver('audio', { direction: 'recvonly' })
-    if (!kinds.has('video')) pc.addTransceiver('video', { direction: 'recvonly' })
+    if (!audioTrack) pc.addTransceiver('audio', { direction: 'recvonly' })
+    if (!videoTrack) pc.addTransceiver('video', { direction: 'recvonly' })
 
     pc.onicecandidate = e => {
       if (e.candidate) sendSignal('ice', JSON.stringify(e.candidate), peerId)
+    }
+    // перезапуск согласования (например, включили демонстрацию экрана без камеры)
+    pc.onnegotiationneeded = async () => {
+      try {
+        if (pc.signalingState !== 'stable') return
+        const offer = await pc.createOffer()
+        await pc.setLocalDescription(offer)
+        sendSignal('offer', JSON.stringify(pc.localDescription), peerId)
+      } catch { /* повторится при следующем изменении */ }
     }
     pc.ontrack = e => {
       const stream = (e.streams && e.streams[0]) ? e.streams[0] : new MediaStream([e.track])
@@ -189,7 +213,7 @@ function ConferenceRoom({ lessonId }) {
     }
     if (msg.type === 'answer') {
       const pc = peersRef.current[from]
-      if (pc && !pc.currentRemoteDescription) await pc.setRemoteDescription(JSON.parse(msg.payload))
+      if (pc && pc.signalingState === 'have-local-offer') await pc.setRemoteDescription(JSON.parse(msg.payload))
       return
     }
     if (msg.type === 'ice') {
@@ -223,8 +247,9 @@ function ConferenceRoom({ lessonId }) {
 
       // пробуем видео+звук, потом только звук, потом только видео —
       // на одном компьютере камеру может занять другой браузер
+      const AUDIO = { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       let stream = null
-      for (const constraints of [{ video: true, audio: true }, { video: false, audio: true }, { video: true, audio: false }]) {
+      for (const constraints of [{ video: true, audio: AUDIO }, { video: false, audio: AUDIO }, { video: true, audio: false }]) {
         try { stream = await navigator.mediaDevices.getUserMedia(constraints); break } catch { /* следующий вариант */ }
       }
       if (cancelled) { stream?.getTracks().forEach(t => t.stop()); return }
@@ -279,6 +304,8 @@ function ConferenceRoom({ lessonId }) {
       Object.values(peersRef.current).forEach(pc => pc.close())
       peersRef.current = {}
       localStreamRef.current?.getTracks().forEach(t => t.stop())
+      screenStreamRef.current?.getTracks().forEach(t => t.stop())
+      screenStreamRef.current = null
       conferenceApi.leave(lessonId).catch(() => {})
     }
   }, [lessonId, createPeer, handleSignal, sendSignal])
@@ -292,6 +319,61 @@ function ConferenceRoom({ lessonId }) {
     const tr = localStreamRef.current?.getVideoTracks()
     tr?.forEach(t => { t.enabled = !camOn })
     setCamOn(!camOn)
+  }
+  async function toggleNoise() {
+    const tr = localStreamRef.current?.getAudioTracks()?.[0]
+    if (!tr) { toast('Микрофон недоступен', 'error'); return }
+    try {
+      await tr.applyConstraints({ noiseSuppression: !noiseOn, echoCancellation: true, autoGainControl: !noiseOn })
+      setNoiseOn(!noiseOn)
+      toast(!noiseOn ? 'Шумоподавление включено' : 'Шумоподавление выключено', 'info')
+    } catch {
+      toast('Браузер не поддерживает управление шумоподавлением', 'error')
+    }
+  }
+  async function replaceOutgoingVideo(track) {
+    // подменяем исходящее видео у всех соединений; если видео-sender'а нет — задействуем recvonly-трансивер
+    for (const pc of Object.values(peersRef.current)) {
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video')
+        ?? pc.getTransceivers().find(t => t.receiver?.track?.kind === 'video')?.sender
+      if (!sender) continue
+      try {
+        await sender.replaceTrack(track)
+        const tx = pc.getTransceivers().find(t => t.sender === sender)
+        if (tx && track && tx.direction === 'recvonly') tx.direction = 'sendrecv'
+      } catch { /* соединение пересоздастся само */ }
+    }
+  }
+
+  async function toggleShare() {
+    if (sharing) { await stopShare(); return }
+    let screen
+    try {
+      screen = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+    } catch { return /* пользователь отменил выбор */ }
+    screenStreamRef.current = screen
+    const track = screen.getVideoTracks()[0]
+    track.onended = () => stopShare()   // «Остановить» в панели браузера
+    await replaceOutgoingVideo(track)
+    if (localVideoRef.current) localVideoRef.current.srcObject = screen
+    setSharing(true)
+  }
+
+  async function stopShare() {
+    screenStreamRef.current?.getTracks().forEach(t => t.stop())
+    screenStreamRef.current = null
+    const camTrack = localStreamRef.current?.getVideoTracks()[0] ?? null
+    await replaceOutgoingVideo(camTrack)
+    if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current
+    setSharing(false)
+  }
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    } else {
+      videoAreaRef.current?.requestFullscreen().catch(() => toast('Полный экран недоступен', 'error'))
+    }
   }
   function sendChat() {
     const text = chatInput.trim()
@@ -353,7 +435,7 @@ function ConferenceRoom({ lessonId }) {
 
       {/* ── Видео-зона ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
-        <div className="ps-card-purple" style={{ flex: 1, borderRadius: 20, position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', minHeight: 0 }}>
+        <div ref={videoAreaRef} className="ps-card-purple" style={{ flex: 1, borderRadius: 20, position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', minHeight: 0 }}>
           {/* удалённые участники */}
           {remoteEntries.length > 0 ? (
             <div style={{
@@ -383,13 +465,26 @@ function ConferenceRoom({ lessonId }) {
 
           {/* своя камера */}
           <div style={{ position: 'absolute', right: 16, bottom: 16, width: 180, borderRadius: 14, overflow: 'hidden', border: '2px solid rgba(255,255,255,.35)', background: '#1F1B3A', boxShadow: 'var(--shadow-pop)' }}>
-            <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }} />
+            <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '100%', display: 'block', transform: sharing ? 'none' : 'scaleX(-1)' }} />
             {!camOn && (
               <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: '#1F1B3A', color: 'rgba(255,255,255,.6)', fontSize: 12, fontWeight: 700 }}>
                 Камера выключена
               </div>
             )}
           </div>
+
+          {/* полный экран */}
+          <button
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Выйти из полного экрана' : 'На весь экран'}
+            style={{ position: 'absolute', right: 16, top: 16, width: 38, height: 38, borderRadius: 11, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.35)', color: '#fff', zIndex: 5 }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {isFullscreen
+                ? <><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></>
+                : <><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></>}
+            </svg>
+          </button>
 
           {/* шапка урока */}
           {lesson && (
@@ -423,6 +518,29 @@ function ConferenceRoom({ lessonId }) {
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
               {!camOn && <line x1="2" y1="2" x2="22" y2="22" />}
+            </svg>
+          </button>
+
+          <button
+            onClick={toggleShare}
+            title={sharing ? 'Остановить демонстрацию экрана' : 'Демонстрация экрана'}
+            style={{ width: 46, height: 46, borderRadius: 14, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', background: sharing ? 'var(--orange)' : 'var(--purple-soft)', color: sharing ? '#fff' : 'var(--purple-deep)' }}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+              <path d="M12 12V7"/><path d="m9 9 3-3 3 3"/>
+            </svg>
+          </button>
+          <button
+            onClick={toggleNoise}
+            title={noiseOn ? 'Выключить шумоподавление' : 'Включить шумоподавление'}
+            style={{ width: 46, height: 46, borderRadius: 14, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', background: noiseOn ? 'var(--purple-soft)' : 'var(--bg-cream)', color: noiseOn ? 'var(--purple-deep)' : 'var(--ink-muted)' }}
+          >
+            {/* волна с гашением шума */}
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12h2l2-7 3 14 3-10 2 5 2-2h6"/>
+              {!noiseOn && <line x1="2" y1="2" x2="22" y2="22" />}
             </svg>
           </button>
 
