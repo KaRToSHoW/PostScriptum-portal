@@ -151,25 +151,14 @@ function LoginForm({ onSuccess }) {
       </div>
 
       {/* Соцсети */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <button type="button" className="ps-btn ps-btn-outline" style={{ padding: 12, fontSize: 12 }}>
-          <span style={{
-            width: 16, height: 16, borderRadius: 4,
-            background: '#4C75A3', display: 'inline-grid',
-            placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 800, flexShrink: 0,
-          }}>VK</span>
-          ВКонтакте
-        </button>
-        <button type="button" className="ps-btn ps-btn-outline" style={{ padding: 12, fontSize: 12 }}>
-          <span style={{
-            width: 16, height: 16, borderRadius: 4,
-            background: '#fff', display: 'inline-grid',
-            placeItems: 'center', fontSize: 10, fontWeight: 800,
-            color: '#4285F4', border: '1px solid var(--border)', flexShrink: 0,
-          }}>G</span>
-          Google
-        </button>
-      </div>
+      <button type="button" className="ps-btn ps-btn-outline" style={{ width: '100%', padding: 12, fontSize: 12 }}>
+        <span style={{
+          width: 16, height: 16, borderRadius: 4,
+          background: '#4C75A3', display: 'inline-grid',
+          placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 800, flexShrink: 0,
+        }}>VK</span>
+        ВКонтакте
+      </button>
     </form>
   )
 }

@@ -59,7 +59,7 @@ function ConferenceList() {
         {lessons.map(l => {
           const startAt = new Date(l.scheduled_at).getTime()
           const endAt   = startAt + (l.duration_min || 60) * 60000
-          const live    = l.status === 'IN_PROGRESS' || (now >= startAt - 15 * 60000 && now <= endAt + 30 * 60000)
+          const live    = l.status === 'IN_PROGRESS' || (now >= startAt - 10 * 60000 && now <= endAt + 30 * 60000)
           return (
             <div key={l.id} className="ps-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>

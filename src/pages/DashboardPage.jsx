@@ -94,16 +94,28 @@ function DashStudent({ t, data }) {
               Урок с <b>{next.teacher}</b>
             </p>
           )}
-          {next && (
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button className="ps-btn ps-btn-primary" onClick={() => navigate(next.id ? `/conference/${next.id}` : '/conference')}>
-                <Icon name="play" size={14} /> {t('Войти на урок')}
-              </button>
-              <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/homework')}>
-                <Icon name="file" size={14} /> {t('Подготовиться')}
-              </button>
-            </div>
-          )}
+          {next && (() => {
+            // кнопка входа появляется за 10 минут до начала и живёт до конца урока (+30 мин)
+            const joinable = next.id && next.startAt
+              && Date.now() >= next.startAt - 10 * 60000
+              && Date.now() <= next.startAt + ((next.durMin || 60) + 30) * 60000
+            return (
+              <div style={{ display: 'flex', gap: 12 }}>
+                {joinable ? (
+                  <button className="ps-btn ps-btn-primary" onClick={() => navigate(`/conference/${next.id}`)}>
+                    <Icon name="play" size={14} /> {t('Войти на урок')}
+                  </button>
+                ) : (
+                  <button className="ps-btn ps-btn-primary" onClick={() => navigate('/calendar')}>
+                    <Icon name="calendar" size={14} /> {t('Расписание')}
+                  </button>
+                )}
+                <button className="ps-btn" style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/homework')}>
+                  <Icon name="file" size={14} /> {t('Подготовиться')}
+                </button>
+              </div>
+            )
+          })()}
           <div style={{ position: 'absolute', right: -30, top: -20, fontFamily: 'var(--font-display)', fontSize: 260, color: 'rgba(255,255,255,0.07)', fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>{next?.lang?.toUpperCase() ?? 'PS'}</div>
         </div>
 
@@ -288,9 +300,23 @@ function DashTeacher({ t, data }) {
                 {schedule.length > 0 ? `${schedule.length} ${schedule.length === 1 ? 'урок' : schedule.length < 5 ? 'урока' : 'уроков'}` : 'Нет уроков'}
               </h3>
             </div>
-            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}>
-              <Icon name="calendar" size={12} /> {t('Календарь')}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(() => {
+                // ближайший урок, в который уже можно войти (за 10 минут до начала)
+                const nowMs = Date.now()
+                const joinable = schedule.find(s => s.id && s.startAt
+                  && nowMs >= s.startAt - 10 * 60000
+                  && nowMs <= s.startAt + ((s.durMin || 60) + 30) * 60000)
+                return joinable ? (
+                  <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => navigate(`/conference/${joinable.id}`)}>
+                    <Icon name="play" size={12} /> Войти на урок
+                  </button>
+                ) : null
+              })()}
+              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/calendar')}>
+                <Icon name="calendar" size={12} /> {t('Календарь')}
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto', maxHeight: 420 }}>

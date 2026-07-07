@@ -554,7 +554,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
   }
 
   function toggleDate(dateStr) {
-    if (dateStr <= todayStr) return
+    if (dateStr < todayStr) return
     setSelectedDates(prev => {
       const next = new Set(prev)
       next.has(dateStr) ? next.delete(dateStr) : next.add(dateStr)
@@ -576,6 +576,14 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
     if (isManagerMode && !selectedTeacherId) { toast('Выберите преподавателя', 'warning'); return }
     if (studentIds.size === 0) { toast('Выберите хотя бы одного ученика', 'warning'); return }
     if (!time)      { toast('Выберите время занятия', 'warning'); return }
+    // на сегодня можно назначить только время, которое ещё не прошло
+    if (mode === 'dates' && selectedDates.has(todayStr)) {
+      const nowD = new Date()
+      if (timeToMin(time) <= nowD.getHours() * 60 + nowD.getMinutes()) {
+        toast('Это время сегодня уже прошло — выберите более позднее', 'warning')
+        return
+      }
+    }
     const studentIdsPayload = [...studentIds].map(Number)
 
     if (mode === 'regular') {
