@@ -58,6 +58,9 @@ function RoleSwitcher({ role, onChange, t }) {
   )
 }
 
+// За сколько минут до начала урока показывать кнопку «Войти на урок» (и до +30 мин после конца)
+const JOIN_BEFORE_MS = 10 * 60000
+
 const LANG_NAME  = { fr: 'Французский', en: 'Английский', de: 'Немецкий', es: 'Испанский', it: 'Итальянский' }
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
 
@@ -97,7 +100,7 @@ function DashStudent({ t, data }) {
           {next && (() => {
             // кнопка входа появляется за 10 минут до начала и живёт до конца урока (+30 мин)
             const joinable = next.id && next.startAt
-              && Date.now() >= next.startAt - 10 * 60000
+              && Date.now() >= next.startAt - JOIN_BEFORE_MS
               && Date.now() <= next.startAt + ((next.durMin || 60) + 30) * 60000
             return (
               <div style={{ display: 'flex', gap: 12 }}>
@@ -305,7 +308,7 @@ function DashTeacher({ t, data }) {
                 // ближайший урок, в который уже можно войти (за 10 минут до начала)
                 const nowMs = Date.now()
                 const joinable = schedule.find(s => s.id && s.startAt
-                  && nowMs >= s.startAt - 10 * 60000
+                  && nowMs >= s.startAt - JOIN_BEFORE_MS
                   && nowMs <= s.startAt + ((s.durMin || 60) + 30) * 60000)
                 return joinable ? (
                   <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => navigate(`/conference/${joinable.id}`)}>

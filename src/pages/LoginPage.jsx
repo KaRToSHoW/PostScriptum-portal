@@ -21,6 +21,50 @@ function Flags() {
 }
 
 /* ============================================================
+   Кнопки входа через соцсети (VK / Яндекс)
+   ============================================================ */
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
+
+function goOAuth(provider) {
+  // Уводим браузер на бэкенд — он редиректит к провайдеру и обратно на /oauth/callback
+  window.location.href = `${API_BASE}/api/auth/oauth/${provider}`
+}
+
+function SocialButtons() {
+  return (
+    <div style={{ display: 'flex', gap: 10 }}>
+      <button
+        type="button"
+        onClick={() => goOAuth('vk')}
+        className="ps-btn ps-btn-outline"
+        style={{ flex: 1, padding: 12, fontSize: 12 }}
+      >
+        <span style={{
+          width: 16, height: 16, borderRadius: 4,
+          background: '#0077FF', display: 'inline-grid',
+          placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 800, flexShrink: 0,
+        }}>VK</span>
+        ВКонтакте
+      </button>
+      <button
+        type="button"
+        onClick={() => goOAuth('yandex')}
+        className="ps-btn ps-btn-outline"
+        style={{ flex: 1, padding: 12, fontSize: 12 }}
+      >
+        <span style={{
+          width: 16, height: 16, borderRadius: 4,
+          background: '#FC3F1D', display: 'inline-grid',
+          placeItems: 'center', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0,
+          fontFamily: 'var(--font-display)',
+        }}>Я</span>
+        Яндекс
+      </button>
+    </div>
+  )
+}
+
+/* ============================================================
    Форма ВХОДА
    ============================================================ */
 function LoginForm({ onSuccess }) {
@@ -151,14 +195,7 @@ function LoginForm({ onSuccess }) {
       </div>
 
       {/* Соцсети */}
-      <button type="button" className="ps-btn ps-btn-outline" style={{ width: '100%', padding: 12, fontSize: 12 }}>
-        <span style={{
-          width: 16, height: 16, borderRadius: 4,
-          background: '#4C75A3', display: 'inline-grid',
-          placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 800, flexShrink: 0,
-        }}>VK</span>
-        ВКонтакте
-      </button>
+      <SocialButtons />
     </form>
   )
 }
