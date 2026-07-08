@@ -153,8 +153,10 @@ function AttendanceModal({ lesson, onClose, onDone, rosterUrl, attendanceUrl }) 
                 background: s.attended ? 'var(--success-soft)' : 'var(--bg-cream-soft)',
               }}
             >
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, color: 'var(--ink)', flexShrink: 0 }}>
-                {s.initials}
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 12, color: 'var(--ink)', flexShrink: 0 }}>
+                {s.avatarUrl
+                  ? <img src={s.avatarUrl} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : s.initials}
               </div>
               <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{s.name}</span>
               {s.attended

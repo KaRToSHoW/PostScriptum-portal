@@ -156,7 +156,11 @@ export default function AdminUsersPage() {
                   <tr key={u.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div className="ps-avatar" style={{ width: 32, height: 32, fontSize: 11 }}>{u.initials}</div>
+                        <div className="ps-avatar" style={{ width: 32, height: 32, fontSize: 11, overflow: 'hidden' }}>
+                          {u.avatarUrl
+                            ? <img src={u.avatarUrl} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : u.initials}
+                        </div>
                         <span style={{ fontWeight: 800, color: 'var(--ink)' }}>{u.name}</span>
                       </div>
                     </td>

@@ -30,10 +30,12 @@ function StudentCard({ s, onMessage, onSchedule, extraActions }) {
         <div style={{
           width: 48, height: 48, borderRadius: 14, flexShrink: 0,
           background: color + '22', border: `2px solid ${color}44`,
-          display: 'grid', placeItems: 'center',
+          display: 'grid', placeItems: 'center', overflow: 'hidden',
           fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, color,
         }}>
-          {s.initials}
+          {s.avatarUrl
+            ? <img src={s.avatarUrl} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : s.initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
@@ -43,7 +45,12 @@ function StudentCard({ s, onMessage, onSchedule, extraActions }) {
             {langs.map((lang, i) => {
               const code = langCodes[i] || ''
               const c = LANG_COLOR[code] || 'var(--purple)'
-              return <span key={code || i} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: c + '18', color: c, border: `1px solid ${c}33` }}>{lang}</span>
+              return (
+                <span key={code || i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: c + '18', color: c, border: `1px solid ${c}33` }}>
+                  {code && <span className={`ps-flag ps-flag-${code}`} style={{ width: 12, height: 12, boxShadow: 'none' }} />}
+                  {lang}
+                </span>
+              )
             })}
           </div>
         </div>

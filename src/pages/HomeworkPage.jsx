@@ -478,8 +478,10 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
         style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', cursor: 'pointer', userSelect: 'none' }}
       >
         {/* Student avatar */}
-        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-          {item.studentInitials ?? (item.student ?? '?').slice(0, 2).toUpperCase()}
+        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+          {item.studentAvatar
+            ? <img src={item.studentAvatar} alt={item.student} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (item.studentInitials ?? (item.student ?? '?').slice(0, 2).toUpperCase())}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{item.title}</div>
@@ -817,7 +819,7 @@ function TeacherHomework() {
     const key = item.studentId ?? item.student
     if (!groupIndex.has(key)) {
       groupIndex.set(key, groups.length)
-      groups.push({ studentId: item.studentId, student: item.student, studentInitials: item.studentInitials, items: [] })
+      groups.push({ studentId: item.studentId, student: item.student, studentInitials: item.studentInitials, studentAvatar: item.studentAvatar, items: [] })
     }
     groups[groupIndex.get(key)].items.push(item)
   }
@@ -972,8 +974,10 @@ function TeacherHomework() {
                         onClick={() => toggleStudent(key)}
                         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', cursor: 'pointer', userSelect: 'none', background: 'var(--bg-cream-soft)' }}
                       >
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                          {g.studentInitials ?? (g.student ?? '?').slice(0, 2).toUpperCase()}
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                          {g.studentAvatar
+                            ? <img src={g.studentAvatar} alt={g.student} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : (g.studentInitials ?? (g.student ?? '?').slice(0, 2).toUpperCase())}
                         </div>
                         <div style={{ flex: 1, fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{g.student}</div>
                         <span className="ps-chip ps-chip-gray">{g.items.length} {g.items.length === 1 ? 'задание' : 'заданий'}</span>

@@ -640,15 +640,17 @@ function ConferenceRoom({ lessonId }) {
         {tab === 'people' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {info && [
-              { id: info.lesson?.teacher_id, name: info.lesson?.teacher, initials: info.lesson?.teacher_initials, role: 'Преподаватель' },
-              ...(info.students || []).map(s => ({ id: s.id, name: s.name, initials: s.initials, role: 'Ученик', attended: s.attended })),
+              { id: info.lesson?.teacher_id, name: info.lesson?.teacher, initials: info.lesson?.teacher_initials, avatarUrl: info.lesson?.teacher_avatar, role: 'Преподаватель' },
+              ...(info.students || []).map(s => ({ id: s.id, name: s.name, initials: s.initials, avatarUrl: s.avatarUrl, role: 'Ученик', attended: s.attended })),
             ].map(p => {
               const isOnline = online.includes(p.id)
               return (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--purple-soft)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, color: 'var(--purple-deep)' }}>
-                      {p.initials || (p.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2)}
+                    <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--purple-soft)', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 13, color: 'var(--purple-deep)' }}>
+                      {p.avatarUrl
+                        ? <img src={p.avatarUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : (p.initials || (p.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2))}
                     </div>
                     <span style={{ position: 'absolute', right: -2, bottom: -2, width: 11, height: 11, borderRadius: '50%', border: '2px solid #fff', background: isOnline ? 'var(--success)' : 'var(--border)' }} />
                   </div>

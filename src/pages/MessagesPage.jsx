@@ -9,17 +9,19 @@ import { currentEmail } from '../api/session'
 
 const LANG_COLORS = ['var(--purple)','var(--orange)','var(--success)','var(--info)','var(--warning)']
 
-function Avatar({ initials, color, online, size = 44 }) {
+function Avatar({ initials, avatarUrl, color, online, size = 44 }) {
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <div style={{
         width: size, height: size, borderRadius: '50%',
         background: color + '22', border: `2px solid ${color}44`,
-        display: 'grid', placeItems: 'center',
+        display: 'grid', placeItems: 'center', overflow: 'hidden',
         fontFamily: 'var(--font-display)', fontWeight: 800,
         fontSize: size * 0.3, color,
       }}>
-        {initials}
+        {avatarUrl
+          ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : initials}
       </div>
       {online && (
         <div style={{
@@ -73,6 +75,7 @@ export default function MessagesPage() {
           id:       c.id,
           name:     c.name,
           initials: c.initials ?? c.name[0],
+          avatarUrl: c.avatarUrl ?? null,
           color:    LANG_COLORS[i % LANG_COLORS.length],
           online:   false,
           role:     c.role ?? '',
@@ -323,7 +326,7 @@ export default function MessagesPage() {
                     transition: 'background .12s',
                   }}
                 >
-                  <Avatar initials={c.initials} color={c.color} online={c.online} />
+                  <Avatar initials={c.initials} avatarUrl={c.avatarUrl} color={c.color} online={c.online} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
                       <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{c.name}</span>
@@ -371,7 +374,7 @@ export default function MessagesPage() {
             {/* Шапка */}
             {active && (
               <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
-                <Avatar initials={active.initials} color={active.color} online={active.online} size={40} />
+                <Avatar initials={active.initials} avatarUrl={active.avatarUrl} color={active.color} online={active.online} size={40} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{active.name}</div>
                   <div style={{ fontSize: 12, color: active.online ? 'var(--success)' : 'var(--ink-muted)', fontWeight: 700, marginTop: 1 }}>
@@ -464,7 +467,7 @@ export default function MessagesPage() {
                   return (
                     <div key={m.id} style={{ display: 'flex', justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start', gap: 10 }}>
                       {m.from === 'them' && (
-                        <Avatar initials={active.initials} color={active.color} online={false} size={32} />
+                        <Avatar initials={active.initials} avatarUrl={active.avatarUrl} color={active.color} online={false} size={32} />
                       )}
                       <div style={{ maxWidth: '65%' }}>
                         <div style={{

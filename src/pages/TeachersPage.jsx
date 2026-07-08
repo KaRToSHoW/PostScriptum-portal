@@ -55,10 +55,12 @@ function TeacherCard({ t, onSelect, showMineBadge = true }) {
           <div style={{
             width: 56, height: 56, borderRadius: 16,
             background: t.color + '22', border: `2px solid ${t.color}44`,
-            display: 'grid', placeItems: 'center',
+            display: 'grid', placeItems: 'center', overflow: 'hidden',
             fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: t.color,
           }}>
-            {t.initials}
+            {t.avatarUrl
+              ? <img src={t.avatarUrl} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : t.initials}
           </div>
           {t.native && (
             <div style={{ position: 'absolute', bottom: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: 'var(--orange)', display: 'grid', placeItems: 'center', border: '2px solid #fff' }}>
@@ -69,7 +71,16 @@ function TeacherCard({ t, onSelect, showMineBadge = true }) {
         <div style={{ flex: 1, minWidth: 0, paddingRight: t.myTeacher && showMineBadge ? 120 : 0 }}>
           <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--ink)' }}>{t.name}</div>
           <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{t.role}</div>
-          <div style={{ marginTop: 6 }}><Stars rating={t.rating} /></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <Stars rating={t.rating} />
+            {(t.langCodes ?? []).length > 0 && (
+              <span style={{ display: 'inline-flex', gap: 4 }}>
+                {(t.langCodes ?? []).map(code => (
+                  <span key={code} className={`ps-flag ps-flag-${code}`} style={{ width: 16, height: 16 }} title={code} />
+                ))}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -114,8 +125,10 @@ function TeacherDrawer({ t, onClose, onMessage }) {
             <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} />
           </button>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'rgba(255,255,255,.2)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#fff', flexShrink: 0 }}>
-              {t.initials}
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'rgba(255,255,255,.2)', display: 'grid', placeItems: 'center', overflow: 'hidden', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#fff', flexShrink: 0 }}>
+              {t.avatarUrl
+                ? <img src={t.avatarUrl} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : t.initials}
             </div>
             <div>
               <h2 className="ps-display ps-display-purple" style={{ fontSize: 22, margin: '0 0 4px' }}>{t.name}</h2>
