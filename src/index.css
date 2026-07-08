@@ -210,6 +210,15 @@ input, textarea { font-family: inherit; }
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-card);
 }
+/* Карточка с подъёмом при наведении (ученики, преподаватели) */
+.ps-card-lift {
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.ps-card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop);
+  border-color: var(--purple-soft);
+}
 
 /* ================================================================
    ЧИПЫ / МЕТКИ

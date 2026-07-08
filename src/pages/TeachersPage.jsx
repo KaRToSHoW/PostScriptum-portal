@@ -38,75 +38,93 @@ function Stars({ rating }) {
 }
 
 function TeacherCard({ t, onSelect, showMineBadge = true }) {
+  const flagCode = t.flag || (t.langCodes ?? [])[0] || 'fr'
   return (
     <div
       onClick={() => onSelect(t)}
-      className="ps-card"
-      style={{ padding: 22, cursor: 'pointer', transition: 'box-shadow .15s', position: 'relative' }}
+      className="ps-card ps-card-lift"
+      style={{ padding: 0, cursor: 'pointer', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
     >
-      {t.myTeacher && showMineBadge && (
-        <div style={{ position: 'absolute', top: 14, right: 14 }}>
-          <span className="ps-chip ps-chip-purple">Мой преподаватель</span>
-        </div>
-      )}
+      {/* ── Шапка: тонированная зона с водяным знаком-кодом языка ── */}
+      <div style={{
+        position: 'relative', padding: '22px 22px 16px', overflow: 'hidden',
+        background: `linear-gradient(135deg, ${t.color}1A, ${t.color}05)`,
+        borderBottom: `1px solid ${t.color}22`,
+      }}>
+        <span style={{
+          position: 'absolute', right: -8, top: -26, pointerEvents: 'none', userSelect: 'none',
+          fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 104, lineHeight: 1,
+          letterSpacing: '-0.06em', textTransform: 'uppercase', color: t.color, opacity: 0.1,
+        }}>{flagCode}</span>
 
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 14 }}>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: t.color + '22', border: `2px solid ${t.color}44`,
-            display: 'grid', placeItems: 'center', overflow: 'hidden',
-            fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: t.color,
-          }}>
-            {t.avatarUrl
-              ? <img src={t.avatarUrl} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : t.initials}
-          </div>
-          {t.native && (
-            <div style={{ position: 'absolute', bottom: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: 'var(--orange)', display: 'grid', placeItems: 'center', border: '2px solid #fff' }}>
-              <span style={{ fontSize: 10 }}>★</span>
+        {t.myTeacher && showMineBadge && (
+          <span className="ps-chip ps-chip-purple" style={{ position: 'absolute', top: 14, right: 14, boxShadow: '0 2px 6px rgba(31,27,58,.08)' }}>Мой преподаватель</span>
+        )}
+
+        <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{
+              width: 58, height: 58, borderRadius: 17,
+              background: t.avatarUrl ? '#fff' : t.color + '20',
+              boxShadow: `0 0 0 3px var(--bg-paper), 0 0 0 4.5px ${t.color}3A, 0 6px 14px ${t.color}2E`,
+              display: 'grid', placeItems: 'center', overflow: 'hidden',
+              fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 19, color: t.color,
+            }}>
+              {t.avatarUrl
+                ? <img src={t.avatarUrl} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : t.initials}
             </div>
-          )}
-        </div>
-        <div style={{ flex: 1, minWidth: 0, paddingRight: t.myTeacher && showMineBadge ? 120 : 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--ink)' }}>{t.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{t.role}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-            <Stars rating={t.rating} />
-            {(t.langCodes ?? []).length > 0 && (
-              <span style={{ display: 'inline-flex', gap: 4 }}>
-                {(t.langCodes ?? []).map(code => (
-                  <span key={code} className={`ps-flag ps-flag-${code}`} style={{ width: 16, height: 16 }} title={code} />
-                ))}
-              </span>
+            {t.native && (
+              <div style={{ position: 'absolute', bottom: -3, right: -3, width: 21, height: 21, borderRadius: '50%', background: 'var(--orange)', display: 'grid', placeItems: 'center', border: '2.5px solid var(--bg-paper)', boxShadow: '0 2px 5px rgba(226,135,58,.5)' }}>
+                <span style={{ fontSize: 10, color: '#fff' }}>★</span>
+              </div>
             )}
           </div>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: t.myTeacher && showMineBadge ? 30 : 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 16.5, color: 'var(--ink)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{t.role}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 7 }}>
+              <Stars rating={t.rating} />
+              {(t.langCodes ?? []).length > 0 && (
+                <span style={{ display: 'inline-flex', gap: 4 }}>
+                  {(t.langCodes ?? []).map(code => (
+                    <span key={code} className={`ps-flag ps-flag-${code}`} style={{ width: 17, height: 17 }} title={code} />
+                  ))}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <p style={{ fontSize: 13, color: 'var(--ink-muted)', lineHeight: 1.55, margin: '0 0 14px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-        {t.bio}
-      </p>
+      {/* ── Тело ── */}
+      <div style={{ padding: '16px 22px 18px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55, margin: '0 0 14px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {t.bio}
+        </p>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-        {t.tags.map(tag => (
-          <span key={tag} style={{ padding: '3px 10px', borderRadius: 999, background: 'var(--bg-cream)', border: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--ink-muted)' }}>
-            {tag}
-          </span>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingTop: 14, borderTop: '1px solid var(--border-soft)' }}>
-        <div style={{ flex: 1, display: 'flex', gap: 16, fontSize: 12, color: 'var(--ink-muted)' }}>
-          <span><b style={{ color: 'var(--ink)' }}>{t.reviews}</b> отзывов</span>
-          <span><b style={{ color: 'var(--ink)' }}>{t.students}</b> учеников</span>
-          <span><b style={{ color: 'var(--ink)' }}>{t.experience}</b></span>
-        </div>
-        {t.next && (
-          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--success)', background: 'var(--success-soft)', padding: '3px 10px', borderRadius: 999 }}>
-            {t.next}
-          </span>
+        {t.tags.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+            {t.tags.map(tag => (
+              <span key={tag} style={{ padding: '3px 10px', borderRadius: 999, background: 'var(--bg-cream)', border: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--ink-muted)' }}>
+                {tag}
+              </span>
+            ))}
+          </div>
         )}
+
+        <div style={{ marginTop: 'auto', display: 'flex', gap: 8, alignItems: 'center', paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+          <div style={{ flex: 1, display: 'flex', gap: 16, fontSize: 12, color: 'var(--ink-muted)' }}>
+            <span><b style={{ color: 'var(--ink)' }}>{t.reviews}</b> отзывов</span>
+            <span><b style={{ color: 'var(--ink)' }}>{t.students}</b> учеников</span>
+            {t.experience && <span><b style={{ color: 'var(--ink)' }}>{t.experience}</b></span>}
+          </div>
+          {t.next && (
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--success)', background: 'var(--success-soft)', padding: '3px 10px', borderRadius: 999 }}>
+              {t.next}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -163,12 +181,17 @@ function TeacherDrawer({ t, onClose, onMessage }) {
           <div>
             <span className="ps-eyebrow">языки</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-              {t.langs.map(l => (
-                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'var(--bg-cream-soft)', border: '1px solid var(--border-soft)' }}>
-                  <span className={`ps-flag ps-flag-${t.flag}`} />
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{l.replace(/\s+[A-C][12]\s*$/, '').trim()}</span>
-                </div>
-              ))}
+              {t.langs.map((l, i) => {
+                // флаг берём по коду именно этого языка, а не по основному t.flag
+                const code = (t.langCodes ?? [])[i] || t.flag
+                const c = LANG_COLOR[code] || 'var(--purple)'
+                return (
+                  <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: c + '12', border: `1px solid ${c}2E` }}>
+                    <span className={`ps-flag ps-flag-${code}`} />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{l.replace(/\s+[A-C][12]\s*$/, '').trim()}</span>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

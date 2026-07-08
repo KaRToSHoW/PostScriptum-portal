@@ -11,15 +11,20 @@ const HW_CHIP   = { not_started: 'orange', submitted: 'blue', done: 'green', ove
 
 function ChildCard({ c, active, onClick }) {
   return (
-    <div onClick={onClick} className="ps-card" style={{
-      padding: 18, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+    <div onClick={onClick} className="ps-card ps-card-lift" style={{
+      padding: 16, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
       border: active ? '2px solid var(--purple)' : '1px solid var(--border-soft)',
+      background: active ? 'var(--purple-tint)' : 'var(--bg-paper)',
     }}>
-      <div className="ps-avatar" style={{ width: 46, height: 46, fontSize: 15 }}>{c.initials}</div>
+      <div className="ps-avatar" style={{
+        width: 48, height: 48, fontSize: 16, flexShrink: 0,
+        boxShadow: active ? '0 0 0 2px var(--purple)55, 0 4px 10px var(--purple)33' : 'none',
+      }}>{c.initials}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{c.name}</div>
-        <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{c.courses} язык(ов) · стрик {c.streak} дн.</div>
+        <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{c.courses} язык(ов) · стрик {c.streak} дн.</div>
       </div>
+      {active && <Icon name="check" size={16} style={{ color: 'var(--purple)', flexShrink: 0 }} />}
     </div>
   )
 }

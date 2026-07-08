@@ -18,74 +18,112 @@ const LANGS = [
 ]
 
 function StudentCard({ s, onMessage, onSchedule, extraActions }) {
-  const firstCode = (s.langCodes ?? [])[0] || 'fr'
-  const color = LANG_COLOR[firstCode] || 'var(--purple)'
+  const langCodes = Array.isArray(s.langCodes) ? s.langCodes : []
   const langs = Array.isArray(s.langs)
     ? s.langs
     : ((s.langs ?? s.languages ?? '')).split(', ').filter(Boolean)
-  const langCodes = Array.isArray(s.langCodes) ? s.langCodes : []
+  const firstCode = langCodes[0] || 'fr'
+  const color = LANG_COLOR[firstCode] || 'var(--purple)'
+  const status = s.status && ({
+    ACTIVE: { chip: 'green',  label: 'Активен' },
+    PAUSED: { chip: 'orange', label: 'Пауза'   },
+  }[s.status] || { chip: 'gray', label: 'Завершён' })
+
   return (
-    <div className="ps-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-          background: color + '22', border: `2px solid ${color}44`,
-          display: 'grid', placeItems: 'center', overflow: 'hidden',
-          fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, color,
-        }}>
-          {s.avatarUrl
-            ? <img src={s.avatarUrl} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : s.initials}
+    <div className="ps-card ps-card-lift" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── Шапка: тонированная зона основного языка с водяным знаком-кодом ── */}
+      <div style={{
+        position: 'relative', padding: '20px 20px 16px', overflow: 'hidden',
+        background: `linear-gradient(135deg, ${color}1A, ${color}05)`,
+        borderBottom: `1px solid ${color}22`,
+      }}>
+        {/* фирменный водяной знак — крупный код языка (как P.S. на сайте) */}
+        <span style={{
+          position: 'absolute', right: -8, top: -26, pointerEvents: 'none', userSelect: 'none',
+          fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 104, lineHeight: 1,
+          letterSpacing: '-0.06em', textTransform: 'uppercase', color: color, opacity: 0.1,
+        }}>{firstCode}</span>
+
+        {status && (
+          <span className={`ps-chip ps-chip-${status.chip}`} style={{ position: 'absolute', top: 14, right: 14, boxShadow: '0 2px 6px rgba(31,27,58,.08)' }}>
+            {status.label}
+          </span>
+        )}
+
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 54, height: 54, borderRadius: 16, flexShrink: 0,
+            background: s.avatarUrl ? '#fff' : color + '20',
+            boxShadow: `0 0 0 3px var(--bg-paper), 0 0 0 4.5px ${color}3A, 0 6px 14px ${color}2E`,
+            display: 'grid', placeItems: 'center', overflow: 'hidden',
+            fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color,
+          }}>
+            {s.avatarUrl
+              ? <img src={s.avatarUrl} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : s.initials}
+          </div>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: status ? 74 : 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{s.name}</div>
+            {(s.showEmail || s.email) && <div style={{ fontSize: 11.5, color: 'var(--ink-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.email}</div>}
+            {s.parentName && <div style={{ fontSize: 11.5, color: 'var(--ink-muted)', marginTop: 2 }}>Родитель: <b style={{ color: 'var(--ink-2)' }}>{s.parentName}</b></div>}
+          </div>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{s.name}</div>
-          {(s.showEmail || s.email) && <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>{s.email}</div>}
-          {s.parentName && <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 1 }}>Родитель: {s.parentName}</div>}
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+      </div>
+
+      {/* ── Тело ── */}
+      <div style={{ padding: '16px 20px 18px', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+
+        {/* Языки — флаг ↔ название всегда совпадают */}
+        {langs.length > 0 && (
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
             {langs.map((lang, i) => {
               const code = langCodes[i] || ''
               const c = LANG_COLOR[code] || 'var(--purple)'
               return (
-                <span key={code || i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: c + '18', color: c, border: `1px solid ${c}33` }}>
-                  {code && <span className={`ps-flag ps-flag-${code}`} style={{ width: 12, height: 12, boxShadow: 'none' }} />}
-                  {lang}
+                <span key={code || i} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11.5, fontWeight: 700, padding: '4px 10px 4px 5px', borderRadius: 999, background: c + '14', color: c, border: `1px solid ${c}2E` }}>
+                  {code
+                    ? <span className={`ps-flag ps-flag-${code}`} style={{ width: 18, height: 18 }} />
+                    : null}
+                  {lang.replace(/\s+[A-C][12]\s*$/, '').trim()}
                 </span>
               )
             })}
           </div>
-        </div>
-        {s.status && (
-          <span className={`ps-chip ps-chip-${s.status === 'ACTIVE' ? 'green' : s.status === 'PAUSED' ? 'orange' : 'gray'}`}>
-            {s.status === 'ACTIVE' ? 'Активен' : s.status === 'PAUSED' ? 'Пауза' : 'Завершён'}
-          </span>
         )}
-      </div>
 
-      <div style={{ paddingTop: 8, borderTop: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {(s.nextLesson || s.teachers) && (
-          s.nextLesson ? (
-            <div style={{ fontSize: 12 }}>
-              <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Следующий урок: </span>
-              <span style={{ color, fontWeight: 800 }}>{s.nextLesson}</span>
-            </div>
-          ) : (
-            <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
-              <Icon name="sparkle" size={11} /> {s.teachers}
-            </div>
-          )
-        )}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {extraActions}
-          {onSchedule && (
-            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => onSchedule(s)}>
-              <Icon name="calendar" size={13} /> Запланировать
-            </button>
+        <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {(s.nextLesson || s.teachers) && (
+            s.nextLesson ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 12 }}>
+                <span style={{ width: 28, height: 28, borderRadius: 9, background: color + '18', color, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <Icon name="calendar" size={14} />
+                </span>
+                <span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Следующий урок:</span>
+                <span style={{ color, fontWeight: 800 }}>{s.nextLesson}</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 12, color: 'var(--ink-2)' }}>
+                <span style={{ width: 28, height: 28, borderRadius: 9, background: 'var(--purple-soft)', color: 'var(--purple-deep)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <Icon name="sparkle" size={13} />
+                </span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.teachers}</span>
+              </div>
+            )
           )}
-          {onMessage && (
-            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => onMessage(s)}>
-              <Icon name="chat" size={13} /> Написать
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {extraActions}
+            {onSchedule && (
+              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => onSchedule(s)}>
+                <Icon name="calendar" size={13} /> Запланировать
+              </button>
+            )}
+            {onMessage && (
+              <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => onMessage(s)}>
+                <Icon name="chat" size={13} /> Написать
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
