@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { authApi } from '../api/auth'
-import { api } from '../api/client'
 import Icon from '../components/Icon'
 import Logo from '../components/Logo'
 
@@ -10,13 +9,14 @@ import Logo from '../components/Logo'
    Флаги языков
    ============================================================ */
 function Flags() {
+  const st = { width: 58, height: 58, boxShadow: 'inset 0 0 0 2px #fff, 0 0 0 2px rgba(255,255,255,.4), 0 6px 18px rgba(0,0,0,.2)' }
   return (
-    <div style={{ display: 'flex', gap: 8 }}>
-      <span className="ps-flag ps-flag-fr" title="Французский" />
-      <span className="ps-flag ps-flag-en" title="Английский" />
-      <span className="ps-flag ps-flag-de" title="Немецкий" />
-      <span className="ps-flag ps-flag-es" title="Испанский" />
-      <span className="ps-flag ps-flag-it" title="Итальянский" />
+    <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+      <span className="ps-flag ps-flag-fr" style={st} title="Французский" />
+      <span className="ps-flag ps-flag-en" style={st} title="Английский" />
+      <span className="ps-flag ps-flag-de" style={st} title="Немецкий" />
+      <span className="ps-flag ps-flag-es" style={st} title="Испанский" />
+      <span className="ps-flag ps-flag-it" style={st} title="Итальянский" />
     </div>
   )
 }
@@ -25,10 +25,6 @@ function Flags() {
    Кнопки входа через соцсети (VK / Яндекс)
    ============================================================ */
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
-
-const VK_APP_ID       = 54669868
-const VK_REDIRECT_URL = 'https://postscriptum-online.ru/api/auth/oauth/vk/callback'
-const VK_SDK_URL      = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js'
 
 function goOAuth(provider) {
   // Уводим браузер на бэкенд — он редиректит к провайдеру и обратно на /oauth/callback
@@ -54,76 +50,111 @@ function YandexIcon({ size = 18 }) {
   )
 }
 
-function SocialButtons({ onSuccess }) {
-  const vkRef = useRef(null)
-  const [vkError, setVkError] = useState('')
+function SocialButton({ onClick, icon, children }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+        width: '100%', height: 46, borderRadius: 12, cursor: 'pointer',
+        border: `1.5px solid ${hover ? 'var(--purple)' : 'var(--border)'}`,
+        background: hover ? 'var(--purple-tint)' : '#fff',
+        fontFamily: 'var(--font-body)', fontSize: 14.5, fontWeight: 700, color: 'var(--ink)',
+        transition: 'background .12s, border-color .12s',
+      }}
+    >
+      {icon}
+      {children}
+    </button>
+  )
+}
 
-  useEffect(() => {
-    let cancelled = false
-
-    function initVk() {
-      if (cancelled || !window.VKIDSDK || !vkRef.current || vkRef.current.childElementCount > 0) return
-      const VKID = window.VKIDSDK
-
-      VKID.Config.init({
-        app: VK_APP_ID,
-        redirectUrl: VK_REDIRECT_URL,
-        responseMode: VKID.ConfigResponseMode.Callback,
-        source: VKID.ConfigSource.LOWCODE,
-        scope: 'email phone',
-      })
-
-      const oneTap = new VKID.OneTap()
-      oneTap.render({
-        container: vkRef.current,
-        showAlternativeLogin: true,
-        skin: 'secondary',
-        styles: { borderRadius: 12, height: 44 },
-      })
-      .on(VKID.WidgetEvents.ERROR, () => setVkError('VK ID недоступен'))
-      .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, (payload) => {
-        VKID.Auth.exchangeCode(payload.code, payload.device_id)
-          .then(data => api.post('/api/auth/oauth/vk/token', { accessToken: data.access_token }))
-          .then(resp => onSuccess?.(resp))
-          .catch(() => setVkError('Не удалось войти через VK'))
-      })
-    }
-
-    if (window.VKIDSDK) {
-      initVk()
-    } else {
-      const s = document.createElement('script')
-      s.src = VK_SDK_URL
-      s.async = true
-      s.onload = initVk
-      s.onerror = () => setVkError('vk-sdk')
-      document.head.appendChild(s)
-    }
-    return () => { cancelled = true }
-  }, [onSuccess])
-
+function SocialButtons() {
+  // Яндекс и VK — одинаковые кнопки: тот же шрифт, размер и иконка-логотип
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Виджет VK ID OneTap; если не загрузился — обычная кнопка с редиректом */}
-      {!vkError && <div ref={vkRef} style={{ minHeight: 44 }} />}
-      {vkError && (
-        <button
-          type="button"
-          onClick={() => goOAuth('vk')}
-          className="ps-btn ps-btn-outline"
-          style={{ padding: 12, fontSize: 12, justifyContent: 'center' }}
-        >
-          <VkIcon /> Войти через VK
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={() => goOAuth('yandex')}
-        className="ps-btn ps-btn-outline"
-        style={{ padding: 12, fontSize: 12, justifyContent: 'center' }}
-      >
-        <YandexIcon /> Войти через Яндекс
-      </button>
+      <SocialButton onClick={() => goOAuth('yandex')} icon={<YandexIcon size={20} />}>
+        Войти через Яндекс
+      </SocialButton>
+      <SocialButton onClick={() => goOAuth('vk')} icon={<VkIcon size={20} />}>
+        Войти через VK
+      </SocialButton>
+    </div>
+  )
+}
+
+/* ============================================================
+   Модалка «Забыл пароль?»
+   ============================================================ */
+function ForgotPasswordModal({ initialEmail = '', onClose, onSuccess }) {
+  const [email, setEmail]   = useState(initialEmail)
+  const [pwd, setPwd]       = useState('')
+  const [pwd2, setPwd2]     = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError]   = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!email)            { setError('Введите email'); return }
+    if (pwd.length < 6)    { setError('Пароль минимум 6 символов'); return }
+    if (pwd !== pwd2)      { setError('Пароли не совпадают'); return }
+    setError(''); setLoading(true)
+    try {
+      const res = await authApi.resetPassword(email.trim(), pwd)
+      onSuccess?.(res)   // пароль обновлён — сразу входим
+    } catch (err) {
+      setError(err.message || 'Не удалось сменить пароль')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'grid', placeItems: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)', padding: 20 }}
+    >
+      <div style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px', position: 'relative' }}>
+          <button type="button" onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,.15)', border: 'none', width: 30, height: 30, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
+            <Icon name="plus" size={13} style={{ transform: 'rotate(45deg)' }} />
+          </button>
+          <h3 className="ps-display ps-display-purple" style={{ fontSize: 19, margin: 0 }}>Забыли пароль?</h3>
+          <p style={{ fontSize: 12.5, opacity: 0.85, margin: '6px 0 0', lineHeight: 1.5 }}>
+            Введите email и задайте новый пароль — сразу войдёте.
+          </p>
+        </div>
+        <form onSubmit={submit} noValidate style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {error && (
+            <div style={{ background: 'var(--danger-soft)', color: 'var(--danger)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13, fontWeight: 700 }}>{error}</div>
+          )}
+          <div>
+            <label className="ps-input-label">EMAIL</label>
+            <input className="ps-input" type="email" placeholder="your@email.ru" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+          </div>
+          <div>
+            <label className="ps-input-label">НОВЫЙ ПАРОЛЬ</label>
+            <div style={{ position: 'relative' }}>
+              <input className="ps-input" type={showPwd ? 'text' : 'password'} placeholder="Минимум 6 символов" value={pwd} onChange={e => setPwd(e.target.value)} autoComplete="new-password" style={{ paddingRight: 44 }} />
+              <button type="button" onClick={() => setShowPwd(v => !v)} tabIndex={-1} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--ink-muted)', display: 'flex' }}>
+                <Icon name={showPwd ? 'eyeOff' : 'eye'} size={16} />
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="ps-input-label">ПОВТОРИТЕ ПАРОЛЬ</label>
+            <input className="ps-input" type={showPwd ? 'text' : 'password'} placeholder="Повторите пароль" value={pwd2} onChange={e => setPwd2(e.target.value)} autoComplete="new-password" />
+          </div>
+          <button type="submit" className="ps-btn ps-btn-primary" style={{ width: '100%', padding: '14px 22px', fontSize: 14, marginTop: 4 }} disabled={loading}>
+            {loading ? 'Сохраняем...' : <>Сменить пароль и войти <Icon name="arrow" size={14} /></>}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -136,6 +167,7 @@ function LoginForm({ onSuccess }) {
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd]   = useState(false)
   const [remember, setRemember] = useState(false)
+  const [forgot, setForgot]     = useState(false)
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
 
@@ -162,6 +194,7 @@ function LoginForm({ onSuccess }) {
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {error && (
         <div style={{
@@ -190,12 +223,13 @@ function LoginForm({ onSuccess }) {
       <div>
         <label className="ps-input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>ПАРОЛЬ</span>
+          {/* Пока нефункциональна — заработает, когда сделаем сброс по почте */}
           <a
             href="#"
             onClick={e => e.preventDefault()}
             style={{ color: 'var(--purple-deep)', fontWeight: 700, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}
           >
-            Восстановить
+            Забыл пароль?
           </a>
         </label>
         <div style={{ position: 'relative' }}>
@@ -259,8 +293,16 @@ function LoginForm({ onSuccess }) {
       </div>
 
       {/* Соцсети */}
-      <SocialButtons onSuccess={onSuccess} />
+      <SocialButtons />
     </form>
+    {forgot && (
+      <ForgotPasswordModal
+        initialEmail={email}
+        onClose={() => setForgot(false)}
+        onSuccess={onSuccess}
+      />
+    )}
+    </>
   )
 }
 
@@ -365,15 +407,26 @@ function RegisterForm({ onSuccess }) {
 
       {/* Повтор пароля */}
       <div>
-        <label className="ps-input-label">ПОВТОРИТЕ ПАРОЛЬ</label>
-        <input
-          className="ps-input"
-          type={showPwd ? 'text' : 'password'}
-          placeholder="Повторите пароль"
-          value={password2}
-          onChange={e => setPassword2(e.target.value)}
-          autoComplete="new-password"
-        />
+        <label className="ps-input-label">ЕЩЁ РАЗОЧЕК</label>
+        <div style={{ position: 'relative' }}>
+          <input
+            className="ps-input"
+            type={showPwd ? 'text' : 'password'}
+            placeholder="Повторите пароль"
+            value={password2}
+            onChange={e => setPassword2(e.target.value)}
+            autoComplete="new-password"
+            style={{ paddingRight: 44 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPwd(v => !v)}
+            tabIndex={-1}
+            style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--ink-muted)', display: 'flex' }}
+          >
+            <Icon name={showPwd ? 'eyeOff' : 'eye'} size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Зарегистрироваться */}
@@ -383,11 +436,11 @@ function RegisterForm({ onSuccess }) {
         style={{ width: '100%', padding: '16px 22px', fontSize: 14, marginTop: 4 }}
         disabled={loading}
       >
-        {loading ? 'Создаём аккаунт...' : <>Создать аккаунт <Icon name="sparkle" size={14} /></>}
+        {loading ? 'Создаём аккаунт...' : 'Создать аккаунт'}
       </button>
 
       <p style={{ fontSize: 12, color: 'var(--ink-muted)', textAlign: 'center', margin: 0, lineHeight: 1.6 }}>
-        Регистрируясь, вы соглашаетесь с{' '}
+        Регистрируясь, Вы соглашаетесь с{' '}
         <a href="#" style={{ color: 'var(--purple-deep)', fontWeight: 700 }}>условиями использования</a>
       </p>
     </form>
@@ -417,47 +470,33 @@ export default function LoginPage() {
 
       {/* ===== ЛЕВАЯ ПАНЕЛЬ ===== */}
       <div style={{
-        flex: '0 0 520px',
+        flex: '0 0 552px',
         background: 'var(--purple)',
         color: '#fff',
-        padding: '60px 56px',
+        padding: '48px 38px',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {/* Логотип */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <img src="/ps-logo.jpg" alt="P.S." style={{ width: 58, height: 58, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)' }} />
+        {/* Логотип — по центру сверху */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+          <img src="/ps-logo.jpg" alt="P.S." style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)' }} />
           <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 19, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.1 }}>
               Post <span style={{ color: 'var(--orange-soft)' }}>Scriptum</span>
             </div>
-            <div style={{ fontSize: 12.5, opacity: 0.8, fontStyle: 'italic', marginTop: 4, letterSpacing: '.01em' }}>
+            <div style={{ fontSize: 15, opacity: 0.8, fontStyle: 'italic', marginTop: 4, letterSpacing: '.01em' }}>
               онлайн-школа иностранных языков
             </div>
           </div>
         </div>
 
-        {/* Слоган в стиле плаката — со сдвигом строк */}
-        <div style={{ marginTop: 30, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28, lineHeight: 1.12, letterSpacing: '-0.02em', textTransform: 'lowercase' }}>
-          <div style={{ color: 'rgba(255,255,255,.45)' }}>искусство</div>
-          <div style={{ color: '#fff', marginLeft: 22 }}>свободной</div>
-          <div style={{ color: 'rgba(255,255,255,.45)', marginLeft: 44 }}>речи</div>
-        </div>
-
-        {/* Заголовок */}
-        <div style={{ marginTop: 48, position: 'relative' }}>
-          <span className="ps-dotted" style={{ color: '#FBE3C5', borderColor: '#FBE3C5' }}>
-            добро пожаловать
-          </span>
-          <h1 className="ps-display ps-display-purple" style={{ fontSize: 52, marginTop: 22, lineHeight: 1 }}>
-            Заговори<br />на языке<br />
-            <span style={{ color: 'var(--orange-soft)' }}>своей мечты</span>
-          </h1>
-          <p style={{ fontSize: 15, opacity: 0.85, lineHeight: 1.6, maxWidth: 380, marginTop: 20 }}>
-            Расписание, домашние задания, материалы, оплаты и чат с преподавателем — в одном месте.
-          </p>
+        {/* Слоган-плакат — на весь блок: растянут по вертикали и максимально крупно */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 64, lineHeight: 1.12, letterSpacing: '-0.03em', textTransform: 'lowercase', whiteSpace: 'nowrap' }}>
+          <div style={{ color: 'rgba(255,255,255,.5)' }}>искусство</div>
+          <div style={{ color: '#fff', marginLeft: 16 }}>свободной</div>
+          <div style={{ color: 'rgba(255,255,255,.5)', marginLeft: 48 }}>речи</div>
         </div>
 
         {/* Флаги + статистика */}
@@ -491,8 +530,16 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
-          <div style={{ fontSize: 12, opacity: 0.5, marginTop: 32 }}>
-            © 2026 Post Scriptum · postscriptumfr.ru
+          <div style={{ fontSize: 12, opacity: 0.6, marginTop: 32 }}>
+            © 2026 Post Scriptum ·{' '}
+            <a
+              href="https://postscriptum-online.ru"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: 'var(--orange-soft)', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2 }}
+            >
+              postscriptum-online.ru
+            </a>
           </div>
         </div>
 
@@ -521,52 +568,72 @@ export default function LoginPage() {
         justifyContent: 'center',
         overflowY: 'auto',
       }}>
-        <div style={{ maxWidth: 420, width: '100%', margin: '0 auto' }}>
+        <div style={{ maxWidth: 480, width: '100%', margin: '0 auto' }}>
 
-          {/* Табы Войти / Зарегистрироваться */}
-          <div style={{
-            display: 'inline-flex',
-            background: 'var(--bg-cream)',
-            borderRadius: 'var(--r-pill)',
-            padding: 4,
-            marginBottom: 28,
-            border: '1px solid var(--border)',
-          }}>
-            {[
-              { key: 'login',    label: 'Войти' },
-              { key: 'register', label: 'Зарегистрироваться' },
-            ].map(t => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                style={{
-                  padding: '9px 20px',
-                  borderRadius: 'var(--r-pill)',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'background .15s, box-shadow .15s, color .15s',
-                  background: tab === t.key ? '#fff' : 'transparent',
-                  color:      tab === t.key ? 'var(--ink)' : 'var(--ink-muted)',
-                  boxShadow:  tab === t.key ? 'var(--shadow-card)' : 'none',
-                  letterSpacing: '0.01em',
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
+          {/* Табы Войти / Зарегистрироваться — плавный переключатель, по ширине формы */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              width: '100%',
+              background: 'var(--bg-cream)',
+              borderRadius: 'var(--r-pill)',
+              padding: 4,
+              border: '1px solid var(--border)',
+            }}>
+              {/* Плавный бегунок */}
+              <div style={{
+                position: 'absolute',
+                top: 4, bottom: 4, left: 4,
+                width: 'calc(50% - 4px)',
+                borderRadius: 'var(--r-pill)',
+                background: '#fff',
+                boxShadow: 'var(--shadow-card)',
+                transform: tab === 'register' ? 'translateX(100%)' : 'translateX(0)',
+                transition: 'transform .32s cubic-bezier(.34,1.4,.5,1)',
+              }} />
+              {[
+                { key: 'login',    label: 'Войти' },
+                { key: 'register', label: 'Зарегистрироваться' },
+              ].map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setTab(t.key)}
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    flex: 1,
+                    padding: '10px 8px',
+                    borderRadius: 'var(--r-pill)',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    color: tab === t.key ? 'var(--ink)' : 'var(--ink-muted)',
+                    transition: 'color .25s ease',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Заголовок */}
-          <h2 className="ps-display" style={{ fontSize: 36, margin: '0 0 6px' }}>
-            {tab === 'login' ? 'С возвращением!' : 'Создать аккаунт'}
+          <h2 className="ps-display" style={{ fontSize: 32, margin: '0 0 6px', whiteSpace: 'nowrap' }}>
+            {tab === 'login' ? 'С возвращением!' : 'Добро пожаловать!'}
           </h2>
-          <p style={{ color: 'var(--ink-muted)', fontSize: 14, margin: '0 0 28px', lineHeight: 1.5 }}>
+          <p style={{ color: 'var(--ink-muted)', fontSize: 14, margin: '0 0 28px', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {tab === 'login'
-              ? 'Введите email и пароль, либо войдите через соцсеть.'
-              : 'Заполните данные — это займёт меньше минуты.'}
+              ? 'Введите email и пароль или войдите через соцсеть.'
+              : <>Мы Вам очень-очень рады
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--orange)" style={{ flexShrink: 0 }}>
+                    <path d="M12 21s-6.716-4.35-9.333-8.018C.9 10.28 1.53 6.9 4.222 5.6c2.09-1.01 4.48-.31 5.778 1.4.5.66.8 1 2 1s1.5-.34 2-1c1.298-1.71 3.688-2.41 5.778-1.4 2.692 1.3 3.322 4.68 1.555 7.382C18.716 16.65 12 21 12 21z"/>
+                  </svg>
+                </>}
           </p>
 
           {/* Форма */}
