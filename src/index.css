@@ -482,3 +482,9 @@ input, textarea { font-family: inherit; }
 @keyframes ps-spin {
   to { transform: rotate(360deg); }
 }
+
+/* Падающие пингвины на экране входа */
+@keyframes ps-fall {
+  from { transform: translate(0, -18vh) rotate(0deg); }
+  to   { transform: translate(var(--sway, 0px), 118vh) rotate(var(--rot, 360deg)); }
+}

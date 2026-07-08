@@ -1,9 +1,58 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { authApi } from '../api/auth'
 import Icon from '../components/Icon'
 import Logo from '../components/Logo'
+import bossPng     from '../assets/Boss-pinguin.svg'
+import computerPng from '../assets/Computer-pinguin.svg'
+import happyPng    from '../assets/Happy-pinguin.svg'
+import popcornPng  from '../assets/Popcorn-pinguin.svg'
+import twoPng      from '../assets/Two-pinguins.svg'
+import wowPng      from '../assets/WoW-pinguin.svg'
+
+/* ============================================================
+   Хаотично падающие пингвины (декор правой панели)
+   ============================================================ */
+const PENGUINS = [bossPng, computerPng, happyPng, popcornPng, twoPng, wowPng]
+
+function FallingPenguins({ count = 11 }) {
+  // параметры каждого пингвина фиксируем один раз на маунт
+  const items = useMemo(() => Array.from({ length: count }, () => ({
+    src:      PENGUINS[Math.floor(Math.random() * PENGUINS.length)],
+    left:     Math.random() * 100,               // %
+    size:     34 + Math.random() * 50,           // px
+    duration: 8 + Math.random() * 10,            // c
+    delay:    -Math.random() * 18,               // c (отрицательная — уже в полёте)
+    sway:     (Math.random() * 2 - 1) * 60,      // px горизонтальный снос
+    rot:      (Math.random() * 2 - 1) * 300,     // deg кувырок
+    opacity:  0.45 + Math.random() * 0.45,
+  })), [count])
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+      {items.map((p, i) => (
+        <img
+          key={i}
+          src={p.src}
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: `${p.left}%`,
+            width: p.size,
+            opacity: p.opacity,
+            willChange: 'transform',
+            animation: `ps-fall ${p.duration}s linear ${p.delay}s infinite`,
+            '--sway': `${p.sway}px`,
+            '--rot': `${p.rot}deg`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 /* ============================================================
    Флаги языков
@@ -11,7 +60,7 @@ import Logo from '../components/Logo'
 function Flags() {
   const st = { width: 58, height: 58, boxShadow: 'inset 0 0 0 2px #fff, 0 0 0 2px rgba(255,255,255,.4), 0 6px 18px rgba(0,0,0,.2)' }
   return (
-    <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+    <div style={{ display: 'flex', gap: 16 }}>
       <span className="ps-flag ps-flag-fr" style={st} title="Французский" />
       <span className="ps-flag ps-flag-en" style={st} title="Английский" />
       <span className="ps-flag ps-flag-de" style={st} title="Немецкий" />
@@ -229,7 +278,7 @@ function LoginForm({ onSuccess }) {
             onClick={e => e.preventDefault()}
             style={{ color: 'var(--purple-deep)', fontWeight: 700, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}
           >
-            Забыл пароль?
+            Забыль пароль?
           </a>
         </label>
         <div style={{ position: 'relative' }}>
@@ -407,7 +456,7 @@ function RegisterForm({ onSuccess }) {
 
       {/* Повтор пароля */}
       <div>
-        <label className="ps-input-label">ЕЩЁ РАЗОЧЕК</label>
+        <label className="ps-input-label">И ЕЩЁ РАЗОЧЕК</label>
         <div style={{ position: 'relative' }}>
           <input
             className="ps-input"
@@ -567,8 +616,12 @@ export default function LoginPage() {
         flexDirection: 'column',
         justifyContent: 'center',
         overflowY: 'auto',
+        position: 'relative',
       }}>
-        <div style={{ maxWidth: 480, width: '100%', margin: '0 auto' }}>
+        {/* Хаотично падающие пингвины — за формой */}
+        <FallingPenguins />
+
+        <div style={{ maxWidth: 480, width: '100%', margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
           {/* Табы Войти / Зарегистрироваться — плавный переключатель, по ширине формы */}
           <div style={{ marginBottom: 28 }}>
