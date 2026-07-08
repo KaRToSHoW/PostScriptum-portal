@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { authApi } from '../api/auth'
+import { api } from '../api/client'
 import Icon from '../components/Icon'
 import Logo from '../components/Logo'
 
@@ -25,40 +26,103 @@ function Flags() {
    ============================================================ */
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
+const VK_APP_ID       = 54669868
+const VK_REDIRECT_URL = 'https://postscriptum-online.ru/api/auth/oauth/vk/callback'
+const VK_SDK_URL      = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js'
+
 function goOAuth(provider) {
   // Уводим браузер на бэкенд — он редиректит к провайдеру и обратно на /oauth/callback
   window.location.href = `${API_BASE}/api/auth/oauth/${provider}`
 }
 
-function SocialButtons() {
+/* Оригинальные иконки соцсетей */
+function VkIcon({ size = 18 }) {
   return (
-    <div style={{ display: 'flex', gap: 10 }}>
-      <button
-        type="button"
-        onClick={() => goOAuth('vk')}
-        className="ps-btn ps-btn-outline"
-        style={{ flex: 1, padding: 12, fontSize: 12 }}
-      >
-        <span style={{
-          width: 16, height: 16, borderRadius: 4,
-          background: '#0077FF', display: 'inline-grid',
-          placeItems: 'center', color: '#fff', fontSize: 10, fontWeight: 800, flexShrink: 0,
-        }}>VK</span>
-        ВКонтакте
-      </button>
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+      <rect width="24" height="24" rx="6" fill="#0077FF"/>
+      <path fill="#fff" d="M12.785 17.242c-4.842 0-7.604-3.319-7.719-8.842h2.425c.08 4.054 1.868 5.771 3.284 6.125V8.4h2.284v3.496c1.398-.15 2.867-1.743 3.362-3.496h2.284c-.38 2.16-1.974 3.753-3.107 4.408 1.133.53 2.948 1.92 3.638 4.434h-2.514c-.54-1.682-1.885-2.983-3.663-3.16v3.16h-.274Z"/>
+    </svg>
+  )
+}
+
+function YandexIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="12" fill="#FC3F1D"/>
+      <path fill="#fff" d="M13.32 7.666h-1.204c-2.09 0-3.157 1.06-3.157 2.622 0 1.764.71 2.591 2.242 3.632l1.247.84-3.583 5.24H6.19l3.291-4.847c-1.893-1.348-2.955-2.67-2.955-4.887 0-2.774 1.933-4.666 5.532-4.666h3.585v14.4H13.32V7.666Z"/>
+    </svg>
+  )
+}
+
+function SocialButtons({ onSuccess }) {
+  const vkRef = useRef(null)
+  const [vkError, setVkError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    function initVk() {
+      if (cancelled || !window.VKIDSDK || !vkRef.current || vkRef.current.childElementCount > 0) return
+      const VKID = window.VKIDSDK
+
+      VKID.Config.init({
+        app: VK_APP_ID,
+        redirectUrl: VK_REDIRECT_URL,
+        responseMode: VKID.ConfigResponseMode.Callback,
+        source: VKID.ConfigSource.LOWCODE,
+        scope: 'email phone',
+      })
+
+      const oneTap = new VKID.OneTap()
+      oneTap.render({
+        container: vkRef.current,
+        showAlternativeLogin: true,
+        skin: 'secondary',
+        styles: { borderRadius: 12, height: 44 },
+      })
+      .on(VKID.WidgetEvents.ERROR, () => setVkError('VK ID недоступен'))
+      .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, (payload) => {
+        VKID.Auth.exchangeCode(payload.code, payload.device_id)
+          .then(data => api.post('/api/auth/oauth/vk/token', { accessToken: data.access_token }))
+          .then(resp => onSuccess?.(resp))
+          .catch(() => setVkError('Не удалось войти через VK'))
+      })
+    }
+
+    if (window.VKIDSDK) {
+      initVk()
+    } else {
+      const s = document.createElement('script')
+      s.src = VK_SDK_URL
+      s.async = true
+      s.onload = initVk
+      s.onerror = () => setVkError('vk-sdk')
+      document.head.appendChild(s)
+    }
+    return () => { cancelled = true }
+  }, [onSuccess])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Виджет VK ID OneTap; если не загрузился — обычная кнопка с редиректом */}
+      {!vkError && <div ref={vkRef} style={{ minHeight: 44 }} />}
+      {vkError && (
+        <button
+          type="button"
+          onClick={() => goOAuth('vk')}
+          className="ps-btn ps-btn-outline"
+          style={{ padding: 12, fontSize: 12, justifyContent: 'center' }}
+        >
+          <VkIcon /> Войти через VK
+        </button>
+      )}
       <button
         type="button"
         onClick={() => goOAuth('yandex')}
         className="ps-btn ps-btn-outline"
-        style={{ flex: 1, padding: 12, fontSize: 12 }}
+        style={{ padding: 12, fontSize: 12, justifyContent: 'center' }}
       >
-        <span style={{
-          width: 16, height: 16, borderRadius: 4,
-          background: '#FC3F1D', display: 'inline-grid',
-          placeItems: 'center', color: '#fff', fontSize: 12, fontWeight: 800, flexShrink: 0,
-          fontFamily: 'var(--font-display)',
-        }}>Я</span>
-        Яндекс
+        <YandexIcon /> Войти через Яндекс
       </button>
     </div>
   )
@@ -195,7 +259,7 @@ function LoginForm({ onSuccess }) {
       </div>
 
       {/* Соцсети */}
-      <SocialButtons />
+      <SocialButtons onSuccess={onSuccess} />
     </form>
   )
 }
