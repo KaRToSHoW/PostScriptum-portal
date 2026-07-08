@@ -8,7 +8,7 @@ export default function Logo({ size = 'md', light = false }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <img src="/ps-logo.svg" alt="P.S." style={{ height: h, width: 'auto', display: 'block', flexShrink: 0 }} />
+        <img src="/ps-logo.jpg" alt="P.S." style={{ height: h, width: h, borderRadius: '50%', objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         <div style={{
           fontFamily: 'var(--font-display)',
           fontWeight: 800,

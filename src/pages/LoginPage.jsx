@@ -363,20 +363,29 @@ export default function LoginPage() {
         flexDirection: 'column',
       }}>
         {/* Логотип */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src="/ps-logo.svg" alt="P.S." style={{ width: 56, height: 56 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <img src="/ps-logo.jpg" alt="P.S." style={{ width: 58, height: 58, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)' }} />
           <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em' }}>
-              Post Scriptum
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 19, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.1 }}>
+              Post <span style={{ color: 'var(--orange-soft)' }}>Scriptum</span>
             </div>
-            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>языковая школа</div>
+            <div style={{ fontSize: 12.5, opacity: 0.8, fontStyle: 'italic', marginTop: 4, letterSpacing: '.01em' }}>
+              онлайн-школа иностранных языков
+            </div>
           </div>
         </div>
 
+        {/* Слоган в стиле плаката — со сдвигом строк */}
+        <div style={{ marginTop: 30, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28, lineHeight: 1.12, letterSpacing: '-0.02em', textTransform: 'lowercase' }}>
+          <div style={{ color: 'rgba(255,255,255,.45)' }}>искусство</div>
+          <div style={{ color: '#fff', marginLeft: 22 }}>свободной</div>
+          <div style={{ color: 'rgba(255,255,255,.45)', marginLeft: 44 }}>речи</div>
+        </div>
+
         {/* Заголовок */}
-        <div style={{ marginTop: 72, position: 'relative' }}>
+        <div style={{ marginTop: 48, position: 'relative' }}>
           <span className="ps-dotted" style={{ color: '#FBE3C5', borderColor: '#FBE3C5' }}>
-            искусство свободы
+            добро пожаловать
           </span>
           <h1 className="ps-display ps-display-purple" style={{ fontSize: 52, marginTop: 22, lineHeight: 1 }}>
             Заговори<br />на языке<br />
