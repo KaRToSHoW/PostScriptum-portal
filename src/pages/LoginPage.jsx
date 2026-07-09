@@ -82,15 +82,17 @@ function Flags() {
 /* ============================================================
    Телеграм-виджет: компактный баннер, по наведению — большой QR
    ============================================================ */
+const TG_URL = 'https://t.me/post_scriptumfr'
+
 function TelegramQr() {
   const [hovered, setHovered] = useState(false)
   const [auto, setAuto]       = useState(false)
   const open = hovered || auto
 
-  // Автопоказ через 3 секунды, висит дольше
+  // Автопоказ через 3 секунды, держится долго на экране
   useEffect(() => {
     const show = setTimeout(() => setAuto(true), 3000)
-    const hide = setTimeout(() => setAuto(false), 15000)
+    const hide = setTimeout(() => setAuto(false), 45000)
     return () => { clearTimeout(show); clearTimeout(hide) }
   }, [])
 
@@ -98,22 +100,25 @@ function TelegramQr() {
     <div
       onMouseEnter={() => { setHovered(true); setAuto(false) }}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => setHovered(h => !h)}
-      style={{ position: 'relative', marginTop: 22, cursor: 'pointer', maxWidth: 400 }}
+      onClick={() => window.open(TG_URL, '_blank', 'noopener')}
+      title="Открыть наш Telegram"
+      style={{ position: 'absolute', top: 20, right: 20, zIndex: 6, cursor: 'pointer', width: 280 }}
     >
-      {/* Всплывающая карточка-стикер с большим QR — вылетает вверх-вправо, за пределы фиолетового блока */}
+      {/* Всплывающая карточка-стикер с большим QR — выпадает вниз из-под баннера */}
       <div style={{
-        position: 'absolute', left: 'calc(100% - 70px)', bottom: 'calc(100% + 4px)',
+        position: 'absolute', right: 0, top: 'calc(100% + 12px)',
         background: '#fff', borderRadius: 22, padding: '16px 16px 12px',
         textAlign: 'center', zIndex: 20, pointerEvents: 'none',
         boxShadow: '0 28px 70px rgba(0,0,0,.4)',
         transform: open
-          ? 'translateY(0) rotate(7deg) scale(1)'
-          : 'translateY(24px) rotate(2deg) scale(.5)',
+          ? 'translateY(0) rotate(-4deg) scale(1)'
+          : 'translateY(-24px) rotate(-2deg) scale(.5)',
         opacity: open ? 1 : 0,
-        transformOrigin: 'bottom left',
+        transformOrigin: 'top right',
         transition: 'transform .45s cubic-bezier(.34,1.56,.64,1), opacity .25s',
       }}>
+        {/* хвостик карточки — сверху справа, указывает на баннер */}
+        <div style={{ position: 'absolute', right: 26, top: -7, width: 16, height: 16, background: '#fff', transform: 'rotate(45deg)', borderRadius: 3 }} />
         <div className="ps-qr-box">
           <img className="ps-qr-img" src={QrTg} alt="Телеграм-канал P.S." />
           <span className="ps-qr-scan" />
@@ -126,40 +131,40 @@ function TelegramQr() {
           Наведи камеру
         </div>
         <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>и ты в нашем канале</div>
-        {/* хвостик карточки — снизу слева, указывает на баннер */}
-        <div style={{ position: 'absolute', left: 26, bottom: -7, width: 16, height: 16, background: '#fff', transform: 'rotate(45deg)', borderRadius: 3 }} />
       </div>
 
-      {/* Компактный баннер */}
+      {/* Компактный баннер — матовое стекло */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        background: open ? 'rgba(255,255,255,.17)' : 'rgba(255,255,255,.1)',
-        border: `1px solid ${open ? 'rgba(255,255,255,.4)' : 'rgba(255,255,255,.22)'}`,
-        borderRadius: 18, padding: '12px 16px',
-        transition: 'background .2s, border-color .2s, transform .25s',
-        transform: open ? 'translateX(2px)' : 'none',
+        display: 'flex', alignItems: 'center', gap: 12,
+        background: open ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.55)',
+        backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+        border: `1px solid ${open ? 'rgba(96,80,181,.35)' : 'rgba(255,255,255,.7)'}`,
+        borderRadius: 16, padding: '10px 14px',
+        boxShadow: open ? '0 14px 34px rgba(43,32,115,.18)' : '0 8px 22px rgba(43,32,115,.12)',
+        transition: 'background .2s, border-color .2s, box-shadow .2s, transform .25s',
+        transform: open ? 'translateY(2px)' : 'none',
       }}>
         <div style={{
-          width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
           background: 'linear-gradient(180deg, #2AABEE, #229ED9)',
           display: 'grid', placeItems: 'center',
           boxShadow: '0 6px 14px rgba(34,158,217,.45)',
         }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" style={{ marginRight: 2 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" style={{ marginRight: 2 }}>
             <path d="M21.9 4.6 18.7 19.8c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13.4l-4.8-1.5c-1-.3-1-1 .2-1.5L20.4 3c.9-.3 1.7.2 1.5 1.6Z"/>
           </svg>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, color: '#fff' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13.5, color: 'var(--purple-deep)', lineHeight: 1.1 }}>
             Мы в Telegram
           </div>
-          <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', marginTop: 2, lineHeight: 1.35 }}>
-            посты о языках, разборы и жизнь школы
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11, color: 'var(--orange-deep)', marginTop: 3, letterSpacing: '.01em', whiteSpace: 'nowrap' }}>
+            тут всякое полезное
           </div>
         </div>
         {/* мини-QR: прячется, когда открыт большой */}
-        <div style={{ background: '#fff', borderRadius: 10, padding: 3, lineHeight: 0, flexShrink: 0, transform: open ? 'scale(0)' : 'scale(1)', transition: 'transform .25s' }}>
-          <img src={QrTg} alt="" style={{ width: 44, height: 44, display: 'block' }} />
+        <div style={{ lineHeight: 0, flexShrink: 0, transform: open ? 'scale(0)' : 'scale(1)', transition: 'transform .25s' }}>
+          <img src={QrTg} alt="" style={{ width: 38, height: 38, display: 'block', borderRadius: 6 }} />
         </div>
       </div>
     </div>
@@ -375,7 +380,7 @@ function LoginForm({ onSuccess }) {
             onClick={e => { e.preventDefault(); setForgot(true) }}
             style={{ color: 'var(--purple-deep)', fontWeight: 700, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}
           >
-            Забыли пароль?
+            Забыль пароль?
           </a>
         </label>
         <div style={{ position: 'relative' }}>
@@ -611,7 +616,11 @@ export default function LoginPage() {
       display: 'flex',
       background: 'var(--bg-cream)',
       overflow: 'hidden',
+      position: 'relative',
     }}>
+
+      {/* Телеграм-виджет — крайний правый верхний угол страницы */}
+      <TelegramQr />
 
       {/* ===== ЛЕВАЯ ПАНЕЛЬ ===== */}
       <div style={{
@@ -626,7 +635,7 @@ export default function LoginPage() {
       }}>
         {/* Логотип — по центру сверху */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-          <img src="/ps-logo.jpg" alt="P.S." style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)' }} />
+          <img src="/ps-logo.jpg" alt="P.S." style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)', flexShrink: 0 }} />
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.1 }}>
               Post <span style={{ color: 'var(--orange-soft)' }}>Scriptum</span>
@@ -644,12 +653,9 @@ export default function LoginPage() {
           <div style={{ color: 'rgba(255,255,255,.5)', marginLeft: 48 }}>речи</div>
         </div>
 
-        {/* Флаги + телеграм + статистика */}
+        {/* Флаги + статистика */}
         <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
           <Flags />
-
-          {/* Баннер телеграм-канала: по наведению/через 5с выпрыгивает большой QR вправо */}
-          <TelegramQr />
           <div style={{ display: 'flex', gap: 28, alignItems: 'center', marginTop: 24 }}>
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, letterSpacing: '-0.02em' }}>
