@@ -65,6 +65,12 @@ services:
       APP_OAUTH_YANDEX_CLIENT_ID: ${OAUTH_YANDEX_CLIENT_ID:-}
       APP_OAUTH_YANDEX_CLIENT_SECRET: ${OAUTH_YANDEX_CLIENT_SECRET:-}
       APP_OAUTH_YANDEX_REDIRECT_URI: ${OAUTH_YANDEX_REDIRECT_URI:-}
+      # SMTP для писем сброса пароля (если пусто — ссылка пишется в лог)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      APP_MAIL_FROM: ${MAIL_FROM:-no-reply@postscriptum-online.ru}
     volumes:
       - uploads_data:/app/uploads
 

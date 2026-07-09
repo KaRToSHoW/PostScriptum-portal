@@ -1,22 +1,31 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { authApi } from '../api/auth'
 import Icon from '../components/Icon'
 import Logo from '../components/Logo'
+import QrTg from '../assets/Qr_tg.png'
 import bossPng     from '../assets/Boss-pinguin.svg'
 import computerPng from '../assets/Computer-pinguin.svg'
 import happyPng    from '../assets/Happy-pinguin.svg'
 import popcornPng  from '../assets/Popcorn-pinguin.svg'
 import twoPng      from '../assets/Two-pinguins.svg'
 import wowPng      from '../assets/WoW-pinguin.svg'
+import classicPng  from '../assets/Penguin-classic.svg'
+import onePng      from '../assets/Penguin-one.svg'
+import twoVarPng   from '../assets/Penguin-two.svg'
+import suitcasePng from '../assets/Penguin-suitcase.svg'
+import glassesPng  from '../assets/Penguin-glasses.svg'
 
 /* ============================================================
    Хаотично падающие пингвины (декор правой панели)
    ============================================================ */
-const PENGUINS = [bossPng, computerPng, happyPng, popcornPng, twoPng, wowPng]
+const PENGUINS = [
+  bossPng, computerPng, happyPng, popcornPng, twoPng, wowPng,
+  classicPng, onePng, twoVarPng, suitcasePng, glassesPng,
+]
 
-function FallingPenguins({ count = 11 }) {
+function FallingPenguins({ count = 14 }) {
   // параметры каждого пингвина фиксируем один раз на маунт
   const items = useMemo(() => Array.from({ length: count }, () => ({
     src:      PENGUINS[Math.floor(Math.random() * PENGUINS.length)],
@@ -60,12 +69,99 @@ function FallingPenguins({ count = 11 }) {
 function Flags() {
   const st = { width: 58, height: 58, boxShadow: 'inset 0 0 0 2px #fff, 0 0 0 2px rgba(255,255,255,.4), 0 6px 18px rgba(0,0,0,.2)' }
   return (
-    <div style={{ display: 'flex', gap: 16 }}>
+    <div style={{ display: 'flex', gap: 26 }}>
       <span className="ps-flag ps-flag-fr" style={st} title="Французский" />
       <span className="ps-flag ps-flag-en" style={st} title="Английский" />
       <span className="ps-flag ps-flag-de" style={st} title="Немецкий" />
       <span className="ps-flag ps-flag-es" style={st} title="Испанский" />
       <span className="ps-flag ps-flag-it" style={st} title="Итальянский" />
+    </div>
+  )
+}
+
+/* ============================================================
+   Телеграм-виджет: компактный баннер, по наведению — большой QR
+   ============================================================ */
+function TelegramQr() {
+  const [hovered, setHovered] = useState(false)
+  const [auto, setAuto]       = useState(false)
+  const open = hovered || auto
+
+  // Автопоказ через 3 секунды, висит дольше
+  useEffect(() => {
+    const show = setTimeout(() => setAuto(true), 3000)
+    const hide = setTimeout(() => setAuto(false), 15000)
+    return () => { clearTimeout(show); clearTimeout(hide) }
+  }, [])
+
+  return (
+    <div
+      onMouseEnter={() => { setHovered(true); setAuto(false) }}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => setHovered(h => !h)}
+      style={{ position: 'relative', marginTop: 22, cursor: 'pointer', maxWidth: 400 }}
+    >
+      {/* Всплывающая карточка-стикер с большим QR — вылетает вверх-вправо, за пределы фиолетового блока */}
+      <div style={{
+        position: 'absolute', left: 'calc(100% - 70px)', bottom: 'calc(100% + 4px)',
+        background: '#fff', borderRadius: 22, padding: '16px 16px 12px',
+        textAlign: 'center', zIndex: 20, pointerEvents: 'none',
+        boxShadow: '0 28px 70px rgba(0,0,0,.4)',
+        transform: open
+          ? 'translateY(0) rotate(7deg) scale(1)'
+          : 'translateY(24px) rotate(2deg) scale(.5)',
+        opacity: open ? 1 : 0,
+        transformOrigin: 'bottom left',
+        transition: 'transform .45s cubic-bezier(.34,1.56,.64,1), opacity .25s',
+      }}>
+        <div className="ps-qr-box">
+          <img className="ps-qr-img" src={QrTg} alt="Телеграм-канал P.S." />
+          <span className="ps-qr-scan" />
+          <span className="ps-qr-corner tl" />
+          <span className="ps-qr-corner tr" />
+          <span className="ps-qr-corner bl" />
+          <span className="ps-qr-corner br" />
+        </div>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: 'var(--purple-deep)', marginTop: 10 }}>
+          Наведи камеру
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>и ты в нашем канале</div>
+        {/* хвостик карточки — снизу слева, указывает на баннер */}
+        <div style={{ position: 'absolute', left: 26, bottom: -7, width: 16, height: 16, background: '#fff', transform: 'rotate(45deg)', borderRadius: 3 }} />
+      </div>
+
+      {/* Компактный баннер */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        background: open ? 'rgba(255,255,255,.17)' : 'rgba(255,255,255,.1)',
+        border: `1px solid ${open ? 'rgba(255,255,255,.4)' : 'rgba(255,255,255,.22)'}`,
+        borderRadius: 18, padding: '12px 16px',
+        transition: 'background .2s, border-color .2s, transform .25s',
+        transform: open ? 'translateX(2px)' : 'none',
+      }}>
+        <div style={{
+          width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+          background: 'linear-gradient(180deg, #2AABEE, #229ED9)',
+          display: 'grid', placeItems: 'center',
+          boxShadow: '0 6px 14px rgba(34,158,217,.45)',
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" style={{ marginRight: 2 }}>
+            <path d="M21.9 4.6 18.7 19.8c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13.4l-4.8-1.5c-1-.3-1-1 .2-1.5L20.4 3c.9-.3 1.7.2 1.5 1.6Z"/>
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, color: '#fff' }}>
+            Мы в Telegram
+          </div>
+          <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', marginTop: 2, lineHeight: 1.35 }}>
+            посты о языках, разборы и жизнь школы
+          </div>
+        </div>
+        {/* мини-QR: прячется, когда открыт большой */}
+        <div style={{ background: '#fff', borderRadius: 10, padding: 3, lineHeight: 0, flexShrink: 0, transform: open ? 'scale(0)' : 'scale(1)', transition: 'transform .25s' }}>
+          <img src={QrTg} alt="" style={{ width: 44, height: 44, display: 'block' }} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -139,25 +235,21 @@ function SocialButtons() {
 /* ============================================================
    Модалка «Забыл пароль?»
    ============================================================ */
-function ForgotPasswordModal({ initialEmail = '', onClose, onSuccess }) {
-  const [email, setEmail]   = useState(initialEmail)
-  const [pwd, setPwd]       = useState('')
-  const [pwd2, setPwd2]     = useState('')
-  const [showPwd, setShowPwd] = useState(false)
+function ForgotPasswordModal({ initialEmail = '', onClose }) {
+  const [email, setEmail]     = useState(initialEmail)
   const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [error, setError]     = useState('')
+  const [sent, setSent]       = useState(false)
 
   async function submit(e) {
     e.preventDefault()
-    if (!email)            { setError('Введите email'); return }
-    if (pwd.length < 6)    { setError('Пароль минимум 6 символов'); return }
-    if (pwd !== pwd2)      { setError('Пароли не совпадают'); return }
+    if (!email.trim()) { setError('Введите email'); return }
     setError(''); setLoading(true)
     try {
-      const res = await authApi.resetPassword(email.trim(), pwd)
-      onSuccess?.(res)   // пароль обновлён — сразу входим
+      await authApi.forgotPassword(email.trim())
+      setSent(true)   // ответ всегда одинаковый — не раскрываем, есть ли такой email
     } catch (err) {
-      setError(err.message || 'Не удалось сменить пароль')
+      setError(err.message || 'Не удалось отправить письмо')
     } finally {
       setLoading(false)
     }
@@ -175,34 +267,40 @@ function ForgotPasswordModal({ initialEmail = '', onClose, onSuccess }) {
           </button>
           <h3 className="ps-display ps-display-purple" style={{ fontSize: 19, margin: 0 }}>Забыли пароль?</h3>
           <p style={{ fontSize: 12.5, opacity: 0.85, margin: '6px 0 0', lineHeight: 1.5 }}>
-            Введите email и задайте новый пароль — сразу войдёте.
+            {sent
+              ? 'Проверьте почту — мы отправили ссылку для сброса.'
+              : 'Введите email — пришлём ссылку для сброса пароля.'}
           </p>
         </div>
-        <form onSubmit={submit} noValidate style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {error && (
-            <div style={{ background: 'var(--danger-soft)', color: 'var(--danger)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13, fontWeight: 700 }}>{error}</div>
-          )}
-          <div>
-            <label className="ps-input-label">EMAIL</label>
-            <input className="ps-input" type="email" placeholder="your@email.ru" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+
+        {sent ? (
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center' }}>
+            <div style={{ fontSize: 42 }}>📬</div>
+            <p style={{ fontSize: 14, color: 'var(--ink)', lineHeight: 1.55, margin: 0 }}>
+              Если <b>{email.trim()}</b> зарегистрирован, на него придёт письмо со ссылкой для сброса.
+              Ссылка действует <b>1 час</b>.
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--ink-muted)', margin: 0 }}>
+              Не пришло? Проверьте папку «Спам» или попробуйте ещё раз.
+            </p>
+            <button type="button" className="ps-btn ps-btn-primary" style={{ width: '100%', padding: '14px 22px', fontSize: 14 }} onClick={onClose}>
+              Понятно
+            </button>
           </div>
-          <div>
-            <label className="ps-input-label">НОВЫЙ ПАРОЛЬ</label>
-            <div style={{ position: 'relative' }}>
-              <input className="ps-input" type={showPwd ? 'text' : 'password'} placeholder="Минимум 6 символов" value={pwd} onChange={e => setPwd(e.target.value)} autoComplete="new-password" style={{ paddingRight: 44 }} />
-              <button type="button" onClick={() => setShowPwd(v => !v)} tabIndex={-1} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--ink-muted)', display: 'flex' }}>
-                <Icon name={showPwd ? 'eyeOff' : 'eye'} size={16} />
-              </button>
+        ) : (
+          <form onSubmit={submit} noValidate style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {error && (
+              <div style={{ background: 'var(--danger-soft)', color: 'var(--danger)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13, fontWeight: 700 }}>{error}</div>
+            )}
+            <div>
+              <label className="ps-input-label">EMAIL</label>
+              <input className="ps-input" type="email" placeholder="your@email.ru" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" autoFocus />
             </div>
-          </div>
-          <div>
-            <label className="ps-input-label">ПОВТОРИТЕ ПАРОЛЬ</label>
-            <input className="ps-input" type={showPwd ? 'text' : 'password'} placeholder="Повторите пароль" value={pwd2} onChange={e => setPwd2(e.target.value)} autoComplete="new-password" />
-          </div>
-          <button type="submit" className="ps-btn ps-btn-primary" style={{ width: '100%', padding: '14px 22px', fontSize: 14, marginTop: 4 }} disabled={loading}>
-            {loading ? 'Сохраняем...' : <>Сменить пароль и войти <Icon name="arrow" size={14} /></>}
-          </button>
-        </form>
+            <button type="submit" className="ps-btn ps-btn-primary" style={{ width: '100%', padding: '14px 22px', fontSize: 14, marginTop: 4 }} disabled={loading}>
+              {loading ? 'Отправляем...' : <>Прислать ссылку <Icon name="arrow" size={14} /></>}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   )
@@ -272,13 +370,12 @@ function LoginForm({ onSuccess }) {
       <div>
         <label className="ps-input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>ПАРОЛЬ</span>
-          {/* Пока нефункциональна — заработает, когда сделаем сброс по почте */}
           <a
             href="#"
-            onClick={e => e.preventDefault()}
+            onClick={e => { e.preventDefault(); setForgot(true) }}
             style={{ color: 'var(--purple-deep)', fontWeight: 700, textTransform: 'none', letterSpacing: 0, fontSize: 12 }}
           >
-            Забыль пароль?
+            Забыли пароль?
           </a>
         </label>
         <div style={{ position: 'relative' }}>
@@ -348,7 +445,6 @@ function LoginForm({ onSuccess }) {
       <ForgotPasswordModal
         initialEmail={email}
         onClose={() => setForgot(false)}
-        onSuccess={onSuccess}
       />
     )}
     </>
@@ -524,7 +620,7 @@ export default function LoginPage() {
         color: '#fff',
         padding: '48px 38px',
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',
         display: 'flex',
         flexDirection: 'column',
       }}>
@@ -548,9 +644,12 @@ export default function LoginPage() {
           <div style={{ color: 'rgba(255,255,255,.5)', marginLeft: 48 }}>речи</div>
         </div>
 
-        {/* Флаги + статистика */}
-        <div style={{ marginTop: 'auto' }}>
+        {/* Флаги + телеграм + статистика */}
+        <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
           <Flags />
+
+          {/* Баннер телеграм-канала: по наведению/через 5с выпрыгивает большой QR вправо */}
+          <TelegramQr />
           <div style={{ display: 'flex', gap: 28, alignItems: 'center', marginTop: 24 }}>
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, letterSpacing: '-0.02em' }}>
@@ -592,19 +691,20 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Декоративная надпись P.S. */}
-        <div style={{
-          position: 'absolute',
-          right: -60, top: 240,
-          fontFamily: 'var(--font-display)',
-          fontSize: 280, fontWeight: 900,
-          color: 'rgba(255,255,255,0.055)',
-          letterSpacing: '-0.05em',
-          pointerEvents: 'none',
-          userSelect: 'none',
-          lineHeight: 1,
-        }}>
-          P.S.
+        {/* Декоративная надпись P.S. — в обрезающем слое, чтобы не вылезала в форму */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+          <div style={{
+            position: 'absolute',
+            right: -60, top: 240,
+            fontFamily: 'var(--font-display)',
+            fontSize: 280, fontWeight: 900,
+            color: 'rgba(255,255,255,0.055)',
+            letterSpacing: '-0.05em',
+            userSelect: 'none',
+            lineHeight: 1,
+          }}>
+            P.S.
+          </div>
         </div>
       </div>
 

@@ -18,6 +18,7 @@ import AdminSubscriptionsPage  from './pages/AdminSubscriptionsPage'
 import TeacherEarningsPage     from './pages/TeacherEarningsPage'
 import ParentPage         from './pages/ParentPage'
 import ConferencePage     from './pages/ConferencePage'
+import ResetPasswordPage  from './pages/ResetPasswordPage'
 import OAuthCallbackPage  from './pages/OAuthCallbackPage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
@@ -50,6 +51,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
       <Route path="/dashboard" element={
