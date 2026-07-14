@@ -26,12 +26,42 @@ function timeAgo(ts) {
   return `${d} дн`
 }
 
+const NOTIF_SUPPORTED = typeof window !== 'undefined' && 'Notification' in window
+
 export default function NotificationsBell() {
   const navigate = useNavigate()
   const [open, setOpen]     = useState(false)
   const [items, setItems]   = useState([])
   const [unread, setUnread] = useState(0)
+  const [perm, setPerm]     = useState(NOTIF_SUPPORTED ? Notification.permission : 'unsupported')
   const wrapRef = useRef(null)
+  const seenIdRef = useRef(null)   // максимальный id, который уже показывали всплывашкой
+
+  // Нативная всплывашка браузера для новых уведомлений (пока вкладка открыта)
+  function maybeNotify(list) {
+    const maxId = list.reduce((m, n) => Math.max(m, Number(n.id) || 0), 0)
+    const first = seenIdRef.current === null
+    const prevSeen = seenIdRef.current ?? maxId
+    seenIdRef.current = Math.max(prevSeen, maxId)
+    if (first) return   // первый заход — просто запоминаем базу, не спамим старым
+    if (!NOTIF_SUPPORTED || Notification.permission !== 'granted') return
+    list
+      .filter(n => (Number(n.id) || 0) > prevSeen && !n.isRead)
+      .sort((a, b) => a.id - b.id)
+      .forEach(n => {
+        try {
+          const notif = new Notification(n.title || 'Post Scriptum', {
+            body: n.body || '', icon: '/ps-logo.jpg', tag: `ps-${n.id}`,
+          })
+          notif.onclick = () => { window.focus(); if (n.link) navigate(n.link); notif.close() }
+        } catch { /* браузер отклонил */ }
+      })
+  }
+
+  function enableBrowserNotifications() {
+    if (!NOTIF_SUPPORTED) return
+    Notification.requestPermission().then(setPerm)
+  }
 
   async function load() {
     try {
@@ -41,6 +71,7 @@ export default function NotificationsBell() {
       ])
       setItems(list ?? [])
       setUnread(count?.count ?? 0)
+      maybeNotify(list ?? [])
     } catch { /* бэкенд недоступен — тихо */ }
   }
 
@@ -104,6 +135,20 @@ export default function NotificationsBell() {
               </button>
             )}
           </div>
+
+          {/* Предложение включить всплывашки браузера */}
+          {NOTIF_SUPPORTED && perm === 'default' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'var(--purple-tint)', borderBottom: '1px solid var(--border-soft)' }}>
+              <Icon name="bell" size={15} style={{ color: 'var(--purple-deep)', flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.4 }}>Показывать уведомления браузера</span>
+              <button onClick={enableBrowserNotifications} className="ps-btn ps-btn-primary ps-btn-sm" style={{ flexShrink: 0 }}>Включить</button>
+            </div>
+          )}
+          {NOTIF_SUPPORTED && perm === 'denied' && (
+            <div style={{ padding: '10px 16px', background: 'var(--danger-soft)', borderBottom: '1px solid var(--border-soft)', fontSize: 11.5, color: '#7A322C', lineHeight: 1.4 }}>
+              Уведомления браузера заблокированы. Разрешите их в настройках сайта (значок 🔒 в адресной строке).
+            </div>
+          )}
 
           <div style={{ maxHeight: 400, overflowY: 'auto' }}>
             {items.length === 0 && (

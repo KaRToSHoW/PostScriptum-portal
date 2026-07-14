@@ -20,6 +20,7 @@ import ParentPage         from './pages/ParentPage'
 import ConferencePage     from './pages/ConferencePage'
 import ResetPasswordPage  from './pages/ResetPasswordPage'
 import OAuthCallbackPage  from './pages/OAuthCallbackPage'
+import LeadsPage          from './pages/LeadsPage'
 
 /* Защищённый маршрут: если не авторизован — на логин */
 function Protected({ children }) {
@@ -47,6 +48,15 @@ function AdminOnly({ children }) {
   return children
 }
 
+/* Заявки, роли и т.п. — админ и менеджер */
+function StaffOnly({ children }) {
+  const { isAuth, role } = useApp()
+  const location = useLocation()
+  if (!isAuth) return <Navigate to="/login" state={{ from: location }} replace />
+  if (role !== 'admin' && role !== 'manager') return <Navigate to="/dashboard" replace />
+  return children
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -65,6 +75,9 @@ function AppRoutes() {
       } />
       <Route path="/admin/roles" element={
         <Protected><AdminRolesPage /></Protected>
+      } />
+      <Route path="/leads" element={
+        <StaffOnly><LeadsPage /></StaffOnly>
       } />
       <Route path="/homework" element={
         <StudentOnly><HomeworkPage /></StudentOnly>

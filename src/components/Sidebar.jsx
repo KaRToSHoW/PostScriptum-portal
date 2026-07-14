@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Icon from './Icon'
 import Logo from './Logo'
 import { useApp } from '../context/AppContext'
 import { supportApi } from '../api/support'
+import { messagesApi } from '../api/messages'
 import { toast } from './Toast'
 
 const ROUTE_MAP = {
@@ -102,6 +104,7 @@ const NAV = {
       { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
     ]},
     { sec: 'люди', items: [
+      { id: 'leads',    label: 'Заявки',           icon: 'inbox'    },
       { id: 'users',    label: 'Пользователи',     icon: 'users'    },
       { id: 'students', label: 'Ученики',          icon: 'user'     },
       { id: 'teachers', label: 'Преподаватели',    icon: 'sparkle'  },
@@ -125,6 +128,7 @@ const NAV = {
       { id: 'calendar', label: 'Расписание',       icon: 'calendar' },
     ]},
     { sec: 'люди', items: [
+      { id: 'leads',    label: 'Заявки',           icon: 'inbox'    },
       { id: 'students', label: 'Ученики',          icon: 'user'     },
       { id: 'teachers', label: 'Преподаватели',    icon: 'sparkle'  },
       { id: 'roles',    label: 'Роли и доступ',    icon: 'shield'   },
@@ -169,6 +173,18 @@ export default function Sidebar({ role = 'student' }) {
   const { t } = useApp()
   const active    = routeToItem(pathname)
   const groups    = NAV[role] || NAV.student
+  const [unread, setUnread] = useState(0)
+
+  // непрочитанные сообщения → бейдж на «Сообщениях»; лёгкий поллинг
+  useEffect(() => {
+    let cancelled = false
+    const poll = () => messagesApi.conversations()
+      .then(cs => { if (!cancelled) setUnread((cs || []).reduce((s, c) => s + (c.unread ?? 0), 0)) })
+      .catch(() => {})
+    poll()
+    const iv = setInterval(poll, 15000)
+    return () => { cancelled = true; clearInterval(iv) }
+  }, [pathname])
 
   function handleClick(id) {
     const route = ROUTE_MAP[id]
@@ -198,7 +214,7 @@ export default function Sidebar({ role = 'student' }) {
               key={it.id}
               icon={it.icon}
               label={t(it.label)}
-              badge={it.badge}
+              badge={it.id === 'chat' && unread > 0 ? (unread > 99 ? '99+' : unread) : it.badge}
               active={active === it.id}
               onClick={() => handleClick(it.id)}
             />
