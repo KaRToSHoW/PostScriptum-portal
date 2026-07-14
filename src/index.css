@@ -219,6 +219,9 @@ input, textarea { font-family: inherit; }
   box-shadow: var(--shadow-pop);
   border-color: var(--purple-soft);
 }
+/* Водяные знаки-коды языков: блёклые, подсвечиваются цветом языка при наведении на карточку */
+.ps-lang-wm { opacity: .1; transition: opacity .2s ease; }
+.ps-card-lift:hover .ps-lang-wm { opacity: .28; }
 
 /* ================================================================
    ЧИПЫ / МЕТКИ

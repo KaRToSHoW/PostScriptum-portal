@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext'
 import { adminApi } from '../api/admin'
 import { subscriptionsApi } from '../api/subscriptions'
 import { toast } from '../components/Toast'
+import SlideTabs from '../components/SlideTabs'
 
 /* ── Бар-чарт выручки ─────────────────────────────────────── */
 function RevenueChart({ months }) {
@@ -260,16 +261,7 @@ export default function AdminFinancePage() {
           {/* Фильтры */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Период */}
-            <div style={{ display: 'inline-flex', padding: 4, background: '#fff', borderRadius: 999, border: '1px solid var(--border-soft)' }}>
-              {PERIODS.map((t, i) => (
-                <button key={t} onClick={() => setPeriod(i)} style={{
-                  padding: '8px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer',
-                  background: period === i ? 'var(--purple)' : 'transparent',
-                  color:      period === i ? '#fff' : 'var(--ink-muted)',
-                  transition: 'background .12s, color .12s',
-                }}>{t}</button>
-              ))}
-            </div>
+            <SlideTabs value={period} onChange={setPeriod} tabs={PERIODS.map((t, i) => ({ id: i, label: t }))} />
 
             {/* Статус */}
             <select

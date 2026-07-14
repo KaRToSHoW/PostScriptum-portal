@@ -5,6 +5,7 @@ import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 import { adminApi } from '../api/admin'
+import SlideTabs from '../components/SlideTabs'
 
 const ROLE_LABEL = { STUDENT: 'Ученик', PARENT: 'Родитель', TEACHER: 'Преподаватель', MANAGER: 'Менеджер', ADMIN: 'Админ' }
 const ROLE_CHIP  = { STUDENT: 'blue', PARENT: 'green', TEACHER: 'orange', MANAGER: 'purple', ADMIN: 'red' }
@@ -136,15 +137,12 @@ export default function AdminUsersPage() {
 
           {/* Тулбар */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-              {TABS.map(tb => (
-                <button key={tb.id} onClick={() => setTab(tb.id)} style={{
-                  padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer',
-                  background: tab === tb.id ? 'var(--purple)' : 'transparent',
-                  color: tab === tb.id ? '#fff' : 'var(--ink-muted)',
-                }}>{tb.label}</button>
-              ))}
-            </div>
+            <SlideTabs
+              size="sm"
+              value={tab}
+              onChange={setTab}
+              tabs={TABS.map(tb => ({ id: tb.id, label: tb.label }))}
+            />
             <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setModal(true)}>
               <Icon name="plus" size={13} /> Новый пользователь
             </button>

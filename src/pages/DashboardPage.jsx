@@ -9,6 +9,7 @@ import { dashboardApi } from '../api/dashboard'
 import { adminApi } from '../api/admin'
 import { supportApi } from '../api/support'
 import ApiError from '../components/ApiError'
+import SlideTabs from '../components/SlideTabs'
 import { toast } from '../components/Toast'
 
 /* ── Кастомный огонёк ────────────────────────────────────── */
@@ -31,32 +32,12 @@ function FlameIcon({ size = 22 }) {
 /* ── Переключатель ролей ──────────────────────────────────── */
 function RoleSwitcher({ role, onChange, t }) {
   const roles = [
-    { id: 'student', l: t('Ученик') },
-    { id: 'teacher', l: t('Преподаватель') },
-    { id: 'parent',  l: t('Родитель') },
-    { id: 'admin',   l: t('Админ') },
+    { id: 'student', label: t('Ученик') },
+    { id: 'teacher', label: t('Преподаватель') },
+    { id: 'parent',  label: t('Родитель') },
+    { id: 'admin',   label: t('Админ') },
   ]
-  return (
-    <div style={{
-      display: 'inline-flex', padding: 4,
-      background: 'var(--bg-cream)', borderRadius: 999,
-      border: '1px solid var(--border)', gap: 2,
-    }}>
-      {roles.map(r => (
-        <button
-          key={r.id}
-          onClick={() => onChange(r.id)}
-          style={{
-            padding: '6px 16px', borderRadius: 999,
-            fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer',
-            transition: 'background .12s, color .12s',
-            background: role === r.id ? 'var(--purple)' : 'transparent',
-            color:      role === r.id ? '#fff' : 'var(--ink-muted)',
-          }}
-        >{r.l}</button>
-      ))}
-    </div>
-  )
+  return <SlideTabs tabs={roles} value={role} onChange={onChange} size="sm" />
 }
 
 // За сколько минут до начала урока показывать кнопку «Войти на урок» (и до +30 мин после конца)

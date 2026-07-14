@@ -5,6 +5,7 @@ import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { adminApi } from '../api/admin'
 import LeadModal, { LEAD_STATUS } from '../components/LeadModal'
+import SlideTabs from '../components/SlideTabs'
 
 const FILTERS = [
   { id: 'all',         label: 'Все',          match: () => true },
@@ -57,14 +58,13 @@ export default function LeadsPage() {
           </div>
 
           {/* Фильтры по статусу */}
-          <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2, alignSelf: 'flex-start', flexWrap: 'wrap' }}>
-            {FILTERS.map(f => (
-              <button key={f.id} onClick={() => setFilter(f.id)} style={{
-                padding: '6px 15px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer',
-                background: filter === f.id ? 'var(--purple)' : 'transparent',
-                color: filter === f.id ? '#fff' : 'var(--ink-muted)',
-              }}>{f.label}{f.id !== 'all' && count(f.id) > 0 ? ` · ${count(f.id)}` : ''}</button>
-            ))}
+          <div style={{ alignSelf: 'flex-start' }}>
+            <SlideTabs
+              size="sm"
+              value={filter}
+              onChange={setFilter}
+              tabs={FILTERS.map(f => ({ id: f.id, label: f.label + (f.id !== 'all' && count(f.id) > 0 ? ` · ${count(f.id)}` : '') }))}
+            />
           </div>
 
           {/* Список заявок */}

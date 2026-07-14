@@ -9,6 +9,7 @@ import { teachersApi } from '../api/teachers'
 import { adminApi } from '../api/admin'
 import { api } from '../api/client'
 import { toast } from '../components/Toast'
+import SlideTabs from '../components/SlideTabs'
 import ScheduleLessonModal from '../components/ScheduleLessonModal'
 
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
@@ -38,12 +39,21 @@ function StudentCard({ s, onMessage, onSchedule, extraActions }) {
         background: `linear-gradient(135deg, ${color}1A, ${color}05)`,
         borderBottom: `1px solid ${color}22`,
       }}>
-        {/* фирменный водяной знак — крупный код языка (как P.S. на сайте) */}
-        <span style={{
-          position: 'absolute', right: -8, top: -26, pointerEvents: 'none', userSelect: 'none',
-          fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 104, lineHeight: 1,
-          letterSpacing: '-0.06em', textTransform: 'uppercase', color: color, opacity: 0.1,
-        }}>{firstCode}</span>
+        {/* водяные знаки — коды всех языков ученика, стопкой; подсветка при наведении */}
+        {(() => {
+          const codes = (langCodes.length ? langCodes : [firstCode]).slice(0, 3)
+          const wmSize = codes.length === 1 ? 96 : codes.length === 2 ? 64 : 48
+          return (
+            <div style={{ position: 'absolute', top: -12, right: -4, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 0.82, pointerEvents: 'none', userSelect: 'none' }}>
+              {codes.map((code, i) => (
+                <span key={code + i} className="ps-lang-wm" style={{
+                  fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: wmSize,
+                  letterSpacing: '-0.06em', textTransform: 'uppercase', color: LANG_COLOR[code] || 'var(--purple)',
+                }}>{code}</span>
+              ))}
+            </div>
+          )
+        })()}
 
         {status && (
           <span className={`ps-chip ps-chip-${status.chip}`} style={{ position: 'absolute', top: 14, right: 14, boxShadow: '0 2px 6px rgba(31,27,58,.08)' }}>
@@ -198,15 +208,13 @@ function TeacherStudents() {
           </div>
 
           {/* Фильтры */}
-          <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2, alignSelf: 'flex-start' }}>
-            {[{ id: 'all', l: 'Все' }, ...langs.map(l => ({ id: l, l: LANG_LABEL[l] || l.toUpperCase() }))].map(f => (
-              <button key={f.id} onClick={() => setLangFilter(f.id)} style={{
-                padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                border: 'none', cursor: 'pointer', transition: 'all .12s',
-                background: langFilter === f.id ? 'var(--purple)' : 'transparent',
-                color:      langFilter === f.id ? '#fff' : 'var(--ink-muted)',
-              }}>{f.l}</button>
-            ))}
+          <div style={{ alignSelf: 'flex-start' }}>
+            <SlideTabs
+              size="sm"
+              value={langFilter}
+              onChange={setLangFilter}
+              tabs={[{ id: 'all', label: 'Все' }, ...langs.map(l => ({ id: l, label: LANG_LABEL[l] || l.toUpperCase() }))]}
+            />
           </div>
 
           {/* Список */}
@@ -525,29 +533,12 @@ function ManagerStudents() {
           {/* Фильтр по преподавателю */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Преподаватель</span>
-            <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-              <button
-                onClick={() => setTeacherId('')}
-                style={{
-                  padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                  border: 'none', cursor: 'pointer', transition: 'all .12s',
-                  background: !teacherId ? 'var(--purple)' : 'transparent',
-                  color: !teacherId ? '#fff' : 'var(--ink-muted)',
-                }}
-              >Все</button>
-              {teachers.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setTeacherId(String(t.id))}
-                  style={{
-                    padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                    border: 'none', cursor: 'pointer', transition: 'all .12s',
-                    background: teacherId === String(t.id) ? 'var(--purple)' : 'transparent',
-                    color: teacherId === String(t.id) ? '#fff' : 'var(--ink-muted)',
-                  }}
-                >{t.name}</button>
-              ))}
-            </div>
+            <SlideTabs
+              size="sm"
+              value={teacherId || ''}
+              onChange={id => setTeacherId(id)}
+              tabs={[{ id: '', label: 'Все' }, ...teachers.map(t => ({ id: String(t.id), label: t.name }))]}
+            />
           </div>
 
           {/* Список */}

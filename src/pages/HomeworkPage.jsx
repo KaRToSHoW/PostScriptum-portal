@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar   from '../components/Sidebar'
 import TopBar    from '../components/TopBar'
 import Icon      from '../components/Icon'
+import SlideTabs from '../components/SlideTabs'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 import { homeworkApi } from '../api/homework'
@@ -331,20 +332,7 @@ function StudentHomework() {
             <div className="ps-card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                 <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Задания</h3>
-                <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-                  {STUDENT_TABS.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => setTab(t.id)}
-                      style={{
-                        padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                        border: 'none', cursor: 'pointer', transition: 'background .12s, color .12s',
-                        background: tab === t.id ? 'var(--purple)' : 'transparent',
-                        color:      tab === t.id ? '#fff' : 'var(--ink-muted)',
-                      }}
-                    >{t.label}</button>
-                  ))}
-                </div>
+                <SlideTabs size="sm" value={tab} onChange={setTab} tabs={STUDENT_TABS.map(t => ({ id: t.id, label: t.label }))} />
               </div>
 
               {loading ? (
@@ -864,20 +852,7 @@ function TeacherHomework() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
               <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Работы по ученикам</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-                  {TEACHER_TABS.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => setTab(t.id)}
-                      style={{
-                        padding: '5px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                        border: 'none', cursor: 'pointer', transition: 'background .12s, color .12s',
-                        background: tab === t.id ? 'var(--purple)' : 'transparent',
-                        color:      tab === t.id ? '#fff' : 'var(--ink-muted)',
-                      }}
-                    >{t.label}</button>
-                  ))}
-                </div>
+                <SlideTabs size="sm" value={tab} onChange={setTab} tabs={TEACHER_TABS.map(t => ({ id: t.id, label: t.label }))} />
                 <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowCreate(true)}>
                   <Icon name="plus" size={13} /> Новое задание
                 </button>

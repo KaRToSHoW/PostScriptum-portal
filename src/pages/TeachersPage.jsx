@@ -6,6 +6,7 @@ import Icon     from '../components/Icon'
 import ApiError from '../components/ApiError'
 import { useApp } from '../context/AppContext'
 import { teachersApi } from '../api/teachers'
+import SlideTabs from '../components/SlideTabs'
 
 const LANG_COLOR = {
   fr: 'var(--purple)', en: 'var(--orange)', es: 'var(--success)',
@@ -51,11 +52,21 @@ function TeacherCard({ t, onSelect, showMineBadge = true }) {
         background: `linear-gradient(135deg, ${t.color}1A, ${t.color}05)`,
         borderBottom: `1px solid ${t.color}22`,
       }}>
-        <span style={{
-          position: 'absolute', right: -8, top: -26, pointerEvents: 'none', userSelect: 'none',
-          fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 104, lineHeight: 1,
-          letterSpacing: '-0.06em', textTransform: 'uppercase', color: t.color, opacity: 0.1,
-        }}>{flagCode}</span>
+        {/* водяные знаки — коды всех языков преподавателя, стопкой; подсветка при наведении */}
+        {(() => {
+          const codes = ((t.langCodes ?? []).length ? t.langCodes : [flagCode]).slice(0, 3)
+          const wmSize = codes.length === 1 ? 96 : codes.length === 2 ? 64 : 48
+          return (
+            <div style={{ position: 'absolute', top: -12, right: -4, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 0.82, pointerEvents: 'none', userSelect: 'none' }}>
+              {codes.map((code, i) => (
+                <span key={code + i} className="ps-lang-wm" style={{
+                  fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: wmSize,
+                  letterSpacing: '-0.06em', textTransform: 'uppercase', color: LANG_COLOR[code] || 'var(--purple)',
+                }}>{code}</span>
+              ))}
+            </div>
+          )
+        })()}
 
         {t.myTeacher && showMineBadge && (
           <span className="ps-chip ps-chip-purple" style={{ position: 'absolute', top: 14, right: 14, boxShadow: '0 2px 6px rgba(31,27,58,.08)' }}>Мой преподаватель</span>
@@ -286,16 +297,12 @@ export default function TeachersPage() {
 
           {/* Фильтры */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
-            <div style={{ display: 'inline-flex', padding: 3, background: 'var(--bg-cream-soft)', borderRadius: 999, border: '1px solid var(--border)', gap: 2 }}>
-              {LANG_FILTERS.map(f => (
-                <button key={f.id} onClick={() => setLangFilter(f.id)} style={{
-                  padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800,
-                  border: 'none', cursor: 'pointer', transition: 'all .12s',
-                  background: langFilter === f.id ? 'var(--purple)' : 'transparent',
-                  color:      langFilter === f.id ? '#fff' : 'var(--ink-muted)',
-                }}>{f.l}</button>
-              ))}
-            </div>
+            <SlideTabs
+              size="sm"
+              value={langFilter}
+              onChange={setLangFilter}
+              tabs={LANG_FILTERS.map(f => ({ id: f.id, label: f.l }))}
+            />
           </div>
 
           {/* Сетка */}

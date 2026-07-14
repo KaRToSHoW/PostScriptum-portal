@@ -4,6 +4,7 @@ import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { teachersApi } from '../api/teachers'
+import SlideTabs from '../components/SlideTabs'
 
 const STATUS_CHIP = {
   DONE:        { cls: 'ps-chip-green',  label: 'Проведён' },
@@ -45,16 +46,7 @@ export default function TeacherEarningsPage() {
         <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ display: 'inline-flex', padding: 4, background: '#fff', borderRadius: 999, border: '1px solid var(--border-soft)' }}>
-              {PERIODS.map((t, i) => (
-                <button key={t} onClick={() => setPeriod(i)} style={{
-                  padding: '8px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer',
-                  background: period === i ? 'var(--purple)' : 'transparent',
-                  color:      period === i ? '#fff' : 'var(--ink-muted)',
-                  transition: 'background .12s, color .12s',
-                }}>{t}</button>
-              ))}
-            </div>
+            <SlideTabs value={period} onChange={setPeriod} tabs={PERIODS.map((t, i) => ({ id: i, label: t }))} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, opacity: loading ? 0.5 : 1, transition: 'opacity .2s' }}>

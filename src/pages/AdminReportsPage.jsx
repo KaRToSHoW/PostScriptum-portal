@@ -4,6 +4,7 @@ import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { adminApi } from '../api/admin'
+import SlideTabs from '../components/SlideTabs'
 
 function KpiCard({ icon, label, value, color }) {
   return (
@@ -85,16 +86,7 @@ export default function AdminReportsPage() {
 
           {/* Шапка с периодом */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'inline-flex', padding: 4, background: '#fff', borderRadius: 999, border: '1px solid var(--border-soft)' }}>
-              {PERIODS.map((t, i) => (
-                <button key={t} onClick={() => setReportPeriod(i)} style={{
-                  padding: '8px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer',
-                  background: reportPeriod === i ? 'var(--purple)' : 'transparent',
-                  color:      reportPeriod === i ? '#fff' : 'var(--ink-muted)',
-                  transition: 'background .12s, color .12s',
-                }}>{t}</button>
-              ))}
-            </div>
+            <SlideTabs value={reportPeriod} onChange={setReportPeriod} tabs={PERIODS.map((t, i) => ({ id: i, label: t }))} />
             <div style={{ flex: 1 }} />
             <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={exportCsv} disabled={monthly.length === 0}>
               <Icon name="download" size={12} /> Экспорт CSV
