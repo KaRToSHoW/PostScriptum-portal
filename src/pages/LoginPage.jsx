@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { authApi } from '../api/auth'
+import { leadApi } from '../api/leads'
 import Icon from '../components/Icon'
 import Logo from '../components/Logo'
 import QrTg from '../assets/Qr_tg.png'
@@ -68,13 +69,21 @@ function FallingPenguins({ count = 14 }) {
    ============================================================ */
 function Flags() {
   const st = { width: 58, height: 58, boxShadow: 'inset 0 0 0 2px #fff, 0 0 0 2px rgba(255,255,255,.4), 0 6px 18px rgba(0,0,0,.2)' }
+  const flags = [
+    { code: 'fr', title: 'Французский', emoji: '🥐' },
+    { code: 'en', title: 'Английский',  emoji: '☕' },
+    { code: 'de', title: 'Немецкий',    emoji: '🌭' },
+    { code: 'es', title: 'Испанский',   emoji: '💃' },
+    { code: 'it', title: 'Итальянский', emoji: '🏎️' },
+  ]
   return (
     <div style={{ display: 'flex', gap: 26 }}>
-      <span className="ps-flag ps-flag-fr" style={st} title="Французский" />
-      <span className="ps-flag ps-flag-en" style={st} title="Английский" />
-      <span className="ps-flag ps-flag-de" style={st} title="Немецкий" />
-      <span className="ps-flag ps-flag-es" style={st} title="Испанский" />
-      <span className="ps-flag ps-flag-it" style={st} title="Итальянский" />
+      {flags.map(f => (
+        <span key={f.code} className="ps-flag-item" title={f.title}>
+          <span className="ps-flag-emoji" aria-hidden="true">{f.emoji}</span>
+          <span className={`ps-flag ps-flag-${f.code}`} style={st} />
+        </span>
+      ))}
     </div>
   )
 }
@@ -598,10 +607,92 @@ function RegisterForm({ onSuccess }) {
 }
 
 /* ============================================================
+   Модалка «Запись через менеджера» (заявка с логотипа)
+   ============================================================ */
+function ManagerSignupModal({ onClose }) {
+  const [name, setName]       = useState('')
+  const [phone, setPhone]     = useState('')
+  const [email, setEmail]     = useState('')
+  const [comment, setComment] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState('')
+  const [done, setDone]       = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!name.trim())                        { setError('Как вас зовут?'); return }
+    if (!phone.trim() && !email.trim())      { setError('Оставьте телефон или email для связи'); return }
+    setError(''); setLoading(true)
+    try {
+      await leadApi.create({ name: name.trim(), phone: phone.trim(), email: email.trim(), comment: comment.trim() })
+      setDone(true)
+    } catch (err) {
+      setError(err.message || 'Не удалось отправить заявку')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const optional = { fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: 'var(--ink-dim)' }
+
+  return (
+    <div
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'grid', placeItems: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)', padding: 20 }}
+    >
+      <div style={{ width: '100%', maxWidth: 420, background: '#fff', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px', position: 'relative' }}>
+          <button type="button" onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,.15)', border: 'none', width: 30, height: 30, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
+            <Icon name="plus" size={13} style={{ transform: 'rotate(45deg)' }} />
+          </button>
+          <h3 className="ps-display ps-display-purple" style={{ fontSize: 19, margin: 0 }}>Запись через менеджера</h3>
+          <p style={{ fontSize: 12.5, opacity: 0.85, margin: '6px 0 0', lineHeight: 1.5 }}>
+            Оставьте контакты — менеджер свяжется, подберёт программу и удобное время.
+          </p>
+        </div>
+
+        {done ? (
+          <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
+            <h3 className="ps-display" style={{ fontSize: 20, margin: '0 0 8px' }}>Заявка принята!</h3>
+            <div style={{ fontSize: 13, color: 'var(--ink-muted)', marginBottom: 18 }}>Менеджер скоро с вами свяжется.</div>
+            <button className="ps-btn ps-btn-primary" onClick={onClose}>Хорошо</button>
+          </div>
+        ) : (
+          <form onSubmit={submit} noValidate style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {error && <div style={{ background: 'var(--danger-soft)', color: 'var(--danger)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13, fontWeight: 700 }}>{error}</div>}
+            <div>
+              <label className="ps-input-label">КАК ВАС ЗОВУТ</label>
+              <input className="ps-input" type="text" placeholder="Имя" value={name} onChange={e => setName(e.target.value)} autoComplete="name" />
+            </div>
+            <div>
+              <label className="ps-input-label">ТЕЛЕФОН</label>
+              <input className="ps-input" type="tel" placeholder="+7 900 000-00-00" value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" />
+            </div>
+            <div>
+              <label className="ps-input-label">EMAIL <span style={optional}>— необязательно</span></label>
+              <input className="ps-input" type="email" placeholder="your@email.ru" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+            </div>
+            <div>
+              <label className="ps-input-label">КОММЕНТАРИЙ <span style={optional}>— язык, удобное время</span></label>
+              <textarea className="ps-input" rows={3} placeholder="Например: английский, вечером по будням" value={comment} onChange={e => setComment(e.target.value)} style={{ resize: 'vertical', minHeight: 64 }} />
+            </div>
+            <button type="submit" className="ps-btn ps-btn-primary" style={{ width: '100%', padding: '14px 22px', fontSize: 14, marginTop: 4 }} disabled={loading}>
+              {loading ? 'Отправляем...' : <>Отправить заявку <Icon name="arrow" size={14} /></>}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
    СТРАНИЦА LOGIN (Split-вариант из концепта)
    ============================================================ */
 export default function LoginPage() {
   const [tab, setTab] = useState('login') // 'login' | 'register'
+  const [managerOpen, setManagerOpen] = useState(false)
   const navigate = useNavigate()
   const { login } = useApp()
 
@@ -633,9 +724,16 @@ export default function LoginPage() {
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {/* Логотип — по центру сверху */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-          <img src="/ps-logo.jpg" alt="P.S." style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)', flexShrink: 0 }} />
+        {/* Логотип — по центру сверху; клик открывает запись через менеджера */}
+        <button
+          type="button"
+          onClick={() => setManagerOpen(true)}
+          title="Записаться через менеджера"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left', alignSelf: 'center' }}
+        >
+          <span className="ps-logo-pulse" style={{ position: 'relative', width: 80, height: 80, flexShrink: 0, display: 'inline-block' }}>
+            <img src="/ps-logo.jpg" alt="P.S." style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)', display: 'block' }} />
+          </span>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.1 }}>
               Post <span style={{ color: 'var(--orange-soft)' }}>Scriptum</span>
@@ -644,13 +742,17 @@ export default function LoginPage() {
               онлайн-школа иностранных языков
             </div>
           </div>
-        </div>
+        </button>
 
-        {/* Слоган-плакат — на весь блок: растянут по вертикали и максимально крупно */}
+        {/* Слоган-плакат: «искусство» и «речи» статичны, «свободной» — пульсирующие буквы */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 64, lineHeight: 1.12, letterSpacing: '-0.03em', textTransform: 'lowercase', whiteSpace: 'nowrap' }}>
-          <div style={{ color: 'rgba(255,255,255,.5)' }}>искусство</div>
-          <div style={{ color: '#fff', marginLeft: 16 }}>свободной</div>
-          <div style={{ color: 'rgba(255,255,255,.5)', marginLeft: 48 }}>речи</div>
+          <div className="ps-sl-line ps-sl-muted">искусство</div>
+          <div className="ps-sl-line ps-sl-accent" style={{ marginLeft: 16 }}>
+            {[...'свободной'].map((ch, i) => (
+              <span key={i} className="ps-sl-ch" style={{ '--d': `${(i * 0.13).toFixed(2)}s` }}>{ch}</span>
+            ))}
+          </div>
+          <div className="ps-sl-line ps-sl-muted" style={{ marginLeft: 48 }}>речи</div>
         </div>
 
         {/* Флаги + статистика */}
@@ -687,12 +789,12 @@ export default function LoginPage() {
           <div style={{ fontSize: 12, opacity: 0.6, marginTop: 32 }}>
             © 2026 Post Scriptum ·{' '}
             <a
-              href="https://postscriptum-online.ru"
+              href="https://postscriptumfr.ru"
               target="_blank"
               rel="noreferrer"
               style={{ color: 'var(--orange-soft)', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2 }}
             >
-              postscriptum-online.ru
+              postscriptumfr.ru
             </a>
           </div>
         </div>
@@ -803,6 +905,8 @@ export default function LoginPage() {
 
         </div>
       </div>
+
+      {managerOpen && <ManagerSignupModal onClose={() => setManagerOpen(false)} />}
     </div>
   )
 }

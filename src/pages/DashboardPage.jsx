@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext'
 import { useApi } from '../hooks/useApi'
 import { dashboardApi } from '../api/dashboard'
 import { adminApi } from '../api/admin'
+import { supportApi } from '../api/support'
 import ApiError from '../components/ApiError'
 import { toast } from '../components/Toast'
 
@@ -68,6 +69,76 @@ const HW_CHIP  = { not_started: 'orange', submitted: 'blue', done: 'green', over
 const HW_LABEL = { not_started: 'Не начато', submitted: 'Сдано', done: 'Готово', overdue: 'Просрочено', ASSIGNED: 'Не начато', SUBMITTED: 'Сдано', REVIEWED: 'Готово', OVERDUE: 'Просрочено' }
 
 /* ================================================================
+   ОНБОРДИНГ НОВОГО УЧЕНИКА (нет курсов и записей на занятия)
+   ================================================================ */
+function StudentOnboarding({ navigate, sub }) {
+  const hasSubscription = (sub?.total ?? 0) > 0
+
+  function contactManager() {
+    // запускаем балансировщик менеджеров и открываем чат
+    supportApi.start()
+      .then(({ conversationId }) => navigate('/messages', { state: { conversationId } }))
+      .catch(() => toast('Не удалось открыть чат с менеджером', 'error'))
+  }
+
+  return (
+    <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+      {/* Приветствие */}
+      <div className="ps-card-purple" style={{ padding: 36, position: 'relative', overflow: 'hidden' }}>
+        <span className="ps-dotted" style={{ display: 'inline-block', color: '#FBE3C5', borderColor: '#FBE3C5' }}>с чего начать</span>
+        <h1 className="ps-display ps-display-purple" style={{ fontSize: 40, margin: '16px 0 10px' }}>Добро пожаловать!</h1>
+        <p style={{ fontSize: 15, opacity: 0.9, maxWidth: 540, lineHeight: 1.6, margin: 0 }}>
+          {hasSubscription
+            ? 'Абонемент уже у вас 🎉 Остался один шаг — напишите менеджеру, он подберёт преподавателя и удобное время и запишет вас на занятия.'
+            : 'Вы зарегистрировались 🎉 Осталось сделать один шаг: свяжитесь с менеджером или купите абонемент — и менеджер запишет вас на занятия.'}
+        </p>
+        {hasSubscription && (
+          <div style={{ marginTop: 16, display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,.14)', padding: '10px 16px', borderRadius: 12 }}>
+            <Icon name="wallet" size={16} />
+            <span style={{ fontWeight: 800 }}>Абонемент: {sub.used} из {sub.total} уроков</span>
+          </div>
+        )}
+        <div style={{ position: 'absolute', right: -20, top: -30, fontFamily: 'var(--font-display)', fontSize: 200, color: 'rgba(255,255,255,0.07)', fontWeight: 900, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>PS</div>
+      </div>
+
+      {/* Шаги */}
+      <div style={{ display: 'grid', gridTemplateColumns: hasSubscription ? '1fr' : '1fr 1fr', gap: 22 }}>
+        {/* Менеджер */}
+        <div className="ps-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 15, background: 'var(--orange-soft)', display: 'grid', placeItems: 'center', color: 'var(--orange-deep)' }}>
+            <Icon name="chat" size={24} />
+          </div>
+          <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Записаться через менеджера</h3>
+          <p style={{ fontSize: 14, color: 'var(--ink-muted)', lineHeight: 1.55, margin: 0, flex: 1 }}>
+            Менеджер подберёт программу, преподавателя и удобное время. Ответит прямо в чате.
+          </p>
+          <button className="ps-btn ps-btn-primary" style={{ alignSelf: 'flex-start' }} onClick={contactManager}>
+            <Icon name="chat" size={14} /> Написать менеджеру
+          </button>
+        </div>
+
+        {/* Абонемент — если ещё не куплен */}
+        {!hasSubscription && (
+          <div className="ps-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 15, background: 'var(--purple-soft)', display: 'grid', placeItems: 'center', color: 'var(--purple-deep)' }}>
+              <Icon name="wallet" size={24} />
+            </div>
+            <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Купить абонемент</h3>
+            <p style={{ fontSize: 14, color: 'var(--ink-muted)', lineHeight: 1.55, margin: 0, flex: 1 }}>
+              Выберите пакет занятий. После оплаты менеджер свяжется и запишет вас на уроки.
+            </p>
+            <button className="ps-btn ps-btn-outline" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/billing')}>
+              <Icon name="wallet" size={14} /> Выбрать абонемент
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ================================================================
    ДАШБОРД УЧЕНИКА
    ================================================================ */
 function DashStudent({ t, data }) {
@@ -79,6 +150,13 @@ function DashStudent({ t, data }) {
   const courses  = data?.courses   ?? []
   const homework = data?.homework  ?? []
   const schedule = data?.schedule  ?? []
+
+  // Новый ученик: ещё нет курсов и ближайшего урока — показываем онбординг,
+  // а не пустой дашборд (запись через менеджера / покупка абонемента)
+  if (courses.length === 0 && !next) {
+    return <StudentOnboarding navigate={navigate} sub={sub} />
+  }
+
   return (
     <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 

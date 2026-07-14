@@ -489,6 +489,78 @@ input, textarea { font-family: inherit; }
   to   { transform: translate(var(--sway, 0px), 118vh) rotate(var(--rot, 360deg)); }
 }
 
+/* Пульсация вокруг логотипа на входе — подсказка «кликни (запись через менеджера)» */
+.ps-logo-pulse::before,
+.ps-logo-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--orange-soft);
+  pointer-events: none;
+  animation: ps-logo-ring 2.6s cubic-bezier(.2, .6, .3, 1) infinite;
+}
+.ps-logo-pulse::after { animation-delay: 1.3s; }
+@keyframes ps-logo-ring {
+  0%   { transform: scale(1);   opacity: .7; }
+  70%  { opacity: 0; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* ================================================================
+   Эпичное появление слогана «искусство свободной речи»
+   ================================================================ */
+/* ================================================================
+   Флаги: при наведении из-за флага выскакивает тематический эмодзи
+   ================================================================ */
+.ps-flag-item {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+.ps-flag-item .ps-flag {
+  position: relative;
+  z-index: 1;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.ps-flag-item:hover .ps-flag {
+  transform: translateY(4px) scale(1.06);
+}
+.ps-flag-emoji {
+  position: absolute;
+  left: 50%;
+  bottom: 55%;
+  z-index: 0;
+  font-size: 34px;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 24px) scale(.3) rotate(-18deg);
+  transform-origin: bottom center;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
+  transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .25s ease;
+}
+.ps-flag-item:hover .ps-flag-emoji {
+  opacity: 1;
+  transform: translate(-50%, -34px) scale(1) rotate(10deg);
+}
+
+.ps-sl-line { white-space: nowrap; }
+.ps-sl-muted { color: rgba(255,255,255,.5); }
+.ps-sl-accent { color: #fff; }
+
+/* Буквы «свободной» плавно переливаются: то тусклые, то яркие — волной */
+.ps-sl-ch {
+  display: inline-block;
+  opacity: .4;                       /* базовое состояние — без прыжка на старте */
+  animation: ps-sl-pulse 3.4s ease-in-out infinite both;
+  animation-delay: var(--d, 0s);
+}
+@keyframes ps-sl-pulse {
+  0%, 100% { opacity: .4;  text-shadow: none; }
+  50%      { opacity: 1;   text-shadow: 0 0 22px rgba(255,255,255,.35); }
+}
+
 /* ================================================================
    QR-код телеграм-виджета: сканирование + «дыхание»
    ================================================================ */

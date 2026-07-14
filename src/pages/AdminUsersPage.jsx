@@ -101,6 +101,11 @@ export default function AdminUsersPage() {
     try { await adminApi.setActive(u.id, !u.active); load() }
     catch (e) { toast(e.message || 'Ошибка', 'error') }
   }
+  async function removeUser(u) {
+    if (!window.confirm(`Удалить пользователя «${u.name}»? Действие необратимо.`)) return
+    try { await adminApi.deleteUser(u.id); toast('Пользователь удалён', 'success'); load() }
+    catch (e) { toast(e.message || 'Не удалось удалить', 'error') }
+  }
 
   const filtered = users.filter(TABS.find(t => t.id === tab).match)
   const count = role => users.filter(u => u.role === role).length
@@ -179,9 +184,21 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td>
-                      <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => toggleActive(u)}>
-                        {u.active ? 'Отключить' : 'Включить'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => toggleActive(u)}>
+                          {u.active ? 'Отключить' : 'Включить'}
+                        </button>
+                        <button
+                          className="ps-btn ps-btn-sm"
+                          onClick={() => removeUser(u)}
+                          title="Удалить пользователя"
+                          style={{ background: 'var(--danger-soft)', color: 'var(--danger)', padding: '0 10px', height: 30 }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

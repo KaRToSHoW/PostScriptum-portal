@@ -21,6 +21,7 @@ export const adminApi = {
   createUser:  (body)         => api.post('/api/admin/users', body),          // {name,email,password,role}
   setRole:     (id, role)     => api.put(`/api/admin/users/${id}/role`, { role }),
   setActive:   (id, active)   => api.put(`/api/admin/users/${id}/active`, { active }),
+  deleteUser:  (id)           => api.delete(`/api/admin/users/${id}`),
 
   // Связи
   assignTeacher: (body) => api.post('/api/admin/assign-teacher', body),       // {studentId, teacherId, languageCode, level}

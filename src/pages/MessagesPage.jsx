@@ -5,6 +5,7 @@ import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { messagesApi } from '../api/messages'
+import { supportApi } from '../api/support'
 import { currentEmail } from '../api/session'
 
 const LANG_COLORS = ['var(--purple)','var(--orange)','var(--success)','var(--info)','var(--warning)']
@@ -95,21 +96,33 @@ export default function MessagesPage() {
 
   // ---------- on mount: load conversations, auto-select first ----------
 
+  const openFirst = useCallback((list) => {
+    if (list.length === 0) { setConvs(list); return }
+    const firstId = list[0].id
+    setActiveId(firstId)
+    loadThread(firstId)
+      .then(msgs => setConvs(list.map(c => c.id === firstId ? { ...c, msgs, unread: 0 } : c)))
+      .catch(() => setConvs(list))
+    messagesApi.markRead(firstId).catch(() => {})
+  }, [loadThread])
+
   useEffect(() => {
     const hasNavIntent = !!(location.state?.userId || location.state?.teacherName || location.state?.conversationId)
     loadConversations()
       .then(mapped => {
-        if (!hasNavIntent && mapped.length > 0) {
-          const firstId = mapped[0].id
-          setActiveId(firstId)
-          // грузим сообщения первого чата сразу, не ждём второго эффекта
-          loadThread(firstId)
-            .then(msgs => setConvs(mapped.map(c => c.id === firstId ? { ...c, msgs, unread: 0 } : c)))
+        if (hasNavIntent) { setConvs(mapped); return }
+
+        // У нового ученика ещё нет диалогов — поднимаем чат с менеджером
+        // (балансировщик сам назначит наименее загруженного менеджера)
+        if (mapped.length === 0 && sideRole === 'student') {
+          supportApi.start()
+            .then(() => loadConversations())
+            .then(fresh => openFirst(fresh))
             .catch(() => setConvs(mapped))
-          messagesApi.markRead(firstId).catch(() => {})
-        } else {
-          setConvs(mapped)
+          return
         }
+
+        openFirst(mapped)
       })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
