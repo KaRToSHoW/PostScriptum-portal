@@ -78,11 +78,81 @@ function Field({ label, children }) {
   )
 }
 
+function DeleteUserModal({ user, onClose, onDeleted }) {
+  const [phase, setPhase]       = useState('confirm')   // 'confirm' | 'blocked'
+  const [blockers, setBlockers] = useState([])
+  const [busy, setBusy]         = useState(false)
+
+  async function doDelete(force) {
+    setBusy(true)
+    try {
+      await adminApi.deleteUser(user.id, force)
+      toast(force ? 'Пользователь и все его данные удалены' : 'Пользователь удалён', 'success')
+      onDeleted()
+      onClose()
+    } catch (e) {
+      const bl = e.status === 409 ? e.body?.blockers : null
+      if (bl?.length) { setBlockers(bl); setPhase('blocked') }
+      else toast(e.message || 'Не удалось удалить', 'error')
+    } finally { setBusy(false) }
+  }
+
+  const btnStyle = { flex: 1, justifyContent: 'center', background: 'var(--danger)', color: '#fff', border: 'none' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget && !busy) onClose() }}>
+      <div style={{ width: 460, maxWidth: '92vw', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px', background: 'var(--danger)' }}>
+          <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.75)' }}>удаление аккаунта</span>
+          <h3 className="ps-display" style={{ fontSize: 20, margin: '4px 0 0', color: '#fff' }}>Удалить «{user.name}»?</h3>
+        </div>
+
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {phase === 'confirm' ? (
+            <p style={{ fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.55, margin: 0 }}>
+              Аккаунт <b>{user.name}</b> ({ROLE_LABEL[user.role] || user.role}) будет удалён без возможности восстановления.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: 13.5, color: 'var(--ink)', lineHeight: 1.55, margin: 0 }}>
+                У пользователя есть связанные данные — обычное удаление невозможно. Что привязано к аккаунту:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-cream)', borderRadius: 14, padding: '6px 14px' }}>
+                {blockers.map(b => (
+                  <div key={b.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border-soft)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{b.label}</span>
+                    <span className="ps-chip ps-chip-red" style={{ fontSize: 11 }}>{b.count}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--danger-soft)', color: '#7A322C', borderRadius: 12, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.5 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>Принудительное удаление сотрёт все эти данные безвозвратно.</span>
+              </div>
+            </>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, paddingTop: 2 }}>
+            <button className="ps-btn ps-btn-sm" onClick={() => doDelete(phase === 'blocked')} disabled={busy} style={btnStyle}>
+              {busy ? 'Удаление…' : phase === 'blocked' ? 'Удалить принудительно' : 'Удалить'}
+            </button>
+            <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={onClose} disabled={busy}>Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminUsersPage() {
   const { sideRole } = useApp()
   const [users, setUsers] = useState([])
   const [tab, setTab]     = useState('all')
   const [modal, setModal] = useState(false)
+  const [delUser, setDelUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   function load() {
@@ -102,32 +172,6 @@ export default function AdminUsersPage() {
     try { await adminApi.setActive(u.id, !u.active); load() }
     catch (e) { toast(e.message || 'Ошибка', 'error') }
   }
-  async function removeUser(u) {
-    if (!window.confirm(`Удалить пользователя «${u.name}»? Действие необратимо.`)) return
-    try {
-      await adminApi.deleteUser(u.id)
-      toast('Пользователь удалён', 'success'); load()
-    } catch (e) {
-      const blockers = e.status === 409 ? e.body?.blockers : null
-      if (blockers?.length) {
-        const lines = blockers.map(b => `  •  ${b.label}: ${b.count}`).join('\n')
-        const ok = window.confirm(
-          `У «${u.name}» есть связанные данные:\n\n${lines}\n\n` +
-          `Удалить ПРИНУДИТЕЛЬНО вместе со всеми этими данными?\nЭто необратимо.`
-        )
-        if (!ok) return
-        try {
-          await adminApi.deleteUser(u.id, true)
-          toast('Пользователь и все его данные удалены', 'success'); load()
-        } catch (e2) {
-          toast(e2.message || 'Не удалось удалить принудительно', 'error')
-        }
-      } else {
-        toast(e.message || 'Не удалось удалить', 'error')
-      }
-    }
-  }
-
   const filtered = users.filter(TABS.find(t => t.id === tab).match)
   const count = role => users.filter(u => u.role === role).length
 
@@ -208,7 +252,7 @@ export default function AdminUsersPage() {
                         </button>
                         <button
                           className="ps-btn ps-btn-sm"
-                          onClick={() => removeUser(u)}
+                          onClick={() => setDelUser(u)}
                           title="Удалить пользователя"
                           style={{ background: 'var(--danger-soft)', color: 'var(--danger)', padding: '0 10px', height: 30 }}
                         >
@@ -230,6 +274,7 @@ export default function AdminUsersPage() {
       </main>
 
       {modal && <CreateUserModal onClose={() => setModal(false)} onCreated={load} />}
+      {delUser && <DeleteUserModal user={delUser} onClose={() => setDelUser(null)} onDeleted={load} />}
     </div>
   )
 }
