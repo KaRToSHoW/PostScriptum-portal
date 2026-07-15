@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from './Icon'
 import { notificationsApi } from '../api/notifications'
+import { playNotificationSound } from '../lib/notificationSound'
 
 const TYPE_ICON = {
   LESSON_REMINDER:       { icon: 'calendar', color: 'var(--purple)' },
@@ -34,28 +35,47 @@ export default function NotificationsBell() {
   const [items, setItems]   = useState([])
   const [unread, setUnread] = useState(0)
   const [perm, setPerm]     = useState(NOTIF_SUPPORTED ? Notification.permission : 'unsupported')
+  const [soundOn, setSoundOn] = useState(() => localStorage.getItem('ps_notif_sound') !== 'off')
   const wrapRef = useRef(null)
   const seenIdRef = useRef(null)   // максимальный id, который уже показывали всплывашкой
+  const soundRef  = useRef(soundOn)  // чтобы таймер опроса видел актуальное значение
 
-  // Нативная всплывашка браузера для новых уведомлений (пока вкладка открыта)
+  useEffect(() => { soundRef.current = soundOn }, [soundOn])
+  function toggleSound() {
+    setSoundOn(v => {
+      const nv = !v
+      localStorage.setItem('ps_notif_sound', nv ? 'on' : 'off')
+      if (nv) playNotificationSound()   // проиграть образец при включении
+      return nv
+    })
+  }
+
+  // Звук + нативная всплывашка браузера для новых уведомлений (пока вкладка открыта)
   function maybeNotify(list) {
     const maxId = list.reduce((m, n) => Math.max(m, Number(n.id) || 0), 0)
     const first = seenIdRef.current === null
     const prevSeen = seenIdRef.current ?? maxId
     seenIdRef.current = Math.max(prevSeen, maxId)
     if (first) return   // первый заход — просто запоминаем базу, не спамим старым
-    if (!NOTIF_SUPPORTED || Notification.permission !== 'granted') return
-    list
+
+    const fresh = list
       .filter(n => (Number(n.id) || 0) > prevSeen && !n.isRead)
       .sort((a, b) => a.id - b.id)
-      .forEach(n => {
-        try {
-          const notif = new Notification(n.title || 'Post Scriptum', {
-            body: n.body || '', icon: '/ps-logo.jpg', tag: `ps-${n.id}`,
-          })
-          notif.onclick = () => { window.focus(); if (n.link) navigate(n.link); notif.close() }
-        } catch { /* браузер отклонил */ }
-      })
+    if (fresh.length === 0) return
+
+    // звук — независимо от разрешения на всплывашки
+    if (soundRef.current) playNotificationSound()
+
+    // системная всплывашка — только если пользователь дал разрешение
+    if (!NOTIF_SUPPORTED || Notification.permission !== 'granted') return
+    fresh.forEach(n => {
+      try {
+        const notif = new Notification(n.title || 'Post Scriptum', {
+          body: n.body || '', icon: '/ps-logo.jpg', tag: `ps-${n.id}`,
+        })
+        notif.onclick = () => { window.focus(); if (n.link) navigate(n.link); notif.close() }
+      } catch { /* браузер отклонил */ }
+    })
   }
 
   function enableBrowserNotifications() {
@@ -129,11 +149,25 @@ export default function NotificationsBell() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border-soft)' }}>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>Уведомления</span>
-            {unread > 0 && (
-              <button onClick={markAll} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--purple)' }}>
-                Прочитать все
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {unread > 0 && (
+                <button onClick={markAll} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--purple)' }}>
+                  Прочитать все
+                </button>
+              )}
+              <button
+                onClick={toggleSound}
+                title={soundOn ? 'Звук уведомлений включён' : 'Звук уведомлений выключен'}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', color: soundOn ? 'var(--purple)' : 'var(--ink-dim)', padding: 0 }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  {soundOn
+                    ? <><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></>
+                    : <><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>}
+                </svg>
               </button>
-            )}
+            </div>
           </div>
 
           {/* Предложение включить всплывашки браузера */}
