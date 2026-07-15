@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Icon from './Icon'
 import { notificationsApi } from '../api/notifications'
 import { playNotificationSound } from '../lib/notificationSound'
+import { subscribeToPush } from '../lib/webPush'
 
 const TYPE_ICON = {
   LESSON_REMINDER:       { icon: 'calendar', color: 'var(--purple)' },
@@ -80,7 +81,10 @@ export default function NotificationsBell() {
 
   function enableBrowserNotifications() {
     if (!NOTIF_SUPPORTED) return
-    Notification.requestPermission().then(setPerm)
+    Notification.requestPermission().then(p => {
+      setPerm(p)
+      if (p === 'granted') subscribeToPush().catch(() => {})   // пуши при закрытом сайте
+    })
   }
 
   async function load() {
@@ -97,6 +101,8 @@ export default function NotificationsBell() {
 
   useEffect(() => {
     load()
+    // если разрешение уже выдано — убеждаемся, что подписка на пуш зарегистрирована
+    if (NOTIF_SUPPORTED && Notification.permission === 'granted') subscribeToPush().catch(() => {})
     const t = setInterval(load, 30000)   // опрос раз в 30с
     return () => clearInterval(t)
   }, [])
