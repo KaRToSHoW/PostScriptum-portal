@@ -101,6 +101,32 @@ function ConferenceList() {
   )
 }
 
+/* Плитка с видео участника (в сетке или в ленте у демонстрации) */
+function VideoTile({ tile, film }) {
+  return (
+    <div style={{
+      position: 'relative', background: '#0F0D1F', overflow: 'hidden',
+      ...(film
+        ? { width: 172, aspectRatio: '16 / 9', borderRadius: 14, flexShrink: 0, border: '1.5px solid rgba(255,255,255,.16)', boxShadow: '0 8px 22px rgba(0,0,0,.4)' }
+        : { minHeight: 0, borderRadius: 16, border: '1px solid rgba(255,255,255,.08)' }),
+    }}>
+      <video
+        autoPlay playsInline muted={!!tile.self}
+        ref={el => { if (el && el.srcObject !== tile.stream) el.srcObject = tile.stream }}
+        style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000', display: 'block', transform: tile.mirror ? 'scaleX(-1)' : 'none' }}
+      />
+      {tile.camOff && (
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: '#1F1B3A', color: 'rgba(255,255,255,.55)', fontSize: film ? 11 : 13, fontWeight: 700 }}>
+          Камера выключена
+        </div>
+      )}
+      <span style={{ position: 'absolute', left: film ? 8 : 12, bottom: film ? 8 : 12, fontSize: film ? 11 : 12, fontWeight: 800, color: '#fff', background: 'rgba(0,0,0,.5)', padding: film ? '2px 8px' : '4px 10px', borderRadius: 999, maxWidth: '86%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {tile.label}
+      </span>
+    </div>
+  )
+}
+
 /* ================================================================
    КОМНАТА КОНФЕРЕНЦИИ
    ================================================================ */
@@ -133,20 +159,19 @@ function ConferenceRoom({ lessonId }) {
   }
   useEffect(() => { pokeUI(); return () => clearTimeout(hideTimerRef.current) }, [])
 
-  const [localShare, setLocalShare] = useState(null)  // свой поток демонстрации (виден даже одному)
-  const localVideoRef = useRef(null)
+  const [localShare, setLocalShare] = useState(null)  // свой экран (виден даже одному)
+  const [remoteSharing, setRemoteSharing] = useState({})  // peerId -> демонстрирует экран
   const localStreamRef = useRef(null)
   const rtcConfigRef = useRef(RTC_CONFIG)
   const peersRef = useRef({})   // peerId -> RTCPeerConnection
   const pollRef  = useRef(null)
   const meRef    = useRef(null)
   const chatEndRef = useRef(null)
+  const shareRef = useRef(false)   // демонстрирую ли я экран (для poll / новых участников)
 
   const rawAudioTrackRef = useRef(null)   // сырой микрофон
   const outAudioTrackRef = useRef(null)   // что реально уходит собеседнику (RNNoise или сырой)
   const denoiseRef       = useRef(null)   // { track, context } RNNoise
-  const rafRef           = useRef(null)   // цикл отрисовки композита экран+камера
-  const compositeRef     = useRef(null)   // { canvas, stream, screenVideo, camVideo }
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chat])
 
@@ -166,9 +191,10 @@ function ConferenceRoom({ lessonId }) {
     const pc = new RTCPeerConnection(rtcConfigRef.current)
     peersRef.current[peerId] = pc
 
-    // исходящие треки: звук (RNNoise или сырой), видео — композит экран+камера (если демонстрация) или камера
+    // исходящие треки: звук (RNNoise или сырой), видео — экран (если демонстрация) или камера
     const audioTrack = outAudioTrackRef.current ?? localStreamRef.current?.getAudioTracks()[0]
-    const videoTrack = compositeRef.current?.stream.getVideoTracks()[0] ?? localStreamRef.current?.getVideoTracks()[0]
+    const videoTrack = (shareRef.current && screenStreamRef.current?.getVideoTracks()[0])
+                       || localStreamRef.current?.getVideoTracks()[0]
     if (audioTrack) pc.addTrack(audioTrack, localStreamRef.current)
     if (videoTrack) pc.addTrack(videoTrack, localStreamRef.current)
 
@@ -215,10 +241,21 @@ function ConferenceRoom({ lessonId }) {
       setFinished(true)
       return
     }
+    if (msg.type === 'share') {
+      const on = msg.payload === 'on'
+      setRemoteSharing(prev => {
+        if (!!prev[from] === on) return prev
+        const n = { ...prev }
+        if (on) n[from] = true; else delete n[from]
+        return n
+      })
+      return
+    }
     if (msg.type === 'leave') {
       const pc = peersRef.current[from]
       if (pc) { pc.close(); delete peersRef.current[from] }
       setRemotes(prev => { const n = { ...prev }; delete n[from]; return n })
+      setRemoteSharing(prev => { const n = { ...prev }; delete n[from]; return n })
       return
     }
     if (msg.type === 'offer') {
@@ -227,6 +264,8 @@ function ConferenceRoom({ lessonId }) {
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
       sendSignal('answer', JSON.stringify(pc.localDescription), from)
+      // новый участник должен знать, что я уже показываю экран
+      if (shareRef.current) sendSignal('share', 'on', from)
       return
     }
     if (msg.type === 'answer') {
@@ -273,7 +312,6 @@ function ConferenceRoom({ lessonId }) {
       if (cancelled) { stream?.getTracks().forEach(t => t.stop()); return }
       if (stream) {
         localStreamRef.current = stream
-        if (localVideoRef.current) localVideoRef.current.srcObject = stream
         const hasAudio = stream.getAudioTracks().length > 0
         const hasVideo = stream.getVideoTracks().length > 0
         setMicOn(hasAudio)
@@ -315,6 +353,7 @@ function ConferenceRoom({ lessonId }) {
               existing.close()
               delete peersRef.current[peerId]
               setRemotes(prev => { const n = { ...prev }; delete n[peerId]; return n })
+              setRemoteSharing(prev => { const n = { ...prev }; delete n[peerId]; return n })
             }
             if (peersRef.current[peerId]) continue
             if (myId < peerId) {
@@ -322,6 +361,8 @@ function ConferenceRoom({ lessonId }) {
               const offer = await pc.createOffer()
               await pc.setLocalDescription(offer)
               sendSignal('offer', JSON.stringify(pc.localDescription), peerId)
+              // новый участник должен знать, что я уже показываю экран
+              if (shareRef.current) sendSignal('share', 'on', peerId)
             }
           }
         } catch { /* сеть мигнула — продолжаем поллинг */ }
@@ -335,8 +376,6 @@ function ConferenceRoom({ lessonId }) {
       if (pollRef.current) clearInterval(pollRef.current)
       Object.values(peersRef.current).forEach(pc => pc.close())
       peersRef.current = {}
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      compositeRef.current?.stream.getTracks().forEach(t => t.stop())
       localStreamRef.current?.getTracks().forEach(t => t.stop())
       screenStreamRef.current?.getTracks().forEach(t => t.stop())
       screenStreamRef.current = null
@@ -394,41 +433,6 @@ function ConferenceRoom({ lessonId }) {
     }
   }
 
-  // Композит: экран на весь кадр + камера картинкой-в-картинке в углу → один видеотрек
-  function buildComposite(screenStream, camStream) {
-    const st = screenStream.getVideoTracks()[0].getSettings()
-    const W = st.width || 1280, H = st.height || 720
-    const canvas = document.createElement('canvas')
-    canvas.width = W; canvas.height = H
-    const g = canvas.getContext('2d')
-
-    const screenVideo = document.createElement('video')
-    screenVideo.srcObject = screenStream; screenVideo.muted = true; screenVideo.playsInline = true
-    screenVideo.play().catch(() => {})
-    const camVideo = document.createElement('video')
-    camVideo.srcObject = camStream; camVideo.muted = true; camVideo.playsInline = true
-    camVideo.play().catch(() => {})
-
-    const draw = () => {
-      g.fillStyle = '#000'; g.fillRect(0, 0, W, H)
-      if (screenVideo.videoWidth) g.drawImage(screenVideo, 0, 0, W, H)
-      const camTrack = camStream?.getVideoTracks()[0]
-      if (camVideo.videoWidth && camTrack && camTrack.enabled) {
-        const cw = Math.round(W * 0.22)
-        const ch = Math.round(cw * (camVideo.videoHeight / camVideo.videoWidth || 0.5625))
-        const pad = Math.round(W * 0.015)
-        const x = W - cw - pad, y = H - ch - pad
-        g.save(); g.translate(x + cw, y); g.scale(-1, 1)
-        g.drawImage(camVideo, 0, 0, cw, ch); g.restore()
-        g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = Math.max(2, W * 0.003)
-        g.strokeRect(x, y, cw, ch)
-      }
-      rafRef.current = requestAnimationFrame(draw)
-    }
-    draw()
-    return { canvas, stream: canvas.captureStream(30), screenVideo, camVideo }
-  }
-
   async function toggleShare() {
     if (sharing) { await stopShare(); return }
     let screen
@@ -437,33 +441,23 @@ function ConferenceRoom({ lessonId }) {
     } catch { return /* пользователь отменил выбор */ }
     screenStreamRef.current = screen
     screen.getVideoTracks()[0].onended = () => stopShare()   // «Остановить» в панели браузера
-    try {
-      // собеседник видит экран + вашу камеру в углу; камера при этом не выключается
-      const composite = buildComposite(screen, localStreamRef.current)
-      compositeRef.current = composite
-      await replaceOutgoingVideo(composite.stream.getVideoTracks()[0])
-      setLocalShare(composite.stream)   // локальный предпросмотр — видно свой экран даже одному
-    } catch {
-      await replaceOutgoingVideo(screen.getVideoTracks()[0])   // запасной вариант — просто экран
-      setLocalShare(screen)
-    }
+    // отправляем собеседнику чистый экран (без вебки), камера продолжает работать своим потоком
+    await replaceOutgoingVideo(screen.getVideoTracks()[0])
+    setLocalShare(screen)   // локальный предпросмотр — видно свой экран даже одному
     setSharing(true)
+    shareRef.current = true
+    sendSignal('share', 'on')   // всем: я показываю экран
   }
 
   async function stopShare() {
-    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
-    if (compositeRef.current) {
-      compositeRef.current.stream.getTracks().forEach(t => t.stop())
-      compositeRef.current.screenVideo.srcObject = null
-      compositeRef.current.camVideo.srcObject = null
-      compositeRef.current = null
-    }
     screenStreamRef.current?.getTracks().forEach(t => t.stop())
     screenStreamRef.current = null
     setLocalShare(null)
     const camTrack = localStreamRef.current?.getVideoTracks()[0] ?? null
-    await replaceOutgoingVideo(camTrack)
+    await replaceOutgoingVideo(camTrack)   // возвращаем камеру
     setSharing(false)
+    shareRef.current = false
+    sendSignal('share', 'off')
   }
 
   function toggleFullscreen() {
@@ -500,11 +494,27 @@ function ConferenceRoom({ lessonId }) {
     for (const s of (info.students || [])) nameById[s.id] = s.name
   }
 
-  // Плитки главной области: своя демонстрация (видно даже одному) + удалённые участники
-  const tiles = []
-  if (localShare) tiles.push({ key: 'self-share', stream: localShare, label: 'Вы · демонстрация', self: true })
-  for (const [peerId, stream] of remoteEntries) tiles.push({ key: peerId, stream, label: nameById[peerId] || 'Участник' })
-  const cols = tiles.length <= 1 ? 1 : tiles.length <= 4 ? 2 : 3
+  // Как в Discord: если кто-то показывает экран — он большой на сцене, камеры уходят в ленту.
+  const myShareActive = sharing && !!localShare
+  const sharingRemote = remoteEntries.find(([pid]) => remoteSharing[pid])
+  let spotlight = null
+  if (sharingRemote) {
+    spotlight = { key: sharingRemote[0], stream: sharingRemote[1], label: `${nameById[sharingRemote[0]] || 'Участник'} · демонстрация` }
+  } else if (myShareActive) {
+    spotlight = { key: 'self-share', stream: localShare, label: 'Вы · демонстрация', self: true }
+  }
+
+  // Плитки камер (лента при демонстрации, сетка — без неё). Свою вебку при своей демонстрации не показываем.
+  const hasLocalVideo = !!localStreamRef.current?.getVideoTracks?.().length
+  const camTiles = []
+  if (localStreamRef.current && !myShareActive) {
+    camTiles.push({ key: 'self-cam', stream: localStreamRef.current, label: 'Вы', self: true, mirror: true, camOff: !camOn || !hasLocalVideo })
+  }
+  for (const [peerId, stream] of remoteEntries) {
+    if (spotlight && spotlight.key === peerId) continue   // этот участник уже на сцене
+    camTiles.push({ key: peerId, stream, label: nameById[peerId] || 'Участник' })
+  }
+  const cols = camTiles.length <= 1 ? 1 : camTiles.length <= 4 ? 2 : 3
 
   if (joinError) {
     return (
@@ -540,24 +550,30 @@ function ConferenceRoom({ lessonId }) {
       {/* ── Видео-зона ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
         <div ref={videoAreaRef} style={{ flex: 1, borderRadius: 20, position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', minHeight: 0, background: '#1E1A38', cursor: uiVisible ? 'default' : 'none' }}>
-          {/* участники + своя демонстрация */}
-          {tiles.length > 0 ? (
-            <div style={{
-              position: 'absolute', inset: 0, display: 'grid', gap: 4,
-              gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            }}>
-              {tiles.map(t => (
-                <div key={t.key} style={{ position: 'relative', minHeight: 0 }}>
-                  <video
-                    autoPlay playsInline muted={t.self}
-                    ref={el => { if (el && el.srcObject !== t.stream) el.srcObject = t.stream }}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
-                  />
-                  <span style={{ position: 'absolute', left: 12, bottom: 12, fontSize: 12, fontWeight: 800, color: '#fff', background: 'rgba(0,0,0,.45)', padding: '4px 10px', borderRadius: 999 }}>
-                    {t.label}
-                  </span>
+          {spotlight ? (
+            /* ── Демонстрация экрана: большая сцена + лента камер справа (как в Discord) ── */
+            <>
+              <video
+                autoPlay playsInline muted={!!spotlight.self}
+                ref={el => { if (el && el.srcObject !== spotlight.stream) el.srcObject = spotlight.stream }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+              />
+              <span style={{ position: 'absolute', left: 16, bottom: 16, display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 800, color: '#fff', background: 'rgba(0,0,0,.5)', padding: '5px 12px', borderRadius: 999 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--orange)' }} /> {spotlight.label}
+              </span>
+              {camTiles.length > 0 && (
+                <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '86%', overflowY: 'auto', padding: 2 }}>
+                  {camTiles.map(t => <VideoTile key={t.key} tile={t} film />)}
                 </div>
-              ))}
+              )}
+            </>
+          ) : camTiles.length > 0 ? (
+            /* ── Обычная сетка камер ── */
+            <div style={{
+              position: 'absolute', inset: 0, display: 'grid', gap: 10, padding: 10,
+              gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr',
+            }}>
+              {camTiles.map(t => <VideoTile key={t.key} tile={t} />)}
             </div>
           ) : (
             <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.75)' }}>
@@ -566,16 +582,6 @@ function ConferenceRoom({ lessonId }) {
               <div style={{ fontSize: 12, marginTop: 4 }}>Соединение установится автоматически</div>
             </div>
           )}
-
-          {/* своя камера */}
-          <div style={{ position: 'absolute', right: 16, bottom: 16, width: 180, borderRadius: 14, overflow: 'hidden', border: '2px solid rgba(255,255,255,.35)', background: '#1F1B3A', boxShadow: 'var(--shadow-pop)' }}>
-            <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }} />
-            {!camOn && (
-              <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: '#1F1B3A', color: 'rgba(255,255,255,.6)', fontSize: 12, fontWeight: 700 }}>
-                Камера выключена
-              </div>
-            )}
-          </div>
 
           {/* полный экран */}
           <button
