@@ -14,6 +14,15 @@ const NOTIF_SUPPORTED = typeof window !== 'undefined' && 'Notification' in windo
 const TIMEZONES = ['Europe/Moscow','Europe/Kaliningrad','Asia/Yekaterinburg','Asia/Novosibirsk','Asia/Krasnoyarsk','Asia/Irkutsk','Asia/Yakutsk','Asia/Vladivostok']
 const LOCALES   = [{ v:'ru', l:'Русский' }, { v:'en', l:'English' }, { v:'fr', l:'Français' }]
 
+// Ползунок времени напоминания (минуты): от 5 минут до 48 часов
+const REMINDER_STEPS = [5, 10, 15, 30, 45, 60, 120, 180, 360, 720, 1440, 2880]
+const fmtReminder = m => (m < 60 ? `${m} мин` : `${Math.round(m / 60)} ч`)
+function nearestStepIdx(m) {
+  let bi = 0, bd = Infinity
+  REMINDER_STEPS.forEach((v, i) => { const d = Math.abs(v - m); if (d < bd) { bd = d; bi = i } })
+  return bi
+}
+
 function Field({ label, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -100,7 +109,7 @@ export default function ProfilePage() {
   const [notifEmail, setNotifEmail] = useState(true)
   const [notifPush,  setNotifPush]  = useState(true)
   const [notifSms,   setNotifSms]   = useState(false)
-  const [reminder,   setReminder]   = useState('24')
+  const [reminderMin, setReminderMin] = useState(15)
   const [pushPerm,   setPushPerm]   = useState(NOTIF_SUPPORTED ? Notification.permission : 'unsupported')
 
   // Реальное вкл/выкл push: запрос разрешения + регистрация SW + подписка (или отписка)
@@ -149,7 +158,8 @@ export default function ProfilePage() {
         setNotifPush(data.notificationPush && (!NOTIF_SUPPORTED || Notification.permission === 'granted'))
       }
       if (data.notificationSms   !== undefined) setNotifSms(data.notificationSms)
-      if (data.reminderHoursBefore !== undefined) setReminder(String(data.reminderHoursBefore))
+      if (data.reminderMinutesBefore != null) setReminderMin(Number(data.reminderMinutesBefore))
+      else if (data.reminderHoursBefore != null) setReminderMin(Number(data.reminderHoursBefore) * 60)
       if (data.interfaceLocale   !== undefined) setLocale(data.interfaceLocale)
     }).catch(() => {/* backend may be down — keep local defaults */})
   }, [])
@@ -184,7 +194,7 @@ export default function ProfilePage() {
         notificationEmail: notifEmail,
         notificationPush:  notifPush,
         notificationSms:   notifSms,
-        reminderHoursBefore: Number(reminder),
+        reminderMinutesBefore: reminderMin,
       })
       toast(t('Сохранено'))
     } catch (e) {
@@ -364,20 +374,23 @@ export default function ProfilePage() {
                 </div>
 
                 <div style={{ marginTop: 24 }}>
-                  <Field label={t('Напоминание об уроке (за сколько часов)')}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {['1','2','12','24','48'].map(h => (
-                        <button
-                          key={h}
-                          onClick={() => setReminder(h)}
-                          style={{
-                            padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                            background: reminder === h ? 'var(--purple)' : 'var(--bg-cream-soft)',
-                            color:      reminder === h ? '#fff' : 'var(--ink-muted)',
-                            border:     reminder === h ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
-                          }}
-                        >{h}{t('ч')}</button>
-                      ))}
+                  <Field label={t('Напоминание об уроке — за сколько до начала')}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 460 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--purple-deep)' }}>
+                          {fmtReminder(reminderMin)}
+                        </span>
+                        <span style={{ fontSize: 13, color: 'var(--ink-muted)' }}>{t('до начала урока')}</span>
+                      </div>
+                      <input
+                        type="range" min={0} max={REMINDER_STEPS.length - 1} step={1}
+                        value={nearestStepIdx(reminderMin)}
+                        onChange={e => setReminderMin(REMINDER_STEPS[Number(e.target.value)])}
+                        style={{ width: '100%', accentColor: 'var(--purple)', cursor: 'pointer' }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ink-dim)', fontWeight: 700 }}>
+                        <span>5 {t('мин')}</span><span>1 {t('ч')}</span><span>12 {t('ч')}</span><span>48 {t('ч')}</span>
+                      </div>
                     </div>
                   </Field>
                 </div>
