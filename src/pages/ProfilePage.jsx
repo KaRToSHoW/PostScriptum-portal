@@ -7,6 +7,9 @@ import { toast } from '../components/Toast'
 import { profileApi } from '../api/profile'
 import { settingsApi } from '../api/settings'
 import { uploadFile, fileUrl } from '../api/files'
+import { subscribeToPush, unsubscribeFromPush, pushSupported } from '../lib/webPush'
+
+const NOTIF_SUPPORTED = typeof window !== 'undefined' && 'Notification' in window
 
 const TIMEZONES = ['Europe/Moscow','Europe/Kaliningrad','Asia/Yekaterinburg','Asia/Novosibirsk','Asia/Krasnoyarsk','Asia/Irkutsk','Asia/Yakutsk','Asia/Vladivostok']
 const LOCALES   = [{ v:'ru', l:'Русский' }, { v:'en', l:'English' }, { v:'fr', l:'Français' }]
@@ -98,6 +101,38 @@ export default function ProfilePage() {
   const [notifPush,  setNotifPush]  = useState(true)
   const [notifSms,   setNotifSms]   = useState(false)
   const [reminder,   setReminder]   = useState('24')
+  const [pushPerm,   setPushPerm]   = useState(NOTIF_SUPPORTED ? Notification.permission : 'unsupported')
+
+  // Реальное вкл/выкл push: запрос разрешения + регистрация SW + подписка (или отписка)
+  async function handlePushToggle(want) {
+    if (!want) {
+      setNotifPush(false)
+      await unsubscribeFromPush()
+      settingsApi.update({ notificationPush: false }).catch(() => {})
+      toast('Push-уведомления выключены', 'info')
+      return
+    }
+    if (!pushSupported || !NOTIF_SUPPORTED) {
+      toast('Браузер не поддерживает push-уведомления', 'error'); return
+    }
+    let perm = Notification.permission
+    if (perm === 'default') perm = await Notification.requestPermission()
+    setPushPerm(perm)
+    if (perm !== 'granted') {
+      setNotifPush(false)
+      toast('Разрешите уведомления для сайта (значок 🔒 в адресной строке)', 'warning')
+      return
+    }
+    const ok = await subscribeToPush()
+    if (ok) {
+      setNotifPush(true)
+      settingsApi.update({ notificationPush: true }).catch(() => {})
+      toast('Push-уведомления включены ✓', 'success')
+    } else {
+      setNotifPush(false)
+      toast('Не удалось подписаться на push-уведомления', 'error')
+    }
+  }
 
   const [curPwd, setCurPwd] = useState('')
   const [newPwd, setNewPwd] = useState('')
@@ -109,7 +144,10 @@ export default function ProfilePage() {
   useEffect(() => {
     settingsApi.get().then(data => {
       if (data.notificationEmail !== undefined) setNotifEmail(data.notificationEmail)
-      if (data.notificationPush  !== undefined) setNotifPush(data.notificationPush)
+      // push честно показываем включённым только если браузер реально даёт разрешение
+      if (data.notificationPush  !== undefined) {
+        setNotifPush(data.notificationPush && (!NOTIF_SUPPORTED || Notification.permission === 'granted'))
+      }
       if (data.notificationSms   !== undefined) setNotifSms(data.notificationSms)
       if (data.reminderHoursBefore !== undefined) setReminder(String(data.reminderHoursBefore))
       if (data.interfaceLocale   !== undefined) setLocale(data.interfaceLocale)
@@ -305,12 +343,22 @@ export default function ProfilePage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {[
-                    { label: t('Email-уведомления'), val: notifEmail, set: setNotifEmail },
-                    { label: t('Push-уведомления'),  val: notifPush,  set: setNotifPush  },
-                    { label: t('SMS-уведомления'),   val: notifSms,   set: setNotifSms   },
+                    { label: t('Email-уведомления'), val: notifEmail, onChange: setNotifEmail },
+                    { label: t('Push-уведомления'),  val: notifPush,  onChange: handlePushToggle, hint: true },
+                    { label: t('SMS-уведомления'),   val: notifSms,   onChange: setNotifSms },
                   ].map((n, i, arr) => (
                     <div key={n.label} style={{ padding: '16px 0', borderBottom: i < arr.length-1 ? '1px solid var(--border-soft)' : 'none' }}>
-                      <Toggle checked={n.val} onChange={n.set} label={n.label} />
+                      <Toggle checked={n.val} onChange={n.onChange} label={n.label} />
+                      {n.hint && pushPerm === 'denied' && (
+                        <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 8, lineHeight: 1.4 }}>
+                          {t('Уведомления заблокированы в браузере. Разрешите их в настройках сайта (значок 🔒 в адресной строке).')}
+                        </div>
+                      )}
+                      {n.hint && pushPerm === 'unsupported' && (
+                        <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 8, lineHeight: 1.4 }}>
+                          {t('Этот браузер не поддерживает push-уведомления.')}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
