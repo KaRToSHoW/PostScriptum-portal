@@ -28,7 +28,10 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.message ?? `HTTP ${res.status}`)
+    const err = new Error(body.message ?? `HTTP ${res.status}`)
+    err.status = res.status
+    err.body = body        // чтобы вызывающий код мог прочитать детали (например, blockers)
+    throw err
   }
 
   if (res.status === 204) return null

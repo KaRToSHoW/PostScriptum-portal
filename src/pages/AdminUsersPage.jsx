@@ -104,8 +104,28 @@ export default function AdminUsersPage() {
   }
   async function removeUser(u) {
     if (!window.confirm(`Удалить пользователя «${u.name}»? Действие необратимо.`)) return
-    try { await adminApi.deleteUser(u.id); toast('Пользователь удалён', 'success'); load() }
-    catch (e) { toast(e.message || 'Не удалось удалить', 'error') }
+    try {
+      await adminApi.deleteUser(u.id)
+      toast('Пользователь удалён', 'success'); load()
+    } catch (e) {
+      const blockers = e.status === 409 ? e.body?.blockers : null
+      if (blockers?.length) {
+        const lines = blockers.map(b => `  •  ${b.label}: ${b.count}`).join('\n')
+        const ok = window.confirm(
+          `У «${u.name}» есть связанные данные:\n\n${lines}\n\n` +
+          `Удалить ПРИНУДИТЕЛЬНО вместе со всеми этими данными?\nЭто необратимо.`
+        )
+        if (!ok) return
+        try {
+          await adminApi.deleteUser(u.id, true)
+          toast('Пользователь и все его данные удалены', 'success'); load()
+        } catch (e2) {
+          toast(e2.message || 'Не удалось удалить принудительно', 'error')
+        }
+      } else {
+        toast(e.message || 'Не удалось удалить', 'error')
+      }
+    }
   }
 
   const filtered = users.filter(TABS.find(t => t.id === tab).match)
