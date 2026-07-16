@@ -8,6 +8,8 @@ import { teachersApi } from '../api/teachers'
 import { toast } from '../components/Toast'
 import { api } from '../api/client'
 import ScheduleLessonModal from '../components/ScheduleLessonModal'
+import LessonTile from '../components/LessonTile'
+import SlideTabs from '../components/SlideTabs'
 
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: '#9DC4A2', es: '#D7A87E', it: '#C9A0DC' }
 
@@ -40,6 +42,358 @@ function buildCells(year, month) {
   return cells
 }
 
+/* ── Мобильный режим (≤900px) ──────────────────────────────────── */
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const fn = e => setMobile(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [])
+  return mobile
+}
+
+/* ── Лента дат по неделям (мобильная замена сетки месяца) ──────── */
+function WeekStrip({ ym, selectedDay, events, langFilter, onPick }) {
+  const anchor = new Date(ym.y, ym.m - 1, selectedDay || 1)
+  const monday = new Date(anchor)
+  monday.setDate(anchor.getDate() - ((anchor.getDay() + 6) % 7))
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
+  const now = new Date()
+  const sameDate = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+
+  function shift(dir) {
+    const d = new Date(anchor)
+    d.setDate(anchor.getDate() + dir * 7)
+    onPick({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })
+  }
+
+  const label = `${days[0].getDate()} ${MONTH_NAMES[days[0].getMonth()].slice(0, 3).toLowerCase()} — ${days[6].getDate()} ${MONTH_NAMES[days[6].getMonth()].slice(0, 3).toLowerCase()}`
+
+  return (
+    <div className="ps-card" style={{ padding: '12px 10px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 10px' }}>
+        <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 7 }} onClick={() => shift(-1)}>‹</button>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--ink-2)', letterSpacing: '.03em' }}>{label}</span>
+        <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 7 }} onClick={() => shift(1)}>›</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {days.map((d, i) => {
+          const inMonth = d.getMonth() + 1 === ym.m && d.getFullYear() === ym.y
+          const sel     = inMonth && selectedDay === d.getDate()
+          const today   = sameDate(d, now)
+          const evs     = inMonth ? (events[d.getDate()] || []).filter(e => !langFilter || langFilter.has(e.l)) : []
+          return (
+            <button
+              key={i}
+              onClick={() => onPick({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })}
+              style={{
+                border: today && !sel ? '2px solid var(--orange)' : '1px solid var(--border-soft)',
+                background: sel ? 'var(--purple)' : today ? 'var(--orange-tint)' : '#fff',
+                color: sel ? '#fff' : inMonth ? 'var(--ink)' : 'var(--ink-dim)',
+                borderRadius: 12, padding: '7px 0 6px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                transition: 'background .12s, border-color .12s',
+              }}
+            >
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.08em', opacity: .65 }}>{DAY_NAMES[i]}</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, lineHeight: 1 }}>{d.getDate()}</span>
+              <span style={{ display: 'flex', gap: 2, height: 5 }}>
+                {evs.slice(0, 3).map((e, k) => (
+                  <span key={k} style={{ width: 5, height: 5, borderRadius: '50%', background: sel ? '#fff' : (LANG_COLOR[e.l] || 'var(--purple)') }} />
+                ))}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ── Развёрнутый день с почасовой шкалой (мобильный календарь) ──
+   Уроки стоят на своём времени, красная линия — «сейчас»,
+   тап по уроку раскрывает/скрывает действия                        */
+const TIMELINE_BG = { fr: '#6C63C4', en: '#E2873A', de: '#6F9E77', es: '#C08A55', it: '#A97CC4' }
+
+function DayTimeline({ evs, showNow, buildActions }) {
+  const [openIdx, setOpenIdx] = useState(null)
+  const HOUR = 56
+
+  const parseMin = t => {
+    const [h, m] = String(t || '0:0').split(':').map(Number)
+    return (h || 0) * 60 + (m || 0)
+  }
+  const sorted = [...evs].sort((a, b) => parseMin(a.t) - parseMin(b.t))
+  const startH = Math.min(8,  ...sorted.map(e => Math.floor(parseMin(e.t) / 60)))
+  const endH   = Math.max(21, ...sorted.map(e => Math.floor(parseMin(e.t) / 60) + 1))
+  const hours  = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i)
+
+  const now = new Date()
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const nowLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+  // Расставляем блоки по времени, разводим наложения
+  let prevBottom = -Infinity
+  const blocks = sorted.map((e, i) => {
+    let top = (parseMin(e.t) - startH * 60) / 60 * HOUR
+    if (top < prevBottom + 6) top = prevBottom + 6
+    prevBottom = top + 56
+    return { e, top, i }
+  })
+
+  const totalH = (endH - startH) * HOUR + 40
+
+  return (
+    <div className="ps-card" style={{ padding: '16px 12px', flexShrink: 0 }}>
+      <div style={{ position: 'relative', height: totalH }}>
+        {/* Часовые линии */}
+        {hours.map(h => (
+          <div key={h} style={{ position: 'absolute', top: (h - startH) * HOUR, left: 0, right: 0, display: 'flex', alignItems: 'center', gap: 8, transform: 'translateY(-50%)' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--ink-dim)', width: 38, flexShrink: 0, letterSpacing: '.03em' }}>
+              {String(h).padStart(2, '0')}:00
+            </span>
+            <span style={{ flex: 1, height: 1, background: 'var(--border-soft)' }} />
+          </div>
+        ))}
+
+        {/* Красная линия текущего времени */}
+        {showNow && nowMin >= startH * 60 && nowMin <= endH * 60 && (
+          <div style={{ position: 'absolute', top: (nowMin - startH * 60) / 60 * HOUR, left: 0, right: 0, display: 'flex', alignItems: 'center', zIndex: 3, pointerEvents: 'none', transform: 'translateY(-50%)' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--danger)', width: 38, flexShrink: 0 }}>{nowLabel}</span>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
+            <span style={{ flex: 1, height: 2, background: 'var(--danger)', borderRadius: 2 }} />
+          </div>
+        )}
+
+        {/* Уроки */}
+        {blocks.map(({ e, top, i }) => {
+          const live    = e.s === 'now'
+          const missed  = e.s === 'missed'
+          const open    = openIdx === i
+          const actions = open ? (buildActions?.(e) ?? []) : []
+          return (
+            <div
+              key={i}
+              onClick={() => setOpenIdx(open ? null : i)}
+              style={{
+                position: 'absolute', top, left: 46, right: 2, zIndex: open ? 4 : 2,
+                borderRadius: 13, padding: '9px 12px', cursor: 'pointer',
+                background: live ? 'var(--orange)' : (TIMELINE_BG[e.l] ?? 'var(--purple)'),
+                opacity: missed && !open ? .72 : 1,
+                boxShadow: open ? '0 14px 34px rgba(31,27,58,.3)' : '0 4px 12px rgba(31,27,58,.14)',
+                transition: 'box-shadow .15s, opacity .15s',
+                color: '#fff',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{e.t}</span>
+                <span className={`ps-flag ps-flag-${e.l}`} style={{ width: 14, height: 14, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.45)' }} />
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: missed ? 'line-through' : 'none' }}>
+                  {LANG_NAME[e.l] ?? e.l}{e.who ? ` · ${e.who}` : ''}
+                </span>
+                <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 999, background: 'rgba(255,255,255,.22)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {live && <span className="ps-live-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }} />}
+                  {e.s === 'missed' ? '✗ ' : e.s === 'done' ? '✓ ' : ''}{STATE_LABEL[e.s] ?? e.s}
+                </span>
+              </div>
+              {e.students && open && (
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.75)', marginTop: 5 }}>{e.students}</div>
+              )}
+              {open && actions.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 9 }} onClick={ev => ev.stopPropagation()}>
+                  {actions.map((a, k) => (
+                    <button
+                      key={k}
+                      onClick={a.onClick}
+                      style={{
+                        flex: '1 1 30%', minWidth: 96,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        padding: '8px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                        fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 800,
+                        background: a.danger ? 'rgba(160,30,30,.45)' : 'rgba(255,255,255,.22)',
+                        color: '#fff',
+                      }}
+                    >
+                      {a.icon && <Icon name={a.icon} size={11} style={a.iconStyle} />} {a.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {evs.length === 0 && (
+          <div style={{ position: 'absolute', top: '38%', left: 0, right: 0, textAlign: 'center', color: 'var(--ink-dim)', fontSize: 13, fontWeight: 700 }}>
+            Нет уроков в этот день
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Почасовая сетка на день/неделю (десктопные режимы) ─────────
+   Колонки дней с уроками на своём времени, кликабельные даты в
+   шапке, красная линия «сейчас» — как в референсе                 */
+function HourGrid({ headerDates, bodyDates, ym, getEvs, selectedDay, onPickDay, onShiftWeek }) {
+  const HOUR   = 52
+  const GUTTER = 46
+
+  const parseMin = t => {
+    const [h, m] = String(t || '0:0').split(':').map(Number)
+    return (h || 0) * 60 + (m || 0)
+  }
+  const now = new Date()
+  const sameDate = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+
+  const makeCol = d => {
+    const inMonth = d.getMonth() + 1 === ym.m && d.getFullYear() === ym.y
+    const evs = inMonth ? (getEvs(d.getDate()) || []) : []
+    return { d, inMonth, evs: [...evs].sort((a, b) => parseMin(a.t) - parseMin(b.t)) }
+  }
+  const cols       = bodyDates.map(makeCol)
+  const headerCols = headerDates.map(makeCol)
+
+  const allEvs = cols.flatMap(c => c.evs)
+  const startH = Math.min(8,  ...allEvs.map(e => Math.floor(parseMin(e.t) / 60)))
+  const endH   = Math.max(21, ...allEvs.map(e => Math.floor(parseMin(e.t) / 60) + 1))
+  const hours  = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i)
+
+  const nowMin        = now.getHours() * 60 + now.getMinutes()
+  const nowLabel      = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const containsToday = cols.some(c => sameDate(c.d, now))
+  const single        = bodyDates.length === 1
+  const shownDay      = single ? bodyDates[0] : null
+  const totalH        = (endH - startH) * HOUR + 26
+  const blockH        = single ? 46 : 42
+
+  return (
+    <div className="ps-card" style={{ padding: '14px 14px 6px', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      {/* Шапка: всегда вся неделя — по датам можно переключать день,
+          стрелки по краям листают недели */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid var(--border-soft)', paddingBottom: 8, flexShrink: 0 }}>
+        <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 30, padding: 6, flexShrink: 0 }} onClick={() => onShiftWeek(-1)} title="Предыдущая неделя">‹</button>
+        <div style={{ flex: 1, display: 'flex' }}>
+          {headerCols.map(({ d, inMonth, evs }, i) => {
+            const active = shownDay ? sameDate(d, shownDay) : (inMonth && selectedDay === d.getDate())
+            const today  = sameDate(d, now)
+            return (
+              <div key={i} onClick={() => onPickDay(d)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, cursor: 'pointer', padding: '2px 0', userSelect: 'none' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: today ? 'var(--orange-deep)' : 'var(--ink-muted)' }}>
+                  {DAY_NAMES[(d.getDay() + 6) % 7]}
+                </span>
+                <span style={{
+                  position: 'relative',
+                  width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                  fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13,
+                  background: active ? 'var(--purple)' : today ? 'var(--orange)' : 'transparent',
+                  color: (active || today) ? '#fff' : inMonth ? 'var(--ink)' : 'var(--ink-dim)',
+                  transition: 'background .12s',
+                }}>
+                  {d.getDate()}
+                  {evs.length > 0 && !active && !today && (
+                    <span style={{ position: 'absolute', bottom: -3, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: 'var(--purple)' }} />
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 30, padding: 6, flexShrink: 0 }} onClick={() => onShiftWeek(1)} title="Следующая неделя">›</button>
+      </div>
+
+      {/* Тело сетки — скроллится внутри карточки */}
+      <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+        <div style={{ position: 'relative', height: totalH, margin: '12px 0 8px' }}>
+          {/* Часовые линии */}
+          {hours.map(h => (
+            <div key={h} style={{ position: 'absolute', top: (h - startH) * HOUR, left: 0, right: 0, display: 'flex', alignItems: 'center', gap: 8, transform: 'translateY(-50%)' }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--ink-dim)', width: GUTTER - 8, flexShrink: 0, letterSpacing: '.03em' }}>
+                {String(h).padStart(2, '0')}:00
+              </span>
+              <span style={{ flex: 1, height: 1, background: 'var(--border-soft)' }} />
+            </div>
+          ))}
+
+          {/* Красная линия текущего времени */}
+          {containsToday && nowMin >= startH * 60 && nowMin <= endH * 60 && (
+            <div style={{ position: 'absolute', top: (nowMin - startH * 60) / 60 * HOUR, left: 0, right: 0, display: 'flex', alignItems: 'center', zIndex: 3, pointerEvents: 'none', transform: 'translateY(-50%)' }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--danger)', width: GUTTER - 8, flexShrink: 0 }}>{nowLabel}</span>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
+              <span style={{ flex: 1, height: 2, background: 'var(--danger)', borderRadius: 2 }} />
+            </div>
+          )}
+
+          {/* Колонки дней с уроками */}
+          <div style={{ position: 'absolute', top: 0, bottom: 0, left: GUTTER, right: 0, display: 'flex' }}>
+            {cols.map((c, ci) => {
+              let prevBottom = -Infinity
+              return (
+                <div key={ci} style={{ flex: 1, position: 'relative', minWidth: 0, borderLeft: ci > 0 ? '1px dashed var(--border-soft)' : 'none' }}>
+                  {c.evs.map((e, ei) => {
+                    let top = (parseMin(e.t) - startH * 60) / 60 * HOUR
+                    if (top < prevBottom + 4) top = prevBottom + 4
+                    prevBottom = top + blockH
+                    const live   = e.s === 'now'
+                    const missed = e.s === 'missed'
+                    return (
+                      <div
+                        key={ei}
+                        onClick={ev => { ev.stopPropagation(); onPickDay(c.d) }}
+                        title={`${e.t} · ${LANG_NAME[e.l] ?? e.l}${e.who ? ' · ' + e.who : ''}${e.students ? ' — ' + e.students : ''} · ${STATE_LABEL[e.s] ?? e.s}`}
+                        style={{
+                          position: 'absolute', top, left: 4, right: 4, height: blockH, zIndex: 2,
+                          borderRadius: 10, padding: single ? '7px 12px' : '5px 8px',
+                          cursor: 'pointer', overflow: 'hidden', color: '#fff',
+                          background: live ? 'var(--orange)' : (TIMELINE_BG[e.l] ?? 'var(--purple)'),
+                          opacity: missed ? .68 : 1,
+                          boxShadow: '0 3px 10px rgba(31,27,58,.16)',
+                        }}
+                      >
+                        {single ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, height: '100%' }}>
+                            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{e.t}</span>
+                            <span className={`ps-flag ps-flag-${e.l}`} style={{ width: 14, height: 14, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.45)' }} />
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: missed ? 'line-through' : 'none' }}>
+                              {LANG_NAME[e.l] ?? e.l}{e.who ? ` · ${e.who}` : ''}
+                            </span>
+                            <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 999, background: 'rgba(255,255,255,.22)' }}>
+                              {e.s === 'missed' ? '✗ ' : e.s === 'done' ? '✓ ' : ''}{STATE_LABEL[e.s] ?? e.s}
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 11.5, textDecoration: missed ? 'line-through' : 'none' }}>{e.t}</span>
+                              {live && <span className="ps-live-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff', flexShrink: 0 }} />}
+                              {e.s === 'missed' && <span style={{ fontSize: 9.5 }}>✗</span>}
+                              {e.s === 'done' && <span style={{ fontSize: 9.5 }}>✓</span>}
+                            </div>
+                            <div style={{ fontSize: 10, fontWeight: 700, opacity: .85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+                              {e.who || LANG_NAME[e.l] || ''}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Перенос урока на другое время ─────────────────────────────── */
 function RescheduleModal({ lesson, onClose, onDone, rescheduleUrl }) {
   const [date, setDate] = useState('')
@@ -66,9 +420,9 @@ function RescheduleModal({ lesson, onClose, onDone, rescheduleUrl }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+    <div className="ps-m-pad" style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 400, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 400, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
           <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>перенос урока</span>
           <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Выберите новое время</h3>
@@ -133,9 +487,9 @@ function AttendanceModal({ lesson, onClose, onDone, rosterUrl, attendanceUrl }) 
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+    <div className="ps-m-pad" style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 400, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 400, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
           <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>посещение</span>
           <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Кто был на уроке?</h3>
@@ -192,6 +546,36 @@ function CalendarStudent() {
   const [attendanceFor, setAttendanceFor] = useState(null)
   const [showSchedule, setShowSchedule]   = useState(false)
   const [myStudents, setMyStudents]       = useState([])
+  const isMobile = useIsMobile()
+  const [view, setView] = useState('day')    // десктоп: 'day' | 'week' | 'month'
+
+  // Выбор дня из недельной ленты (может указывать на соседний месяц)
+  function pickDay({ y, m, d }) {
+    if (y !== ym.y || m !== ym.m) setYm({ y, m })
+    setSel(d)
+  }
+
+
+  // Даты колонок для почасовой сетки (день / неделя)
+  const anchorDate = new Date(ym.y, ym.m - 1, selectedDay || 1)
+  const weekDates = (() => {
+    const mon = new Date(anchorDate)
+    mon.setDate(anchorDate.getDate() - ((anchorDate.getDay() + 6) % 7))
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d })
+  })()
+
+  // Кнопки действий на плашке урока (для преподавателя)
+  function lessonActions(it) {
+    const actions = []
+    if (isTeacher && it.s === 'planned') {
+      actions.push({ icon: 'calendar', label: 'Перенести', onClick: () => setRescheduleFor(it) })
+      actions.push({ icon: 'plus', iconStyle: { transform: 'rotate(45deg)' }, label: 'Отменить', danger: true, onClick: () => handleCancel(it) })
+    }
+    if (isTeacher) {
+      actions.push({ icon: 'users', label: 'Посещение', onClick: () => setAttendanceFor(it) })
+    }
+    return actions
+  }
 
   useEffect(() => {
     if (!isTeacher) return
@@ -236,11 +620,11 @@ function CalendarStudent() {
 
   function prevMonth() {
     setYm(p => p.m === 1 ? { y: p.y - 1, m: 12 } : { ...p, m: p.m - 1 })
-    setSel(null)
+    setSel(1)
   }
   function nextMonth() {
     setYm(p => p.m === 12 ? { y: p.y + 1, m: 1 } : { ...p, m: p.m + 1 })
-    setSel(null)
+    setSel(1)
   }
   function goToday() {
     setYm({ y: TODAY.y, m: TODAY.m })
@@ -260,16 +644,24 @@ function CalendarStudent() {
     : null
 
   return (
-    <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, overflow: 'hidden' }}>
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, overflow: 'hidden' }}>
 
       {/* Тулбар */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 className="ps-display" style={{ fontSize: 30, margin: 0 }}>{MONTH_NAMES[ym.m - 1]} {ym.y}</h2>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={prevMonth}>‹</button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={prevMonth} title="Предыдущий месяц">‹</button>
           <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={goToday}>Сегодня</button>
-          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth}>›</button>
+          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth} title="Следующий месяц">›</button>
         </div>
+        {!isMobile && (
+          <SlideTabs
+            size="sm"
+            tabs={[{ id: 'day', label: 'День' }, { id: 'week', label: 'Неделя' }, { id: 'month', label: 'Месяц' }]}
+            value={view}
+            onChange={setView}
+          />
+        )}
         <div style={{ flex: 1 }} />
         {isTeacher && (
           <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowSchedule(true)}>
@@ -294,49 +686,72 @@ function CalendarStudent() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
-        {/* Сетка месяца */}
+        {/* На мобильном — карусель недели + развёрнутая лента по дням, на десктопе — сетка месяца */}
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+            <WeekStrip ym={ym} selectedDay={selectedDay} events={events} langFilter={langFilter} onPick={pickDay} />
+            <DayTimeline evs={selEvs} showNow={selectedDay != null && isToday(selectedDay)} buildActions={lessonActions} />
+          </div>
+        ) : view !== 'month' ? (
+          <HourGrid
+            headerDates={weekDates}
+            bodyDates={view === 'day' ? [anchorDate] : weekDates}
+            ym={ym}
+            getEvs={dayN => (events[dayN] || []).filter(e => langFilter.has(e.l))}
+            selectedDay={selectedDay}
+            onPickDay={d => pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })}
+            onShiftWeek={dir => { const d = new Date(anchorDate); d.setDate(anchorDate.getDate() + dir * 7); pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }) }}
+          />
+        ) : (
         <div className="ps-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, paddingBottom: 8 }}>
+          <div className="ps-tablewrap" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, paddingBottom: 8, minWidth: 640 }}>
             {DAY_NAMES.map(d => (
               <div key={d} style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', padding: '4px 6px' }}>{d}</div>
             ))}
           </div>
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', gap: 4, overflow: 'hidden' }}>
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', gap: 4, overflow: 'hidden', minWidth: 640 }}>
             {cells.map((c, i) => {
               if (c.blank) return <div key={i} />
               const evs     = (events[c.d] || []).filter(e => langFilter.has(e.l))
               const today   = isToday(c.d)
               const past    = isPast(c.d)
               const sel     = selectedDay === c.d
+              const weekend = i % 7 >= 5
               return (
                 <div
                   key={i}
+                  className="ps-cal-cell"
                   onClick={() => setSel(c.d)}
                   style={{
                     borderRadius: 10,
                     border: today ? '2px solid var(--orange)' : sel ? '2px solid var(--purple)' : '1px solid var(--border-soft)',
-                    background: today ? 'var(--orange-tint)' : sel ? 'var(--purple-tint)' : past ? 'var(--bg-cream-soft)' : '#fff',
+                    background: today ? 'var(--orange-tint)' : sel ? 'var(--purple-tint)' : past ? 'var(--bg-cream-soft)' : weekend ? '#FBF6EA' : '#fff',
                     padding: 7, display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden', cursor: 'pointer',
-                    transition: 'border-color .1s, background .1s',
+                    transition: 'border-color .1s, background .1s, box-shadow .1s',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: today ? 'var(--orange-deep)' : sel ? 'var(--purple-deep)' : past ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
-                    {evs.length > 7 && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>+{evs.length - 7}</span>}
+                    {evs.length > 5 && <span style={{ fontSize: 10, fontWeight: 800, background: 'var(--purple)', color: '#fff', padding: '0 5px', borderRadius: 999 }}>+{evs.length - 5}</span>}
                   </div>
-                  {evs.slice(0, 7).map((e, ei) => {
+                  {evs.slice(0, 5).map((e, ei) => {
                     const st = eventStyle(e.s)
                     return (
-                      <div key={ei} style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 4px', borderRadius: 4,
-                        background: st.bg, color: st.color,
-                        borderLeft: `3px solid ${LANG_COLOR[e.l]}`,
-                        textDecoration: st.strike ? 'line-through' : 'none',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>
-                        <b>{e.t}</b>
+                      <div
+                        key={ei}
+                        title={`${e.t} · ${LANG_NAME[e.l] ?? e.l}${e.who ? ' · ' + e.who : ''} · ${STATE_LABEL[e.s] ?? e.s}`}
+                        style={{
+                          fontSize: 10.5, fontWeight: 700, padding: '3px 6px', borderRadius: 6,
+                          background: st.bg, color: st.color,
+                          borderLeft: `3px solid ${LANG_COLOR[e.l]}`,
+                          textDecoration: st.strike ? 'line-through' : 'none',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}
+                      >
+                        <b>{e.t}</b>{e.who ? ` ${e.who}` : ''}
                       </div>
                     )
                   })}
@@ -344,12 +759,15 @@ function CalendarStudent() {
               )
             })}
           </div>
+          </div>
         </div>
+        )}
 
         {/* Правая панель */}
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
 
-          {/* Выбранный день */}
+          {/* Выбранный день — на мобильном его заменяет лента по дням */}
+          {!isMobile && (
           <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0, display: 'flex', flexDirection: 'column', maxHeight: '70vh' }}>
             <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {selectedDay ? selLabel : 'выберите день'}
@@ -361,58 +779,10 @@ function CalendarStudent() {
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)' }}>В этот день занятий нет</div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 340, paddingRight: 2 }}>
-              {selEvs.map((it, i) => {
-                const live = it.s === 'now'
-                const canManage = isTeacher && it.s === 'planned'
-                return (
-                  <div key={i} style={{
-                    display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 10,
-                    background: live ? 'var(--orange)' : 'rgba(255,255,255,0.1)',
-                    border: live ? 'none' : '1px solid rgba(255,255,255,0.18)',
-                  }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, width: 44, flexShrink: 0 }}>{it.t}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.2 }}>{LANG_NAME[it.l]}</div>
-                        <div style={{ fontSize: 11, opacity: 0.8, marginTop: 1 }}>{it.who}</div>
-                        <div style={{ fontSize: 10, opacity: 0.65, marginTop: 1 }}>{STATE_LABEL[it.s] || it.s}</div>
-                      </div>
-                      {live && <Icon name="play" size={14} />}
-                      {it.s === 'done' && <span style={{ color: 'rgba(255,255,255,.8)' }}><Icon name="check" size={14} /></span>}
-                      {it.s === 'missed' && <span style={{ color: '#ffaaaa' }}>✗</span>}
-                    </div>
-                    {canManage && (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          className="ps-btn ps-btn-sm"
-                          style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none' }}
-                          onClick={() => setRescheduleFor(it)}
-                        >
-                          <Icon name="calendar" size={12} /> Перенести
-                        </button>
-                        <button
-                          className="ps-btn ps-btn-sm"
-                          style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,80,80,.25)', color: '#fff', border: 'none' }}
-                          onClick={() => handleCancel(it)}
-                        >
-                          <Icon name="plus" size={12} style={{ transform: 'rotate(45deg)' }} /> Отменить
-                        </button>
-                      </div>
-                    )}
-                    {isTeacher && (
-                      <button
-                        className="ps-btn ps-btn-sm"
-                        style={{ justifyContent: 'center', background: 'rgba(255,255,255,.18)', color: '#fff', border: 'none' }}
-                        onClick={() => setAttendanceFor(it)}
-                      >
-                        <Icon name="users" size={12} /> Отметить посещение
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
+              {selEvs.map((it, i) => <LessonTile key={i} it={it} actions={lessonActions(it)} />)}
             </div>
           </div>
+          )}
 
           {/* Посещаемость */}
           <div className="ps-card" style={{ padding: 18, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -499,6 +869,35 @@ function CalendarAdmin({ canCreate = false }) {
   const [rescheduleFor,   setRescheduleFor]   = useState(null)
   const [attendanceFor,   setAttendanceFor]   = useState(null)
   const [showAllPanel,    setShowAllPanel]    = useState(false)
+  const isMobile = useIsMobile()
+  const [view, setView] = useState('day')    // десктоп: 'day' | 'week' | 'month'
+
+  // Выбор дня из недельной ленты (может указывать на соседний месяц)
+  function pickDay({ y, m, d }) {
+    if (y !== ym.y || m !== ym.m) setYm({ y, m })
+    setSel(d)
+    setShowAllPanel(false)
+  }
+
+
+  // Даты колонок для почасовой сетки (день / неделя)
+  const anchorDate = new Date(ym.y, ym.m - 1, selectedDay || 1)
+  const weekDates = (() => {
+    const mon = new Date(anchorDate)
+    mon.setDate(anchorDate.getDate() - ((anchorDate.getDay() + 6) % 7))
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return d })
+  })()
+
+  // Кнопки действий на плашке урока (для админа/менеджера)
+  function lessonActions(it) {
+    if (!(canCreate && it.s !== 'done' && it.s !== 'missed')) return []
+    return [
+      { icon: 'calendar', label: 'Перенести', onClick: () => setRescheduleFor(it) },
+      { icon: 'users', label: 'Посещение', onClick: () => setAttendanceFor(it) },
+      { icon: 'plus', iconStyle: { transform: 'rotate(45deg)' }, label: 'Отменить', danger: true,
+        onClick: async () => { try { await api.post(`/api/manager/lessons/${it.id}/cancel`, {}); toast('Урок отменён ✓', 'success'); loadEvents() } catch(e) { toast(e.message||'Ошибка', 'error') } } },
+    ]
+  }
 
   function loadEvents() {
     calendarApi.getAdminMonth(ym.y, ym.m, filterTeacherId || undefined)
@@ -532,11 +931,11 @@ function CalendarAdmin({ canCreate = false }) {
 
   function prevMonth() {
     setYm(p => p.m === 1 ? { y: p.y - 1, m: 12 } : { ...p, m: p.m - 1 })
-    setSel(null)
+    setSel(1)
   }
   function nextMonth() {
     setYm(p => p.m === 12 ? { y: p.y + 1, m: 1 } : { ...p, m: p.m + 1 })
-    setSel(null)
+    setSel(1)
   }
   function goToday() {
     setYm({ y: TODAY.y, m: TODAY.m })
@@ -548,15 +947,23 @@ function CalendarAdmin({ canCreate = false }) {
     : null
 
   return (
-    <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, overflow: 'hidden' }}>
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, overflow: 'hidden' }}>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 className="ps-display" style={{ fontSize: 30, margin: 0 }}>{MONTH_NAMES[ym.m - 1]} {ym.y}</h2>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={prevMonth}>‹</button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={prevMonth} title="Предыдущий месяц">‹</button>
           <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={goToday}>Сегодня</button>
-          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth}>›</button>
+          <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth} title="Следующий месяц">›</button>
         </div>
+        {!isMobile && (
+          <SlideTabs
+            size="sm"
+            tabs={[{ id: 'day', label: 'День' }, { id: 'week', label: 'Неделя' }, { id: 'month', label: 'Месяц' }]}
+            value={view}
+            onChange={setView}
+          />
+        )}
         <div style={{ flex: 1 }} />
         {canCreate && teachers.length > 0 && (
           <select
@@ -584,50 +991,75 @@ function CalendarAdmin({ canCreate = false }) {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* На мобильном — карусель недели + развёрнутая лента по дням, на десктопе — сетка месяца */}
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+            <WeekStrip ym={ym} selectedDay={selectedDay} events={days} onPick={pickDay} />
+            <DayTimeline evs={selEvs} showNow={selectedDay != null && isToday(selectedDay)} buildActions={lessonActions} />
+          </div>
+        ) : view !== 'month' ? (
+          <HourGrid
+            headerDates={weekDates}
+            bodyDates={view === 'day' ? [anchorDate] : weekDates}
+            ym={ym}
+            getEvs={dayN => days[dayN] || []}
+            selectedDay={selectedDay}
+            onPickDay={d => pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })}
+            onShiftWeek={dir => { const d = new Date(anchorDate); d.setDate(anchorDate.getDate() + dir * 7); pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }) }}
+          />
+        ) : (
         <div className="ps-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, paddingBottom: 6 }}>
+          <div className="ps-tablewrap" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, paddingBottom: 6, minWidth: 640 }}>
             {DAY_NAMES.map(d => (
               <div key={d} style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.14em', padding: '4px 6px' }}>{d}</div>
             ))}
           </div>
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', gap: 4, overflow: 'hidden' }}>
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '1fr', gap: 4, overflow: 'hidden', minWidth: 640 }}>
             {cells.map((c, i) => {
               if (c.blank) return <div key={i} />
-              const today = isToday(c.d)
-              const past  = isPast(c.d)
-              const sel   = selectedDay === c.d
-              const evs   = days[c.d] || []
+              const today   = isToday(c.d)
+              const past    = isPast(c.d)
+              const sel     = selectedDay === c.d
+              const evs     = days[c.d] || []
+              const weekend = i % 7 >= 5
               return (
                 <div
                   key={i}
+                  className="ps-cal-cell"
                   onClick={() => { setSel(c.d); setShowAllPanel(false) }}
                   style={{
                     borderRadius: 10, cursor: 'pointer',
                     border: today ? '2px solid var(--orange)' : sel ? '2px solid var(--purple)' : '1px solid var(--border-soft)',
-                    background: today ? 'var(--orange-tint)' : sel ? 'var(--purple-tint)' : past ? 'var(--bg-cream-soft)' : '#fff',
+                    background: today ? 'var(--orange-tint)' : sel ? 'var(--purple-tint)' : past ? 'var(--bg-cream-soft)' : weekend ? '#FBF6EA' : '#fff',
                     padding: 7, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden',
+                    transition: 'border-color .1s, background .1s, box-shadow .1s',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, color: today ? 'var(--orange-deep)' : sel ? 'var(--purple-deep)' : past ? 'var(--ink-muted)' : 'var(--ink)' }}>{c.d}</span>
-                    {evs.length > 6
-                      ? <span style={{ fontSize: 10, fontWeight: 800, background: 'var(--purple)', color: '#fff', padding: '0px 5px', borderRadius: 999 }}>+{evs.length - 6}</span>
+                    {evs.length > 5
+                      ? <span style={{ fontSize: 10, fontWeight: 800, background: 'var(--purple)', color: '#fff', padding: '0px 5px', borderRadius: 999 }}>+{evs.length - 5}</span>
                       : evs.length > 0
                         ? <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)' }}>{evs.length} ур.</span>
                         : null
                     }
                   </div>
-                  {evs.slice(0, 6).map((e, ei) => {
+                  {evs.slice(0, 5).map((e, ei) => {
                     const st = eventStyle(e.s)
                     return (
-                      <div key={ei} style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 4px', borderRadius: 4,
-                        background: st.bg, color: st.color,
-                        borderLeft: `3px solid ${LANG_COLOR[e.l]}`,
-                        textDecoration: st.strike ? 'line-through' : 'none',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>
+                      <div
+                        key={ei}
+                        title={`${e.t} · ${LANG_NAME[e.l] ?? e.l}${e.who ? ' · ' + e.who : ''}${e.students ? ' — ' + e.students : ''} · ${STATE_LABEL[e.s] ?? e.s}`}
+                        style={{
+                          fontSize: 10.5, fontWeight: 700, padding: '3px 6px', borderRadius: 6,
+                          background: st.bg, color: st.color,
+                          borderLeft: `3px solid ${LANG_COLOR[e.l]}`,
+                          textDecoration: st.strike ? 'line-through' : 'none',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}
+                      >
                         <b>{e.t}</b> {e.who}
                       </div>
                     )
@@ -636,11 +1068,14 @@ function CalendarAdmin({ canCreate = false }) {
               )
             })}
           </div>
+          </div>
         </div>
+        )}
 
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', minHeight: 0 }}>
 
-          {/* Выбранный день */}
+          {/* Выбранный день — на мобильном его заменяет лента по дням */}
+          {!isMobile && (
           <div className="ps-card-purple" style={{ padding: 20, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
             <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {selectedDay ? selLabel : 'выберите день'}
@@ -652,53 +1087,9 @@ function CalendarAdmin({ canCreate = false }) {
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)' }}>В этот день занятий нет</div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 2 }}>
-              {(showAllPanel ? selEvs : selEvs.slice(0, 3)).map((it, i) => {
-                const live   = it.s === 'now'
-                const canAct = canCreate && it.s !== 'done' && it.s !== 'missed'
-                const stateColor = it.s === 'done' ? '#6ee7a0' : it.s === 'missed' ? '#ffaaaa' : 'rgba(255,255,255,.55)'
-                return (
-                  <div key={i} style={{
-                    display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', borderRadius: 12,
-                    background: live ? 'var(--orange)' : 'rgba(255,255,255,0.1)',
-                    border: live ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                  }}>
-                    {/* Верхняя строка: время + язык + статус */}
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, color: '#fff', flexShrink: 0, minWidth: 42 }}>{it.t}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{LANG_NAME[it.l]}</div>
-                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.75)', marginTop: 2 }}>{it.who}</div>
-                        {it.students && <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', marginTop: 1 }}>{it.students}</div>}
-                      </div>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: stateColor, flexShrink: 0, paddingTop: 2 }}>
-                        {it.s === 'done' ? '✓' : it.s === 'missed' ? '✗' : it.s === 'now' ? '●' : ''}
-                      </span>
-                    </div>
-                    {/* Статус текст */}
-                    <div style={{ fontSize: 10, color: stateColor, fontWeight: 700 }}>{STATE_LABEL[it.s] || it.s}</div>
-                    {/* Кнопки действий */}
-                    {canAct && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 2 }}>
-                        <button className="ps-btn ps-btn-sm"
-                          style={{ justifyContent: 'center', background: 'rgba(255,255,255,.15)', color: '#fff', border: 'none', fontSize: 11 }}
-                          onClick={() => setRescheduleFor(it)}>
-                          <Icon name="calendar" size={11} /> Перенести
-                        </button>
-                        <button className="ps-btn ps-btn-sm"
-                          style={{ justifyContent: 'center', background: 'rgba(255,255,255,.15)', color: '#fff', border: 'none', fontSize: 11 }}
-                          onClick={() => setAttendanceFor(it)}>
-                          <Icon name="users" size={11} /> Посещение
-                        </button>
-                        <button className="ps-btn ps-btn-sm"
-                          style={{ gridColumn: '1 / -1', justifyContent: 'center', background: 'rgba(255,80,80,.22)', color: '#ffb3b3', border: 'none', fontSize: 11 }}
-                          onClick={async () => { try { await api.post(`/api/manager/lessons/${it.id}/cancel`, {}); toast('Урок отменён ✓', 'success'); loadEvents() } catch(e) { toast(e.message||'Ошибка', 'error') } }}>
-                          <Icon name="plus" size={11} style={{ transform: 'rotate(45deg)' }} /> Отменить
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {(showAllPanel ? selEvs : selEvs.slice(0, 3)).map((it, i) => (
+                <LessonTile key={i} it={it} actions={lessonActions(it)} />
+              ))}
             </div>
             {selEvs.length > 3 && (
               <button
@@ -709,6 +1100,7 @@ function CalendarAdmin({ canCreate = false }) {
               </button>
             )}
           </div>
+          )}
 
           {/* Статистика за месяц */}
           {(() => {

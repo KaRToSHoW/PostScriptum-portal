@@ -63,10 +63,10 @@ function StudentOnboarding({ navigate, sub }) {
   }
 
   return (
-    <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
       {/* Приветствие */}
-      <div className="ps-card-purple" style={{ padding: 36, position: 'relative', overflow: 'hidden' }}>
+      <div className="ps-card-purple ps-m-pad" style={{ padding: 36, position: 'relative', overflow: 'hidden' }}>
         <span className="ps-dotted" style={{ display: 'inline-block', color: '#FBE3C5', borderColor: '#FBE3C5' }}>с чего начать</span>
         <h1 className="ps-display ps-display-purple" style={{ fontSize: 40, margin: '16px 0 10px' }}>Добро пожаловать!</h1>
         <p style={{ fontSize: 15, opacity: 0.9, maxWidth: 540, lineHeight: 1.6, margin: 0 }}>
@@ -84,7 +84,7 @@ function StudentOnboarding({ navigate, sub }) {
       </div>
 
       {/* Шаги */}
-      <div style={{ display: 'grid', gridTemplateColumns: hasSubscription ? '1fr' : '1fr 1fr', gap: 22 }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: hasSubscription ? '1fr' : '1fr 1fr', gap: 22 }}>
         {/* Менеджер */}
         <div className="ps-card" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ width: 52, height: 52, borderRadius: 15, background: 'var(--orange-soft)', display: 'grid', placeItems: 'center', color: 'var(--orange-deep)' }}>
@@ -139,12 +139,12 @@ function DashStudent({ t, data }) {
   }
 
   return (
-    <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
       {/* Hero */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
         {/* Карточка следующего урока */}
-        <div className="ps-card-purple" style={{ padding: 30, position: 'relative', overflow: 'hidden', minHeight: 200 }}>
+        <div className="ps-card-purple ps-m-pad" style={{ padding: 30, position: 'relative', overflow: 'hidden', minHeight: 200 }}>
           <div className="ps-dotted" style={{ display: 'inline-block', color: '#FBE3C5', borderColor: '#FBE3C5' }}>
             {t('Ваш следующий урок')}
           </div>
@@ -220,7 +220,7 @@ function DashStudent({ t, data }) {
       </div>
 
       {/* Курсы + Расписание */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
 
         {/* Курсы + Домашка */}
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -232,7 +232,7 @@ function DashStudent({ t, data }) {
             <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={() => navigate('/billing')}>{t('Все курсы')} <Icon name="arrow" size={12} /></button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {courses.length === 0 && (
               <div style={{ gridColumn:'1/-1', color:'var(--ink-muted)', fontSize:13, padding:'12px 0' }}>Нет активных курсов</div>
             )}
@@ -329,10 +329,10 @@ function DashTeacher({ t, data }) {
   const ATTN_COLOR = { orange: 'var(--orange-soft)', red: 'var(--danger-soft)', purple: 'var(--purple-tint)', green: 'var(--success-soft)' }
 
   return (
-    <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
       {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+      <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {[
           { l: t('Уроков на 7 дней'),     v: schedule.length,                     d: 'предстоит',     icon: 'calendar' },
           { l: t('Активных учеников'),   v: students,                            d: 'в расписании',  icon: 'users'    },
@@ -351,11 +351,11 @@ function DashTeacher({ t, data }) {
       </div>
 
       {/* Расписание + колонка справа */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 22 }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 22 }}>
 
         {/* Timeline уроков */}
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <div>
               <span className="ps-eyebrow">ближайшие 7 дней</span>
               <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>
@@ -516,10 +516,10 @@ function DashAdmin({ navigate }) {
   const kpi = finance?.kpi ?? []
 
   return (
-    <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
       {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+      <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         {[
           { l: 'Учеников',       v: loading ? '…' : students.length, d: 'в базе',         icon: 'users'   },
           { l: 'Сотрудников',    v: loading ? '…' : team.length,     d: 'преподаватели и менеджеры', icon: 'sparkle' },
@@ -537,11 +537,11 @@ function DashAdmin({ navigate }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 22 }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 22 }}>
 
         {/* Заявки, требующие внимания */}
         <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <div>
               <span className="ps-eyebrow">заявки</span>
               <h3 className="ps-display" style={{ fontSize: 24, margin: '4px 0 0' }}>

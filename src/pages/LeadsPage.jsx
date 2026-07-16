@@ -38,10 +38,10 @@ export default function LeadsPage() {
       <Sidebar role={sideRole} />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Заявки" />
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего заявок',    v: leads.length,        icon: 'inbox',   color: 'var(--purple-deep)' },
               { l: 'Новые',           v: count('NEW'),        icon: 'sparkle', color: 'var(--orange-deep)' },

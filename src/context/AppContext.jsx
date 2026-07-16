@@ -52,6 +52,8 @@ export function AppProvider({ children }) {
     if (stored.startsWith('http://localhost') || stored.startsWith('http://127.')) return null
     return stored
   })
+  // Мобильный выдвижной сайдбар: кнопка-гамбургер в TopBar, панель в Sidebar
+  const [sideOpen, setSideOpen] = useState(false)
 
   // Re-fetch the real profile from the backend after reload so we don't show stale preset data.
   // Role is also re-confirmed here from the server response (belt-and-braces alongside the JWT decode).
@@ -108,7 +110,7 @@ export function AppProvider({ children }) {
   }
 
   return (
-    <AppContext.Provider value={{ role, setRole, isAuth, login, logout, user, sideRole, locale, setLocale, t, photo, setPhoto }}>
+    <AppContext.Provider value={{ role, setRole, isAuth, login, logout, user, sideRole, locale, setLocale, t, photo, setPhoto, sideOpen, setSideOpen }}>
       {children}
     </AppContext.Provider>
   )

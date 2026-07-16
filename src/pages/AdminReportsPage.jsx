@@ -82,7 +82,7 @@ export default function AdminReportsPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Отчёты и аналитика" />
 
-        <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22, opacity: loading ? 0.6 : 1, transition: 'opacity .2s' }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22, opacity: loading ? 0.6 : 1, transition: 'opacity .2s' }}>
 
           {/* Шапка с периодом */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -94,7 +94,7 @@ export default function AdminReportsPage() {
           </div>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             <KpiCard icon="calendar"  label="Проведено уроков"   value={totLessons}                             color="var(--purple-deep)" />
             <KpiCard icon="check"     label="Посещаемость"       value={`${avgAttend}%`}                        color="var(--success)"     />
             <KpiCard icon="wallet"    label="Выручка"            value={`₽ ${totRevenue.toLocaleString('ru')}`} color="var(--orange-deep)" />
@@ -107,6 +107,7 @@ export default function AdminReportsPage() {
               <span className="ps-eyebrow">динамика</span>
               <h3 className="ps-display" style={{ fontSize: 20, margin: '4px 0 0' }}>Сводка по месяцам</h3>
             </div>
+            <div className="ps-tablewrap">
             <table className="ps-table">
               <thead>
                 <tr>
@@ -144,6 +145,7 @@ export default function AdminReportsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Преподаватели */}
@@ -152,6 +154,7 @@ export default function AdminReportsPage() {
               <span className="ps-eyebrow">эффективность</span>
               <h3 className="ps-display" style={{ fontSize: 20, margin: '4px 0 0' }}>Отчёт по преподавателям</h3>
             </div>
+            <div className="ps-tablewrap">
             <table className="ps-table">
               <thead>
                 <tr>
@@ -199,6 +202,7 @@ export default function AdminReportsPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
 
         </div>

@@ -77,7 +77,7 @@ function Flags() {
     { code: 'it', title: 'Итальянский', emoji: '🏎️' },
   ]
   return (
-    <div style={{ display: 'flex', gap: 26 }}>
+    <div className="ps-login-flags" style={{ display: 'flex', gap: 26 }}>
       {flags.map(f => (
         <span key={f.code} className="ps-flag-item" title={f.title}>
           <span className="ps-flag-emoji" aria-hidden="true">{f.emoji}</span>
@@ -107,6 +107,7 @@ function TelegramQr() {
 
   return (
     <div
+      className="ps-login-tg"
       onMouseEnter={() => { setHovered(true); setAuto(false) }}
       onMouseLeave={() => setHovered(false)}
       onClick={() => window.open(TG_URL, '_blank', 'noopener')}
@@ -114,7 +115,7 @@ function TelegramQr() {
       style={{ position: 'absolute', top: 20, right: 20, zIndex: 6, cursor: 'pointer', width: 280 }}
     >
       {/* Всплывающая карточка-стикер с большим QR — выпадает вниз из-под баннера */}
-      <div style={{
+      <div className="ps-login-tg-pop" style={{
         position: 'absolute', right: 0, top: 'calc(100% + 12px)',
         background: '#fff', borderRadius: 22, padding: '16px 16px 12px',
         textAlign: 'center', zIndex: 20, pointerEvents: 'none',
@@ -172,7 +173,7 @@ function TelegramQr() {
           </div>
         </div>
         {/* мини-QR: прячется, когда открыт большой */}
-        <div style={{ lineHeight: 0, flexShrink: 0, transform: open ? 'scale(0)' : 'scale(1)', transition: 'transform .25s' }}>
+        <div className="ps-login-tg-mini" style={{ lineHeight: 0, flexShrink: 0, transform: open ? 'scale(0)' : 'scale(1)', transition: 'transform .25s' }}>
           <img src={QrTg} alt="" style={{ width: 38, height: 38, display: 'block', borderRadius: 6 }} />
         </div>
       </div>
@@ -702,7 +703,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{
+    <div className="ps-login-page" style={{
       minHeight: '100vh',
       display: 'flex',
       background: 'var(--bg-cream)',
@@ -714,7 +715,7 @@ export default function LoginPage() {
       <TelegramQr />
 
       {/* ===== ЛЕВАЯ ПАНЕЛЬ ===== */}
-      <div style={{
+      <div className="ps-login-left" style={{
         flex: '0 0 552px',
         background: 'var(--purple)',
         color: '#fff',
@@ -727,6 +728,7 @@ export default function LoginPage() {
         {/* Логотип — по центру сверху; клик открывает запись через менеджера */}
         <button
           type="button"
+          className="ps-login-brand"
           onClick={() => setManagerOpen(true)}
           title="Записаться через менеджера"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left', alignSelf: 'center' }}
@@ -735,17 +737,17 @@ export default function LoginPage() {
             <img src="/ps-logo.jpg" alt="P.S." style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 3px rgba(255,255,255,.25)', display: 'block' }} />
           </span>
           <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.1 }}>
+            <div className="ps-login-brand-title" style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 26, letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.1 }}>
               Post <span style={{ color: 'var(--orange-soft)' }}>Scriptum</span>
             </div>
-            <div style={{ fontSize: 15, opacity: 0.8, fontStyle: 'italic', marginTop: 4, letterSpacing: '.01em' }}>
+            <div className="ps-login-brand-sub" style={{ fontSize: 15, opacity: 0.8, fontStyle: 'italic', marginTop: 4, letterSpacing: '.01em' }}>
               онлайн-школа иностранных языков
             </div>
           </div>
         </button>
 
         {/* Слоган-плакат: «искусство» и «речи» статичны, «свободной» — пульсирующие буквы */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 64, lineHeight: 1.12, letterSpacing: '-0.03em', textTransform: 'lowercase', whiteSpace: 'nowrap' }}>
+        <div className="ps-login-slogan" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 64, lineHeight: 1.12, letterSpacing: '-0.03em', textTransform: 'lowercase', whiteSpace: 'nowrap' }}>
           <div className="ps-sl-line ps-sl-muted">искусство</div>
           <div className="ps-sl-line ps-sl-accent" style={{ marginLeft: 16 }}>
             {[...'свободной'].map((ch, i) => (
@@ -756,9 +758,9 @@ export default function LoginPage() {
         </div>
 
         {/* Флаги + статистика */}
-        <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
+        <div className="ps-login-bottom" style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
           <Flags />
-          <div style={{ display: 'flex', gap: 28, alignItems: 'center', marginTop: 24 }}>
+          <div className="ps-login-stats" style={{ display: 'flex', gap: 28, alignItems: 'center', marginTop: 24 }}>
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, letterSpacing: '-0.02em' }}>
                 1 200+
@@ -786,7 +788,7 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
-          <div style={{ fontSize: 12, opacity: 0.6, marginTop: 32 }}>
+          <div className="ps-login-copy" style={{ fontSize: 12, opacity: 0.6, marginTop: 32 }}>
             © 2026 Post Scriptum ·{' '}
             <a
               href="https://postscriptumfr.ru"
@@ -800,7 +802,7 @@ export default function LoginPage() {
         </div>
 
         {/* Декоративная надпись P.S. — в обрезающем слое, чтобы не вылезала в форму */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+        <div className="ps-login-ps-decor" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
           <div style={{
             position: 'absolute',
             right: -60, top: 240,
@@ -817,7 +819,7 @@ export default function LoginPage() {
       </div>
 
       {/* ===== ПРАВАЯ ПАНЕЛЬ (форма) ===== */}
-      <div style={{
+      <div className="ps-login-right" style={{
         flex: 1,
         padding: '60px 80px',
         display: 'flex',
@@ -860,6 +862,7 @@ export default function LoginPage() {
                 <button
                   key={t.key}
                   type="button"
+                  className="ps-login-tab"
                   onClick={() => setTab(t.key)}
                   style={{
                     position: 'relative',
@@ -884,7 +887,7 @@ export default function LoginPage() {
           </div>
 
           {/* Заголовок */}
-          <h2 className="ps-display" style={{ fontSize: 32, margin: '0 0 6px', whiteSpace: 'nowrap' }}>
+          <h2 className="ps-display ps-login-title" style={{ fontSize: 32, margin: '0 0 6px', whiteSpace: 'nowrap' }}>
             {tab === 'login' ? 'С возвращением!' : 'Добро пожаловать!'}
           </h2>
           <p style={{ color: 'var(--ink-muted)', fontSize: 14, margin: '0 0 28px', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -904,6 +907,27 @@ export default function LoginPage() {
           }
 
         </div>
+      </div>
+
+      {/* Флаги-футер для мобильной версии (на десктопе флаги в левой панели) */}
+      <div className="ps-login-flags-bottom">
+        <Flags />
+        <a
+          href={TG_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="Мы в Telegram"
+          style={{
+            width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+            background: 'linear-gradient(180deg, #2AABEE, #229ED9)',
+            display: 'grid', placeItems: 'center',
+            boxShadow: 'inset 0 0 0 2px #fff, 0 0 0 2px rgba(255,255,255,.4), 0 6px 18px rgba(34,158,217,.35)',
+          }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" style={{ marginRight: 2 }}>
+            <path d="M21.9 4.6 18.7 19.8c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 13.4l-4.8-1.5c-1-.3-1-1 .2-1.5L20.4 3c.9-.3 1.7.2 1.5 1.6Z"/>
+          </svg>
+        </a>
       </div>
 
       {managerOpen && <ManagerSignupModal onClose={() => setManagerOpen(false)} />}

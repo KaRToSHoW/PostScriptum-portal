@@ -614,3 +614,155 @@ input, textarea { font-family: inherit; }
   0%, 100% { opacity: .5; }
   50%      { opacity: 1; }
 }
+
+/* ================================================================
+   Адаптив страницы входа/регистрации
+   (!important — потому что базовые стили страницы инлайновые)
+   ================================================================ */
+
+/* Мобильный футер (флаги + значок телеграма) на десктопе скрыт */
+.ps-login-flags-bottom { display: none; }
+
+/* Узкие ноутбуки/планшеты: левая панель сжимается пропорционально */
+@media (max-width: 1280px) {
+  .ps-login-left   { flex: 0 0 44% !important; padding: 40px 30px !important; }
+  .ps-login-slogan { font-size: 46px !important; }
+  .ps-login-right  { padding: 48px 40px !important; }
+  .ps-login-flags  { gap: 14px !important; }
+  .ps-login-flags .ps-flag { width: 46px !important; height: 46px !important; }
+}
+
+/* Мобильные и узкие планшеты: панели встают в столбик,
+   левая превращается в компактную фиолетовую шапку */
+@media (max-width: 900px) {
+  .ps-login-page { flex-direction: column !important; overflow: visible !important; }
+
+  .ps-login-left { flex: none !important; width: 100%; padding: 20px 20px 24px !important; }
+
+  /* Бренд — по центру, покрупнее */
+  .ps-login-brand { gap: 16px !important; }
+  .ps-login-brand .ps-logo-pulse,
+  .ps-login-brand .ps-logo-pulse img { width: 64px !important; height: 64px !important; }
+  .ps-login-brand-title { font-size: 21px !important; }
+  .ps-login-brand-sub   { font-size: 13px !important; }
+
+  /* Слоган — по центру, без «лесенки» */
+  .ps-login-slogan {
+    flex: none !important;
+    align-items: center;
+    font-size: 38px !important;
+    margin: 14px 0 0;
+  }
+  .ps-login-slogan .ps-sl-line { margin-left: 0 !important; }
+
+  /* Плавающий телеграм с QR, блок флагов/статистики и декор прячем */
+  .ps-login-tg,
+  .ps-login-bottom,
+  .ps-login-ps-decor { display: none !important; }
+
+  /* Флаги + маленький значок телеграма — в самый низ страницы */
+  .ps-login-flags-bottom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    padding: 2px 16px 36px;
+  }
+  .ps-login-flags-bottom .ps-login-flags { gap: 12px !important; }
+  .ps-login-flags-bottom .ps-flag { width: 38px !important; height: 38px !important; }
+
+  .ps-login-right { padding: 28px 20px 28px !important; }
+  .ps-login-title { font-size: 26px !important; white-space: normal !important; }
+}
+
+/* Совсем маленькие экраны */
+@media (max-width: 430px) {
+  .ps-login-tab    { font-size: 11.5px !important; padding: 10px 4px !important; }
+  .ps-login-title  { font-size: 23px !important; }
+  .ps-login-slogan { font-size: 33px !important; }
+  .ps-login-flags-bottom .ps-flag { width: 34px !important; height: 34px !important; }
+  .ps-login-right  { padding: 24px 16px 24px !important; }
+}
+
+/* ================================================================
+   Адаптив портала: оболочка (сайдбар, топбар) + утилиты ps-m-*
+   (!important — потому что базовая вёрстка страниц инлайновая)
+   ================================================================ */
+
+/* Гамбургер в топбаре — виден только на мобильном */
+.ps-burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  background: var(--bg-cream);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  color: var(--ink-2);
+  padding: 0;
+}
+
+/* Затемнение под выдвинутым сайдбаром */
+.ps-side-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 290;
+  background: rgba(31,27,58,.45);
+  backdrop-filter: blur(2px);
+}
+
+/* Обёртка широких таблиц: на узком экране скроллится сама, а не страница */
+.ps-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+@media (max-width: 900px) {
+  .ps-burger { display: inline-flex; }
+
+  /* Сайдбар превращается в выдвижную панель поверх контента */
+  .ps-side {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 300;
+    width: 262px;
+    transform: translateX(-108%);
+    transition: transform .28s ease;
+    overflow-y: auto;
+  }
+  .ps-side.open {
+    transform: translateX(0);
+    box-shadow: 0 20px 60px rgba(31,27,58,.35);
+  }
+
+  /* Топбар компактнее: без подписи роли, поиска-строки и имени */
+  .ps-top { height: 56px; padding: 0 12px; gap: 10px; }
+  .ps-top .ps-eyebrow { display: none; }
+  .ps-top-search {
+    flex: 0 0 auto !important;
+    padding: 9px 11px !important;
+  }
+  .ps-top-search .lbl,
+  .ps-top-search kbd { display: none; }
+
+  /* Утилиты: вешаются на инлайново стилизованные блоки страниц */
+  .ps-m-1col { grid-template-columns: 1fr !important; }
+  .ps-m-2col { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .ps-m-col  { flex-direction: column !important; }
+  .ps-m-wrap { flex-wrap: wrap !important; }
+  .ps-m-hide { display: none !important; }
+  .ps-m-full { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+  .ps-m-pad  { padding: 16px !important; }
+}
+
+/* Пульсирующая точка «идёт сейчас» на плашке урока */
+.ps-live-dot { animation: ps-live-dot 1.2s ease-in-out infinite; }
+@keyframes ps-live-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.7); }
+}
+
+/* Ячейка календарной сетки: подсветка при наведении */
+.ps-cal-cell:hover {
+  border-color: var(--purple) !important;
+  box-shadow: var(--shadow-card);
+}

@@ -41,7 +41,7 @@ function NewSubscriptionModal({ onClose, onCreated }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 420, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="ps-m-full" style={{ width: 420, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <h3 className="ps-display" style={{ fontSize: 20, margin: 0 }}>Новый абонемент</h3>
         <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)' }}>Ученик
           <select className="ps-input" style={{ width: '100%', marginTop: 4 }} value={studentId} onChange={e => setStudentId(e.target.value)}>
@@ -102,10 +102,10 @@ export default function AdminSubscriptionsPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Абонементы учеников" />
 
-        <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего абонементов', v: subs.length, icon: 'bookmark', color: 'var(--purple-deep)' },
               { l: 'Активных',          v: active,      icon: 'check',    color: 'var(--success)'     },
@@ -129,9 +129,9 @@ export default function AdminSubscriptionsPage() {
               {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
 
-            <div style={{ position: 'relative' }}>
+            <div className="ps-m-full" style={{ position: 'relative' }}>
               <Icon name="search" size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)', pointerEvents: 'none' }} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по ученику…"
+              <input className="ps-m-full" value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по ученику…"
                 style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, borderRadius: 999, fontSize: 12, fontWeight: 600, border: '1px solid var(--border-soft)', background: '#fff', color: 'var(--ink)', outline: 'none', width: 200 }} />
             </div>
 
@@ -153,6 +153,7 @@ export default function AdminSubscriptionsPage() {
               <span className="ps-eyebrow">список</span>
               <h3 className="ps-display" style={{ fontSize: 18, margin: '4px 0 0' }}>Все абонементы · {filtered.length}</h3>
             </div>
+            <div className="ps-tablewrap">
             <table className="ps-table">
               <thead>
                 <tr>
@@ -206,6 +207,7 @@ export default function AdminSubscriptionsPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
 
         </div>

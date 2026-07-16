@@ -40,7 +40,7 @@ function ChildDashboard({ data }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* верх */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+      <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
         <div className="ps-card" style={{ padding: 18 }}>
           <div className="ps-eyebrow">следующий урок</div>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--ink)', marginTop: 6 }}>
@@ -78,7 +78,7 @@ function ChildDashboard({ data }) {
       </div>
 
       {/* домашка + расписание */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
         <div className="ps-card" style={{ padding: 22 }}>
           <span className="ps-eyebrow">домашние задания</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
@@ -144,7 +144,7 @@ export default function ParentPage() {
       <Sidebar role={sideRole} />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Мои дети" />
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
           {!loading && children.length === 0 && (
             <div className="ps-card" style={{ padding: 48, textAlign: 'center', color: 'var(--ink-muted)' }}>
               <Icon name="users" size={32} style={{ color: 'var(--ink-dim)' }} />

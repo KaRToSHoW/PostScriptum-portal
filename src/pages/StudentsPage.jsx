@@ -186,11 +186,11 @@ function TeacherStudents() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Мои ученики" />
 
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
           {error && <ApiError message={error} />}
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего учеников', v: students.length, d: 'в базе',    icon: 'users',   color: 'var(--purple-deep)' },
               { l: 'Активных',       v: active,          d: 'занимаются', icon: 'sparkle', color: 'var(--success)'     },
@@ -335,7 +335,7 @@ function ModalShell({ title, onClose, children }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 440, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 440, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '18px 22px' }}>
           <h3 className="ps-display ps-display-purple" style={{ fontSize: 17, margin: 0 }}>{title}</h3>
         </div>
@@ -393,9 +393,9 @@ function AdminStudents() {
       <Sidebar role={sideRole} />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Ученики" />
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего учеников',   v: students.length,                         icon: 'users',   color: 'var(--purple-deep)' },
               { l: 'С преподавателем', v: students.filter(s => s.teachers || teacherId).length, icon: 'sparkle', color: 'var(--success)' },
@@ -409,7 +409,7 @@ function AdminStudents() {
 
           {/* Фильтр по преподавателю */}
           {teachers.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '.1em', flexShrink: 0 }}>Преподаватель</span>
               <div style={{ position: 'relative' }}>
                 <svg style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -512,10 +512,10 @@ function ManagerStudents() {
       <Sidebar role={sideRole} />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Ученики" />
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего учеников',   v: students.length,                         icon: 'users',   color: 'var(--purple-deep)' },
               { l: 'С преподавателем', v: students.filter(s => s.teachers || selectedTeacher).length, icon: 'sparkle', color: 'var(--success)' },

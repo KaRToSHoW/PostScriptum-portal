@@ -69,7 +69,7 @@ function PaymentsTable({ rows, total }) {
 
   return (
     <div className="ps-card" style={{ overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid var(--border-soft)' }}>
+      <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid var(--border-soft)' }}>
         <div>
           <span className="ps-eyebrow">последние операции</span>
           <h3 className="ps-display" style={{ fontSize: 18, margin: '4px 0 0' }}>Оплаты и абонементы</h3>
@@ -81,6 +81,7 @@ function PaymentsTable({ rows, total }) {
           <span className="ps-chip ps-chip-red">Просрочено · {overdue}</span>
         </div>
       </div>
+      <div className="ps-tablewrap">
       <table className="ps-table">
         <thead>
           <tr>
@@ -121,6 +122,7 @@ function PaymentsTable({ rows, total }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
@@ -150,7 +152,7 @@ function NewSubscriptionModal({ onClose, onCreated }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 420, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="ps-m-full" style={{ width: 420, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <h3 className="ps-display" style={{ fontSize: 20, margin: 0 }}>Новый абонемент</h3>
 
         <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-muted)' }}>Ученик
@@ -256,7 +258,7 @@ export default function AdminFinancePage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Финансы и абонементы" />
 
-        <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
           {/* Фильтры */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -273,9 +275,10 @@ export default function AdminFinancePage() {
             </select>
 
             {/* Поиск */}
-            <div style={{ position: 'relative' }}>
+            <div className="ps-m-full" style={{ position: 'relative' }}>
               <Icon name="search" size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)', pointerEvents: 'none' }} />
               <input
+                className="ps-m-full"
                 value={filterSearch}
                 onChange={e => setFilterSearch(e.target.value)}
                 placeholder="Поиск по ученику…"
@@ -295,7 +298,7 @@ export default function AdminFinancePage() {
           </div>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, opacity: loading ? 0.5 : 1, transition: 'opacity .2s' }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, opacity: loading ? 0.5 : 1, transition: 'opacity .2s' }}>
             {kpi.length === 0 && !loading && (
               <div style={{ gridColumn: '1/-1', color: 'var(--ink-muted)', fontSize: 13, padding: '12px 0' }}>
                 Нет данных KPI

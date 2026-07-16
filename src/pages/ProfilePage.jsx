@@ -229,10 +229,10 @@ export default function ProfilePage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Профиль" />
 
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* Hero */}
-          <div className="ps-card-purple" style={{ padding: 28, display: 'flex', alignItems: 'center', gap: 24, position: 'relative', overflow: 'hidden' }}>
+          <div className="ps-card-purple ps-m-wrap ps-m-pad" style={{ padding: 28, display: 'flex', alignItems: 'center', gap: 24, position: 'relative', overflow: 'hidden' }}>
             <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
             <div style={{
               width: 80, height: 80, borderRadius: '50%',
@@ -248,7 +248,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <h2 className="ps-display ps-display-purple" style={{ fontSize: 30, margin: '0 0 6px' }}>{name}</h2>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,.75)', display: 'flex', gap: 16 }}>
+              <div className="ps-m-wrap" style={{ fontSize: 14, color: 'rgba(255,255,255,.75)', display: 'flex', gap: 16 }}>
                 <span>{roleLabel}</span>
                 <span>·</span>
                 <span>{email}</span>
@@ -271,7 +271,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 22, alignItems: 'start' }}>
+          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 22, alignItems: 'start' }}>
 
             {/* Навигация */}
             <div className="ps-card" style={{ padding: 10 }}>
@@ -294,13 +294,13 @@ export default function ProfilePage() {
 
             {/* Содержимое */}
             {section === 'profile' && (
-              <div className="ps-card" style={{ padding: 28 }}>
+              <div className="ps-card ps-m-pad" style={{ padding: 28 }}>
                 <div style={{ marginBottom: 24 }}>
                   <span className="ps-eyebrow">{t('аккаунт')}</span>
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>{t('Личные данные')}</h3>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                   <Field label={t('Имя и фамилия')}>
                     <Input value={name} onChange={setName} placeholder={t('Имя и фамилия')} />
                   </Field>
@@ -345,7 +345,7 @@ export default function ProfilePage() {
             )}
 
             {section === 'notif' && (
-              <div className="ps-card" style={{ padding: 28 }}>
+              <div className="ps-card ps-m-pad" style={{ padding: 28 }}>
                 <div style={{ marginBottom: 24 }}>
                   <span className="ps-eyebrow">{t('настройки')}</span>
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>{t('Уведомления')}</h3>
@@ -404,7 +404,7 @@ export default function ProfilePage() {
             )}
 
             {section === 'security' && (
-              <div className="ps-card" style={{ padding: 28 }}>
+              <div className="ps-card ps-m-pad" style={{ padding: 28 }}>
                 <div style={{ marginBottom: 24 }}>
                   <span className="ps-eyebrow">{t('безопасность')}</span>
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>{t('Смена пароля')}</h3>

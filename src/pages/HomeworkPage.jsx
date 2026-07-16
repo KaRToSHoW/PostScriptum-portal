@@ -107,7 +107,7 @@ function SubmitModal({ hw, onClose, onDone }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 520, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 520, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -195,7 +195,7 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
 
       {expanded && (
         <div style={{ borderTop: '1px solid var(--border-soft)', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 28, fontSize: 13 }}>
+          <div className="ps-m-wrap" style={{ display: 'flex', gap: 28, fontSize: 13 }}>
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Срок сдачи: </span>{hw.due}</div>
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Курс: </span>{hw.course}</div>
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Преподаватель: </span>{hw.teacher}</div>
@@ -304,10 +304,10 @@ function StudentHomework() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Домашние задания" />
 
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего заданий',   v: total,    d: 'за всё время',      icon: 'file',    color: 'var(--purple-deep)' },
               { l: 'Сдано',           v: done,     d: `${total ? Math.round(done/total*100) : 0}% выполнено`, icon: 'check',   color: 'var(--success)'    },
@@ -326,11 +326,11 @@ function StudentHomework() {
           </div>
 
           {/* Контент */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 22, alignItems: 'start' }}>
+          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 22, alignItems: 'start' }}>
 
             {/* Список */}
-            <div className="ps-card" style={{ padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <div className="ps-card ps-m-pad" style={{ padding: 24 }}>
+              <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                 <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Задания</h3>
                 <SlideTabs size="sm" value={tab} onChange={setTab} tabs={STUDENT_TABS.map(t => ({ id: t.id, label: t.label }))} />
               </div>
@@ -359,7 +359,7 @@ function StudentHomework() {
             </div>
 
             {/* Правая колонка */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="ps-m-full" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
               <div className="ps-card-purple" style={{ padding: 22 }}>
                 <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>прогресс</span>
@@ -535,7 +535,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
           {item.status !== 'REVIEWED' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px', borderRadius: 14, background: 'var(--bg-cream-soft)', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Выставить оценку</div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div className="ps-m-wrap" style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <label style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 700 }}>Оценка (1–10)</label>
                   <input
@@ -646,7 +646,7 @@ function CreateHomeworkModal({ onClose, onDone }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 520, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 520, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -827,10 +827,10 @@ function TeacherHomework() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Домашние задания" />
 
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего работ',    v: total,    d: 'от учеников',     icon: 'file',    color: 'var(--purple-deep)' },
               { l: 'На проверке',    v: pending,  d: 'ожидают оценки',  icon: 'clock',   color: 'var(--orange-deep)' },
@@ -848,10 +848,10 @@ function TeacherHomework() {
           </div>
 
           {/* List */}
-          <div className="ps-card" style={{ padding: 24 }}>
+          <div className="ps-card ps-m-pad" style={{ padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
               <h3 className="ps-display" style={{ fontSize: 22, margin: 0 }}>Работы по ученикам</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <SlideTabs size="sm" value={tab} onChange={setTab} tabs={TEACHER_TABS.map(t => ({ id: t.id, label: t.label }))} />
                 <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowCreate(true)}>
                   <Icon name="plus" size={13} /> Новое задание

@@ -28,7 +28,7 @@ function BuyModal({ plan, onClose, onConfirm }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 460, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div style={{ width: 460, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -91,7 +91,7 @@ function ActiveCard({ sub, onRenew, onCalendar }) {
   const urgent = sub.daysLeft <= 7
 
   return (
-    <div style={{ padding: 24, borderRadius: 20, border: `2px solid ${color}`, background: '#fff', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="ps-m-pad" style={{ padding: 24, borderRadius: 20, border: `2px solid ${color}`, background: '#fff', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <div style={{ width: 46, height: 46, borderRadius: 14, background: soft, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -219,10 +219,10 @@ export default function SubscriptionsPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Абонементы" />
 
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
               { l: 'Активных абонементов', v: activeList.length,      d: 'сейчас',              icon: 'bookmark', color: 'var(--purple-deep)' },
               { l: 'Уроков осталось',      v: activeList.reduce((s,a)=>s+((a.total||0)-(a.used||0)),0), d: 'по всем курсам', icon: 'calendar',  color: 'var(--success)'    },
@@ -240,13 +240,13 @@ export default function SubscriptionsPage() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 22, alignItems: 'start' }}>
+          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 22, alignItems: 'start' }}>
 
             {/* Левая колонка */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Активные */}
-              <div className="ps-card" style={{ padding: 24 }}>
+              <div className="ps-card ps-m-pad" style={{ padding: 24 }}>
                 <div style={{ marginBottom: 18 }}>
                   <span className="ps-eyebrow">текущие</span>
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Активные абонементы</h3>
@@ -278,7 +278,7 @@ export default function SubscriptionsPage() {
               </div>
 
               {/* История */}
-              <div className="ps-card" style={{ padding: 24 }}>
+              <div className="ps-card ps-m-pad" style={{ padding: 24 }}>
                 <div style={{ marginBottom: 16 }}>
                   <span className="ps-eyebrow">история</span>
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Прошлые платежи</h3>
@@ -307,14 +307,14 @@ export default function SubscriptionsPage() {
             </div>
 
             {/* Правая колонка — купить */}
-            <div ref={buyRef} className="ps-card-purple" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
+            <div ref={buyRef} className="ps-card-purple ps-m-pad" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
               <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>покупка</span>
               <h3 className="ps-display ps-display-purple" style={{ fontSize: 24, margin: '6px 0 20px' }}>Новый абонемент</h3>
 
               {/* Выбор языка */}
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,.7)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.12em' }}>Язык</div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="ps-m-wrap" style={{ display: 'flex', gap: 8 }}>
                   {[{id:'fr',l:'Французский'},{id:'en',l:'Английский'},{id:'de',l:'Немецкий'},{id:'es',l:'Испанский'}].map(lg => (
                     <button
                       key={lg.id}

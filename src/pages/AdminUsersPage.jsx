@@ -43,7 +43,7 @@ function CreateUserModal({ onClose, onCreated }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 460, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 460, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
           <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>новый аккаунт</span>
           <h3 className="ps-display ps-display-purple" style={{ fontSize: 20, margin: '4px 0 0' }}>Создать пользователя</h3>
@@ -102,7 +102,7 @@ function DeleteUserModal({ user, onClose, onDeleted }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget && !busy) onClose() }}>
-      <div style={{ width: 460, maxWidth: '92vw', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 460, maxWidth: '92vw', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', background: 'var(--danger)' }}>
           <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.75)' }}>удаление аккаунта</span>
           <h3 className="ps-display" style={{ fontSize: 20, margin: '4px 0 0', color: '#fff' }}>Удалить «{user.name}»?</h3>
@@ -180,10 +180,10 @@ export default function AdminUsersPage() {
       <Sidebar role={sideRole} />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Пользователи" />
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
               { l: 'Всего',          v: users.length,       icon: 'users',   color: 'var(--purple-deep)' },
               { l: 'Учеников',       v: count('STUDENT'),   icon: 'user',    color: 'var(--info)' },
@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Таблица */}
-          <div className="ps-card" style={{ padding: 8 }}>
+          <div className="ps-card ps-tablewrap" style={{ padding: 8 }}>
             <table className="ps-table">
               <thead><tr>
                 <th>Пользователь</th><th>Email</th><th>Роль</th><th>Записей</th><th>Статус</th><th></th>

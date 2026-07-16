@@ -146,7 +146,7 @@ function TeacherDrawer({ t, onClose, onMessage }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex' }}>
       <div onClick={onClose} style={{ flex: 1, background: 'rgba(31,27,58,.35)', backdropFilter: 'blur(2px)' }} />
-      <div style={{ width: 420, background: '#fff', overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-pop)', borderRadius: '20px 0 0 20px' }}>
+      <div className="ps-m-full" style={{ width: 420, background: '#fff', overflow: 'auto', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-pop)', borderRadius: '20px 0 0 20px' }}>
 
         {/* Шапка */}
         <div className="ps-card-purple" style={{ padding: 28, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
@@ -165,7 +165,7 @@ function TeacherDrawer({ t, onClose, onMessage }) {
               {t.native && <span className="ps-chip ps-chip-orange" style={{ marginTop: 6 }}>Носитель языка</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 20, fontSize: 12 }}>
+          <div className="ps-m-wrap" style={{ display: 'flex', gap: 20, fontSize: 12 }}>
             {[
               { l: 'Рейтинг', v: t.rating },
               { l: 'Отзывы',  v: t.reviews },
@@ -271,12 +271,12 @@ export default function TeachersPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Преподаватели" />
 
-        <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {apiError && <ApiError message={apiError} />}
 
           {/* KPI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
             {[
               ...(role === 'student'
                 ? [{ l: 'Мои преподаватели', v: visible.length, d: 'активные курсы', icon: 'users', color: 'var(--purple-deep)' }]
@@ -296,7 +296,7 @@ export default function TeachersPage() {
           </div>
 
           {/* Фильтры */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+          <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
             <SlideTabs
               size="sm"
               value={langFilter}

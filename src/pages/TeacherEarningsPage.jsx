@@ -43,13 +43,13 @@ export default function TeacherEarningsPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Доход" />
 
-        <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <SlideTabs value={period} onChange={setPeriod} tabs={PERIODS.map((t, i) => ({ id: i, label: t }))} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, opacity: loading ? 0.5 : 1, transition: 'opacity .2s' }}>
+          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, opacity: loading ? 0.5 : 1, transition: 'opacity .2s' }}>
             {kpi.length === 0 && !loading && (
               <div style={{ gridColumn: '1/-1', color: 'var(--ink-muted)', fontSize: 13, padding: '12px 0' }}>
                 Нет данных за период
@@ -69,6 +69,7 @@ export default function TeacherEarningsPage() {
               <span className="ps-eyebrow">детализация</span>
               <h3 className="ps-display" style={{ fontSize: 18, margin: '4px 0 0' }}>Уроки за период</h3>
             </div>
+            <div className="ps-tablewrap">
             <table className="ps-table">
               <thead>
                 <tr>
@@ -103,6 +104,7 @@ export default function TeacherEarningsPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       </main>

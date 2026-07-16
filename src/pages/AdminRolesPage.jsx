@@ -83,10 +83,10 @@ export default function AdminRolesPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title="Роли и распределение нагрузки" />
 
-        <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* Матрица доступа + Список сотрудников */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 22 }}>
+          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 22 }}>
 
             {/* Матрица ролей */}
             <div className="ps-card" style={{ padding: 24 }}>
@@ -96,6 +96,7 @@ export default function AdminRolesPage() {
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Роли и права</h3>
                 </div>
               </div>
+              <div className="ps-tablewrap">
               <table className="ps-table" style={{ fontSize: 12.5 }}>
                 <thead>
                   <tr>
@@ -125,6 +126,7 @@ export default function AdminRolesPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Люди */}
@@ -178,7 +180,7 @@ export default function AdminRolesPage() {
 
           {/* Тепловая карта нагрузки преподавателей — на всю ширину */}
           <div className="ps-card" style={{ padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
                   <span className="ps-eyebrow">нагрузка преподавателей · эта неделя</span>
                   <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Кто свободен?</h3>
@@ -193,6 +195,7 @@ export default function AdminRolesPage() {
               </div>
 
               {/* Шапка дней */}
+              <div className="ps-tablewrap">
               <div style={{ display: 'grid', gridTemplateColumns: '160px repeat(7, 1fr) 70px', gap: 6, fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, paddingBottom: 8, borderBottom: '1px solid var(--border-soft)' }}>
                 <div />
                 {['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'].map(d => (
@@ -237,6 +240,7 @@ export default function AdminRolesPage() {
                   </div>
                 )
               })}
+              </div>
             </div>
 
         </div>

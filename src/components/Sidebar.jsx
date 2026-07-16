@@ -170,10 +170,13 @@ function SideItem({ icon, label, active, badge, onClick }) {
 export default function Sidebar({ role = 'student' }) {
   const navigate  = useNavigate()
   const { pathname } = useLocation()
-  const { t } = useApp()
+  const { t, sideOpen, setSideOpen } = useApp()
   const active    = routeToItem(pathname)
   const groups    = NAV[role] || NAV.student
   const [unread, setUnread] = useState(0)
+
+  // На мобильном сайдбар — выдвижная панель; при смене маршрута закрываем
+  useEffect(() => { setSideOpen(false) }, [pathname, setSideOpen])
 
   // непрочитанные сообщения → бейдж на «Сообщениях»; лёгкий поллинг
   useEffect(() => {
@@ -188,17 +191,21 @@ export default function Sidebar({ role = 'student' }) {
 
   function handleClick(id) {
     const route = ROUTE_MAP[id]
+    setSideOpen(false)
     if (route) navigate(route)
   }
 
   function handleSupportClick() {
+    setSideOpen(false)
     supportApi.start()
       .then(({ conversationId }) => navigate('/messages', { state: { conversationId } }))
       .catch(() => toast('Не удалось открыть чат с поддержкой', 'error'))
   }
 
   return (
-    <aside className="ps-side">
+    <>
+    {sideOpen && <div className="ps-side-overlay" onClick={() => setSideOpen(false)} />}
+    <aside className={`ps-side${sideOpen ? ' open' : ''}`}>
       <div
         style={{ padding: '0 8px 18px', cursor: 'pointer' }}
         onClick={() => navigate('/dashboard')}
@@ -238,5 +245,6 @@ export default function Sidebar({ role = 'student' }) {
         </div>
       </div>
     </aside>
+    </>
   )
 }

@@ -67,6 +67,15 @@ export default function MessagesPage() {
   const bottomRef  = useRef(null)
   const pollRef    = useRef(null)
 
+  // мобильный режим (≤900px): показываем либо список диалогов, либо переписку
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const fn = e => setIsMobile(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [])
+
   // ---------- helpers ----------
 
   const loadConversations = useCallback(() => {
@@ -293,10 +302,11 @@ export default function MessagesPage() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
         <TopBar title="Сообщения" />
 
-        <div style={{ flex: 1, display: 'flex', margin: 28, gap: 0, borderRadius: 20, boxShadow: 'var(--shadow-card)', overflow: 'hidden', minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', margin: isMobile ? 10 : 28, gap: 0, borderRadius: 20, boxShadow: 'var(--shadow-card)', overflow: 'hidden', minHeight: 0 }}>
 
-          {/* Список диалогов */}
-          <div style={{ width: 300, background: '#fff', borderRight: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          {/* Список диалогов (на мобильном скрыт, когда открыта переписка) */}
+          {(!isMobile || !active) && (
+          <div style={{ width: isMobile ? '100%' : 300, background: '#fff', borderRight: isMobile ? 'none' : '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
             <div style={{ padding: '20px 18px 14px', borderBottom: '1px solid var(--border-soft)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                 <h3 className="ps-display" style={{ fontSize: 18, margin: 0 }}>Чаты</h3>
@@ -374,8 +384,10 @@ export default function MessagesPage() {
               ))}
             </div>
           </div>
+          )}
 
-          {/* Чат */}
+          {/* Чат (на мобильном показывается только когда выбран диалог) */}
+          {(!isMobile || active) && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-cream-soft)', minWidth: 0, minHeight: 0 }}>
 
             {!active && (
@@ -386,7 +398,18 @@ export default function MessagesPage() {
 
             {/* Шапка */}
             {active && (
-              <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ padding: isMobile ? '12px 14px' : '16px 24px', background: '#fff', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 14 }}>
+                {isMobile && (
+                  <button
+                    onClick={() => setActiveId(null)}
+                    aria-label="К списку чатов"
+                    style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--bg-cream-soft)', color: 'var(--ink)', display: 'grid', placeItems: 'center', flexShrink: 0 }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                )}
                 <Avatar initials={active.initials} avatarUrl={active.avatarUrl} color={active.color} online={active.online} size={40} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)' }}>{active.name}</div>
@@ -534,6 +557,7 @@ export default function MessagesPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </main>
     </div>

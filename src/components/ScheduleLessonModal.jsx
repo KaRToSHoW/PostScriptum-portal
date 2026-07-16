@@ -148,7 +148,7 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
       {/* Спиннер ЧЧ:ММ */}
-      <div style={{
+      <div className="ps-m-wrap" style={{
         display: 'flex', alignItems: 'center', gap: 0,
         background: conflict ? 'rgba(210,80,80,.06)' : 'var(--bg-cream-soft)',
         border: `1.5px solid ${conflict ? 'var(--danger)' : 'var(--border)'}`,
@@ -661,10 +661,11 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
 
   return (
     <div
+      className="ps-m-pad"
       style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.48)', backdropFilter: 'blur(5px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{ width: 660, background: '#fff', borderRadius: 22, boxShadow: 'var(--shadow-pop)', overflow: 'hidden', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
+      <div className="ps-m-full" style={{ width: 660, background: '#fff', borderRadius: 22, boxShadow: 'var(--shadow-pop)', overflow: 'hidden', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Шапка */}
         <div className="ps-card-purple" style={{ padding: '18px 24px', flexShrink: 0 }}>
@@ -889,7 +890,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div className="ps-m-col" style={{ display: 'flex', gap: 12 }}>
                   <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label className="ps-field-label">Период</label>
                     <div style={{ display: 'flex', gap: 6 }}>

@@ -44,7 +44,7 @@ function ConferenceList() {
   const now = Date.now()
 
   return (
-    <div style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       {apiError && <ApiError message={apiError} />}
 
       <div>
@@ -56,7 +56,7 @@ function ConferenceList() {
         </h2>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
         {lessons.map(l => {
           const startAt = new Date(l.scheduled_at).getTime()
           const endAt   = startAt + (l.duration_min || 60) * 60000
@@ -75,7 +75,7 @@ function ConferenceList() {
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, borderTop: '1px solid var(--border-soft)' }}>
+              <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, borderTop: '1px solid var(--border-soft)', gap: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--purple-deep)', fontFamily: 'var(--font-display)' }}>
                   {fmtLessonDate(l.scheduled_at)} · {l.duration_min || 60} мин
                 </div>
@@ -545,7 +545,7 @@ function ConferenceRoom({ lessonId }) {
   }
 
   return (
-    <div onMouseMove={pokeUI} style={{ flex: 1, padding: 20, display: 'flex', gap: 16, minHeight: 0, overflow: 'hidden' }}>
+    <div onMouseMove={pokeUI} className="ps-m-col ps-m-pad" style={{ flex: 1, padding: 20, display: 'flex', gap: 16, minHeight: 0, overflow: 'hidden' }}>
 
       {/* ── Видео-зона ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
@@ -609,7 +609,7 @@ function ConferenceRoom({ lessonId }) {
         </div>
 
         {/* панель управления — плавающая, скрывается при простое мыши */}
-        <div style={{
+        <div className="ps-m-wrap" style={{
           position: 'absolute', bottom: 18, left: '50%',
           transform: `translateX(-50%) translateY(${uiVisible ? 0 : 20}px)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -676,7 +676,7 @@ function ConferenceRoom({ lessonId }) {
       </div>
 
       {/* ── Правая панель: чат / материалы / участники ── */}
-      <div className="ps-card" style={{ width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+      <div className="ps-card ps-m-full" style={{ width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border-soft)', flexShrink: 0 }}>
           {[
             { id: 'chat',   l: 'Чат' },
