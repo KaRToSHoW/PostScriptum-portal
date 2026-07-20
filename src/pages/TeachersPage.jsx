@@ -124,8 +124,8 @@ function TeacherCard({ t, onSelect, showMineBadge = true }) {
           </div>
         )}
 
-        <div style={{ marginTop: 'auto', display: 'flex', gap: 8, alignItems: 'center', paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
-          <div style={{ flex: 1, display: 'flex', gap: 16, fontSize: 12, color: 'var(--ink-muted)' }}>
+        <div className="ps-m-wrap" style={{ marginTop: 'auto', display: 'flex', gap: 8, alignItems: 'center', paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+          <div className="ps-m-wrap" style={{ flex: 1, minWidth: 0, display: 'flex', gap: 16, fontSize: 12, color: 'var(--ink-muted)' }}>
             <span><b style={{ color: 'var(--ink)' }}>{t.reviews}</b> отзывов</span>
             <span><b style={{ color: 'var(--ink)' }}>{t.students}</b> учеников</span>
             {t.experience && <span><b style={{ color: 'var(--ink)' }}>{t.experience}</b></span>}
@@ -297,16 +297,18 @@ export default function TeachersPage() {
 
           {/* Фильтры */}
           <div className="ps-m-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
-            <SlideTabs
-              size="sm"
-              value={langFilter}
-              onChange={setLangFilter}
-              tabs={LANG_FILTERS.map(f => ({ id: f.id, label: f.l }))}
-            />
+            <div className="ps-tablewrap" style={{ minWidth: 0, maxWidth: '100%' }}>
+              <SlideTabs
+                size="sm"
+                value={langFilter}
+                onChange={setLangFilter}
+                tabs={LANG_FILTERS.map(f => ({ id: f.id, label: f.l }))}
+              />
+            </div>
           </div>
 
           {/* Сетка */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 18 }}>
+          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 18 }}>
             {loading && (
               <div style={{ gridColumn: '1/-1', padding: '60px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
                 Загрузка...

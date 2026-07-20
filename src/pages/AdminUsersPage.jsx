@@ -41,9 +41,9 @@ function CreateUserModal({ onClose, onCreated }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+    <div className="ps-m-pad" style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="ps-m-full" style={{ width: 460, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+      <div className="ps-m-full" style={{ width: 460, maxWidth: '100%', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
           <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>новый аккаунт</span>
           <h3 className="ps-display ps-display-purple" style={{ fontSize: 20, margin: '4px 0 0' }}>Создать пользователя</h3>
@@ -57,7 +57,7 @@ function CreateUserModal({ onClose, onCreated }) {
               {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
             </select>
           </Field>
-          <div style={{ display: 'flex', gap: 10, paddingTop: 6 }}>
+          <div className="ps-m-wrap" style={{ display: 'flex', gap: 10, paddingTop: 6 }}>
             <button className="ps-btn ps-btn-primary" onClick={submit} disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
               {busy ? 'Создание...' : 'Создать'}
             </button>
@@ -100,7 +100,7 @@ function DeleteUserModal({ user, onClose, onDeleted }) {
   const btnStyle = { flex: 1, justifyContent: 'center', background: 'var(--danger)', color: '#fff', border: 'none' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+    <div className="ps-m-pad" style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
       onMouseDown={e => { if (e.target === e.currentTarget && !busy) onClose() }}>
       <div className="ps-m-full" style={{ width: 460, maxWidth: '92vw', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', background: 'var(--danger)' }}>
@@ -135,7 +135,7 @@ function DeleteUserModal({ user, onClose, onDeleted }) {
             </>
           )}
 
-          <div style={{ display: 'flex', gap: 10, paddingTop: 2 }}>
+          <div className="ps-m-wrap" style={{ display: 'flex', gap: 10, paddingTop: 2 }}>
             <button className="ps-btn ps-btn-sm" onClick={() => doDelete(phase === 'blocked')} disabled={busy} style={btnStyle}>
               {busy ? 'Удаление…' : phase === 'blocked' ? 'Удалить принудительно' : 'Удалить'}
             </button>
@@ -201,12 +201,14 @@ export default function AdminUsersPage() {
 
           {/* Тулбар */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <SlideTabs
-              size="sm"
-              value={tab}
-              onChange={setTab}
-              tabs={TABS.map(tb => ({ id: tb.id, label: tb.label }))}
-            />
+            <div className="ps-tablewrap" style={{ minWidth: 0, maxWidth: '100%' }}>
+              <SlideTabs
+                size="sm"
+                value={tab}
+                onChange={setTab}
+                tabs={TABS.map(tb => ({ id: tb.id, label: tb.label }))}
+              />
+            </div>
             <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setModal(true)}>
               <Icon name="plus" size={13} /> Новый пользователь
             </button>

@@ -734,6 +734,18 @@ input, textarea { font-family: inherit; }
     box-shadow: 0 20px 60px rgba(31,27,58,.35);
   }
 
+  /* Панель уведомлений: не выпадашка у колокольчика, а почти вся ширина экрана */
+  .ps-notif-pop {
+    position: fixed !important;
+    top: 64px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    margin-top: 0 !important;
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+  }
+
   /* Топбар компактнее: без подписи роли, поиска-строки и имени */
   .ps-top { height: 56px; padding: 0 12px; gap: 10px; }
   .ps-top .ps-eyebrow { display: none; }
@@ -751,7 +763,24 @@ input, textarea { font-family: inherit; }
   .ps-m-wrap { flex-wrap: wrap !important; }
   .ps-m-hide { display: none !important; }
   .ps-m-full { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
-  .ps-m-pad  { padding: 16px !important; }
+  /* Модалки/панели с ps-m-full не вылезают за экран: ограничение по высоте + свой скролл */
+  div.ps-m-full { max-height: calc(100dvh - 32px); overflow-y: auto !important; }
+
+  /* Панель уведомлений: на телефоне — во всю ширину под топбаром */
+  .ps-notif-pop {
+    position: fixed !important;
+    top: 62px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    margin-top: 0 !important;
+    max-height: calc(100dvh - 78px);
+    overflow-y: auto !important;
+  }
+  .ps-m-pad  { padding: 16px !important; overflow: visible !important; }
+  /* На мобильном страница скроллится целиком: убираем «замки» вложенных
+     панелей, из-за которых низ контента был недостижим */
+  .ps-m-pad > .ps-m-1col { overflow: visible !important; flex: none !important; }
 }
 
 /* Пульсирующая точка «идёт сейчас» на плашке урока */

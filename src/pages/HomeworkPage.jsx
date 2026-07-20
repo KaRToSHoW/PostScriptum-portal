@@ -54,6 +54,18 @@ function GradeCircle({ grade }) {
   )
 }
 
+// мобильный режим (≤900px) — тот же паттерн, что в MessagesPage
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const fn = e => setIsMobile(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [])
+  return isMobile
+}
+
 // ─── STUDENT ─────────────────────────────────────────────────────────────────
 
 const STUDENT_TABS = [
@@ -162,7 +174,7 @@ function SubmitModal({ hw, onClose, onDone }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+          <div className="ps-m-col" style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
             <button className="ps-btn ps-btn-primary" onClick={handleSubmit} style={{ flex: 1, justifyContent: 'center' }}>
               <Icon name="upload" size={14} /> Отправить на проверку
             </button>
@@ -176,8 +188,30 @@ function SubmitModal({ hw, onClose, onDone }) {
 
 function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
   const cfg = STATE_CFG[hw.state]
+  const isMobile = useIsMobile()
   return (
     <div style={{ borderRadius: 16, border: '1px solid var(--border-soft)', overflow: 'hidden', background: '#fff' }}>
+      {isMobile ? (
+        /* мобильная шапка: 1-я строка — флаг + заголовок, 2-я — метаданные с переносом */
+        <div
+          onClick={onToggle}
+          style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', cursor: 'pointer', userSelect: 'none' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <span className={`ps-flag ps-flag-${hw.lang}`} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)', overflowWrap: 'break-word' }}>{hw.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2, overflowWrap: 'break-word' }}>{hw.course} · {hw.teacher}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+            <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 700 }}>{hw.dueLabel}</span>
+            <span className={`ps-chip ps-chip-${cfg.chip}`}>{cfg.label}</span>
+            {hw.grade !== null && <GradeCircle grade={hw.grade} />}
+            <Icon name={expanded ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0, marginLeft: 'auto' }} />
+          </div>
+        </div>
+      ) : (
       <div
         onClick={onToggle}
         style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', cursor: 'pointer', userSelect: 'none' }}
@@ -192,10 +226,11 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
         {hw.grade !== null && <GradeCircle grade={hw.grade} />}
         <Icon name={expanded ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />
       </div>
+      )}
 
       {expanded && (
         <div style={{ borderTop: '1px solid var(--border-soft)', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="ps-m-wrap" style={{ display: 'flex', gap: 28, fontSize: 13 }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 6 : 28, fontSize: 13 }}>
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Срок сдачи: </span>{hw.due}</div>
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Курс: </span>{hw.course}</div>
             <div><span style={{ color: 'var(--ink-muted)', fontWeight: 700 }}>Преподаватель: </span>{hw.teacher}</div>
@@ -214,7 +249,7 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
               target="_blank"
               rel="noreferrer"
               className="ps-btn ps-btn-ghost ps-btn-sm"
-              style={{ alignSelf: 'flex-start', textDecoration: 'none' }}
+              style={{ alignSelf: isMobile ? 'stretch' : 'flex-start', textDecoration: 'none' }}
             >
               <Icon name="file" size={13} /> Материал от преподавателя
             </a>
@@ -242,7 +277,7 @@ function HwRow({ hw, expanded, onToggle, onSubmit, onMessage }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="ps-m-col" style={{ display: 'flex', gap: 10 }}>
             {(hw.state === 'new' || hw.state === 'progress' || hw.state === 'overdue') && (
               <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => onSubmit(hw)}>
                 <Icon name="upload" size={13} /> Сдать задание
@@ -438,6 +473,7 @@ const TEACHER_TABS = [
 
 function TeacherRow({ item, expanded, onToggle, onReviewed }) {
   const cfg = TEACHER_STATUS_CFG[item.status] ?? { label: item.status, chip: 'blue' }
+  const isMobile = useIsMobile()
   const [grade, setGrade]       = useState(item.grade ?? '')
   const [feedback, setFeedback] = useState(item.feedback ?? '')
   const [saving, setSaving]     = useState(false)
@@ -459,18 +495,43 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
     }
   }
 
+  const avatar = (
+    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+      {item.studentAvatar
+        ? <img src={item.studentAvatar} alt={item.student} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : (item.studentInitials ?? (item.student ?? '?').slice(0, 2).toUpperCase())}
+    </div>
+  )
+
   return (
     <div style={{ borderRadius: 16, border: '1px solid var(--border-soft)', overflow: 'hidden', background: '#fff' }}>
+      {isMobile ? (
+        /* мобильная шапка: 1-я строка — аватар + заголовок, 2-я — метаданные с переносом */
+        <div
+          onClick={onToggle}
+          style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', cursor: 'pointer', userSelect: 'none' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            {avatar}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)', overflowWrap: 'break-word' }}>{item.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2, overflowWrap: 'break-word' }}>{item.student}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+            <span className={`ps-flag ps-flag-${item.lang ?? 'fr'}`} style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 700 }}>{item.due ?? ''}</span>
+            <span className={`ps-chip ps-chip-${cfg.chip}`}>{cfg.label}</span>
+            {item.grade != null && <GradeCircle grade={item.grade} />}
+            <Icon name={expanded ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0, marginLeft: 'auto' }} />
+          </div>
+        </div>
+      ) : (
       <div
         onClick={onToggle}
         style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', cursor: 'pointer', userSelect: 'none' }}
       >
-        {/* Student avatar */}
-        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-          {item.studentAvatar
-            ? <img src={item.studentAvatar} alt={item.student} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : (item.studentInitials ?? (item.student ?? '?').slice(0, 2).toUpperCase())}
-        </div>
+        {avatar}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{item.title}</div>
           <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{item.student}</div>
@@ -481,6 +542,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
         {item.grade != null && <GradeCircle grade={item.grade} />}
         <Icon name={expanded ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />
       </div>
+      )}
 
       {expanded && (
         <div style={{ borderTop: '1px solid var(--border-soft)', padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -500,7 +562,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
               target="_blank"
               rel="noreferrer"
               className="ps-btn ps-btn-ghost ps-btn-sm"
-              style={{ alignSelf: 'flex-start', textDecoration: 'none' }}
+              style={{ alignSelf: isMobile ? 'stretch' : 'flex-start', textDecoration: 'none' }}
             >
               <Icon name="file" size={13} /> Материал к заданию
             </a>
@@ -521,7 +583,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
               target="_blank"
               rel="noreferrer"
               className="ps-btn ps-btn-ghost ps-btn-sm"
-              style={{ alignSelf: 'flex-start', textDecoration: 'none' }}
+              style={{ alignSelf: isMobile ? 'stretch' : 'flex-start', textDecoration: 'none' }}
             >
               <Icon name="file" size={13} /> Открыть файл
             </a>
@@ -535,7 +597,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
           {item.status !== 'REVIEWED' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px', borderRadius: 14, background: 'var(--bg-cream-soft)', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Выставить оценку</div>
-              <div className="ps-m-wrap" style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div className="ps-m-col" style={{ display: 'flex', gap: 10, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <label style={{ fontSize: 11, color: 'var(--ink-muted)', fontWeight: 700 }}>Оценка (1–10)</label>
                   <input
@@ -562,7 +624,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
                 className="ps-btn ps-btn-primary ps-btn-sm"
                 onClick={handleReview}
                 disabled={saving}
-                style={{ alignSelf: 'flex-start' }}
+                style={{ alignSelf: isMobile ? 'stretch' : 'flex-start' }}
               >
                 <Icon name="check" size={13} />
                 {saving ? 'Сохранение...' : 'Поставить оценку'}
@@ -750,7 +812,7 @@ function CreateHomeworkModal({ onClose, onDone }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+          <div className="ps-m-col" style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
             <button className="ps-btn ps-btn-primary" onClick={handleCreate} disabled={saving} style={{ flex: 1, justifyContent: 'center' }}>
               <Icon name="plus" size={14} /> {saving ? 'Создание...' : 'Создать задание'}
             </button>
@@ -767,6 +829,7 @@ const HW_LANG_NAME  = { fr: 'Французский', en: 'Английский'
 
 function TeacherHomework() {
   const { sideRole } = useApp()
+  const isMobile = useIsMobile()
   const [tab, setTab]               = useState('all')
   const [expanded, setExpanded]     = useState(null)
   const [list, setList]             = useState([])
@@ -947,17 +1010,22 @@ function TeacherHomework() {
                     <div key={key} style={{ borderRadius: 16, border: '1px solid var(--border-soft)', overflow: 'hidden' }}>
                       <div
                         onClick={() => toggleStudent(key)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', cursor: 'pointer', userSelect: 'none', background: 'var(--bg-cream-soft)' }}
+                        style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 8 : 12, padding: isMobile ? '14px 16px' : '14px 18px', cursor: 'pointer', userSelect: 'none', background: 'var(--bg-cream-soft)' }}
                       >
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                          {g.studentAvatar
-                            ? <img src={g.studentAvatar} alt={g.student} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : (g.studentInitials ?? (g.student ?? '?').slice(0, 2).toUpperCase())}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: isMobile ? 'none' : 1 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple)', color: '#fff', display: 'grid', placeItems: 'center', overflow: 'hidden', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                            {g.studentAvatar
+                              ? <img src={g.studentAvatar} alt={g.student} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : (g.studentInitials ?? (g.student ?? '?').slice(0, 2).toUpperCase())}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14, color: 'var(--ink)', overflowWrap: 'break-word' }}>{g.student}</div>
+                          {isMobile && <Icon name={isOpen ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />}
                         </div>
-                        <div style={{ flex: 1, fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>{g.student}</div>
-                        <span className="ps-chip ps-chip-gray">{g.items.length} {g.items.length === 1 ? 'задание' : 'заданий'}</span>
-                        {pendingInGroup > 0 && <span className="ps-chip ps-chip-orange">{pendingInGroup} на проверке</span>}
-                        <Icon name={isOpen ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                          <span className="ps-chip ps-chip-gray">{g.items.length} {g.items.length === 1 ? 'задание' : 'заданий'}</span>
+                          {pendingInGroup > 0 && <span className="ps-chip ps-chip-orange">{pendingInGroup} на проверке</span>}
+                          {!isMobile && <Icon name={isOpen ? 'chevron-up' : 'chevron'} size={14} style={{ color: 'var(--ink-muted)', flexShrink: 0 }} />}
+                        </div>
                       </div>
                       {isOpen && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: '#fff' }}>

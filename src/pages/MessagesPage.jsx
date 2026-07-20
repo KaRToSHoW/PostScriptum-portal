@@ -107,13 +107,16 @@ export default function MessagesPage() {
 
   const openFirst = useCallback((list) => {
     if (list.length === 0) { setConvs(list); return }
+    // на мобильном не автооткрываем переписку — показываем список диалогов
+    // (явный выбор через location.state.conversationId идёт мимо openFirst)
+    if (isMobile) { setConvs(list); return }
     const firstId = list[0].id
     setActiveId(firstId)
     loadThread(firstId)
       .then(msgs => setConvs(list.map(c => c.id === firstId ? { ...c, msgs, unread: 0 } : c)))
       .catch(() => setConvs(list))
     messagesApi.markRead(firstId).catch(() => {})
-  }, [loadThread])
+  }, [loadThread, isMobile])
 
   useEffect(() => {
     const hasNavIntent = !!(location.state?.userId || location.state?.teacherName || location.state?.conversationId)

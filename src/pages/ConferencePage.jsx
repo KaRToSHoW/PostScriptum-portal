@@ -151,6 +151,15 @@ function ConferenceRoom({ lessonId }) {
   const screenStreamRef = useRef(null)
   const hideTimerRef = useRef(null)
 
+  // мобильный режим (≤900px): компактный нижний бар управления вместо плавающей панели
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 900px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)')
+    const fn = e => setIsMobile(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [])
+
   // Показать интерфейс и завести таймер на скрытие (вызывается при движении мыши)
   function pokeUI() {
     setUiVisible(true)
@@ -608,71 +617,118 @@ function ConferenceRoom({ lessonId }) {
           )}
         </div>
 
-        {/* панель управления — плавающая, скрывается при простое мыши */}
-        <div className="ps-m-wrap" style={{
-          position: 'absolute', bottom: 18, left: '50%',
-          transform: `translateX(-50%) translateY(${uiVisible ? 0 : 20}px)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          padding: '10px 14px', borderRadius: 18, zIndex: 6,
-          background: 'rgba(24,20,46,.72)', backdropFilter: 'blur(10px)', boxShadow: 'var(--shadow-pop)',
-          opacity: uiVisible ? 1 : 0, pointerEvents: uiVisible ? 'auto' : 'none',
-          transition: 'opacity .3s, transform .3s',
-        }}>
-          <button
-            onClick={toggleMic}
-            title={micOn ? 'Выключить микрофон' : 'Включить микрофон'}
-            style={{ width: 46, height: 46, borderRadius: 14, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', background: micOn ? 'var(--purple-soft)' : 'var(--danger)', color: micOn ? 'var(--purple-deep)' : '#fff' }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-              {!micOn && <line x1="2" y1="2" x2="22" y2="22" />}
-            </svg>
-          </button>
-          <button
-            onClick={toggleCam}
-            title={camOn ? 'Выключить камеру' : 'Включить камеру'}
-            style={{ width: 46, height: 46, borderRadius: 14, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', background: camOn ? 'var(--purple-soft)' : 'var(--danger)', color: camOn ? 'var(--purple-deep)' : '#fff' }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-              {!camOn && <line x1="2" y1="2" x2="22" y2="22" />}
-            </svg>
-          </button>
+        {/* панель управления — плавающая на десктопе, компактный нижний бар на мобильном */}
+        {(() => {
+          const ctrl = isMobile
+            ? { width: 44, height: 44, borderRadius: '50%' }
+            : { width: 46, height: 46, borderRadius: 14 }
+          const iconButtons = (
+            <>
+              <button
+                onClick={toggleMic}
+                title={micOn ? 'Выключить микрофон' : 'Включить микрофон'}
+                style={{ ...ctrl, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, background: micOn ? 'var(--purple-soft)' : 'var(--danger)', color: micOn ? 'var(--purple-deep)' : '#fff' }}
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                  {!micOn && <line x1="2" y1="2" x2="22" y2="22" />}
+                </svg>
+              </button>
+              <button
+                onClick={toggleCam}
+                title={camOn ? 'Выключить камеру' : 'Включить камеру'}
+                style={{ ...ctrl, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, background: camOn ? 'var(--purple-soft)' : 'var(--danger)', color: camOn ? 'var(--purple-deep)' : '#fff' }}
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                  {!camOn && <line x1="2" y1="2" x2="22" y2="22" />}
+                </svg>
+              </button>
+              <button
+                onClick={toggleShare}
+                title={sharing ? 'Остановить демонстрацию экрана' : 'Демонстрация экрана'}
+                style={{ ...ctrl, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, background: sharing ? 'var(--orange)' : 'var(--purple-soft)', color: sharing ? '#fff' : 'var(--purple-deep)' }}
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                  <path d="M12 12V7"/><path d="m9 9 3-3 3 3"/>
+                </svg>
+              </button>
+              <button
+                onClick={toggleNoise}
+                title={noiseOn ? 'Выключить шумоподавление' : 'Включить шумоподавление'}
+                style={{ ...ctrl, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0, background: noiseOn ? 'var(--purple-soft)' : 'var(--bg-cream)', color: noiseOn ? 'var(--purple-deep)' : 'var(--ink-muted)' }}
+              >
+                {/* волна с гашением шума */}
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12h2l2-7 3 14 3-10 2 5 2-2h6"/>
+                  {!noiseOn && <line x1="2" y1="2" x2="22" y2="22" />}
+                </svg>
+              </button>
+            </>
+          )
 
-          <button
-            onClick={toggleShare}
-            title={sharing ? 'Остановить демонстрацию экрана' : 'Демонстрация экрана'}
-            style={{ width: 46, height: 46, borderRadius: 14, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', background: sharing ? 'var(--orange)' : 'var(--purple-soft)', color: sharing ? '#fff' : 'var(--purple-deep)' }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-              <path d="M12 12V7"/><path d="m9 9 3-3 3 3"/>
-            </svg>
-          </button>
-          <button
-            onClick={toggleNoise}
-            title={noiseOn ? 'Выключить шумоподавление' : 'Включить шумоподавление'}
-            style={{ width: 46, height: 46, borderRadius: 14, border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', background: noiseOn ? 'var(--purple-soft)' : 'var(--bg-cream)', color: noiseOn ? 'var(--purple-deep)' : 'var(--ink-muted)' }}
-          >
-            {/* волна с гашением шума */}
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12h2l2-7 3 14 3-10 2 5 2-2h6"/>
-              {!noiseOn && <line x1="2" y1="2" x2="22" y2="22" />}
-            </svg>
-          </button>
+          if (isMobile) {
+            return (
+              <div style={{
+                position: 'absolute', left: 0, right: 0, bottom: 0,
+                display: 'flex', flexDirection: 'column', gap: 8,
+                padding: '8px 10px calc(8px + env(safe-area-inset-bottom, 0px))',
+                borderRadius: '16px 16px 0 0', zIndex: 6,
+                background: 'rgba(24,20,46,.72)', backdropFilter: 'blur(10px)',
+                opacity: uiVisible ? 1 : 0, pointerEvents: uiVisible ? 'auto' : 'none',
+                transform: `translateY(${uiVisible ? 0 : 12}px)`,
+                transition: 'opacity .3s, transform .3s',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-evenly' }}>
+                  {iconButtons}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => navigate('/conference')}
+                    style={{ flex: 1, minWidth: 0, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--danger)', color: '#fff', fontSize: 12, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                  >
+                    <Icon name="plus" size={13} style={{ transform: 'rotate(45deg)' }} /> Выйти
+                  </button>
+                  {isTeacher && (
+                    <button
+                      onClick={handleFinish}
+                      style={{ flex: 1, minWidth: 0, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--purple)', color: '#fff', fontSize: 12, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                    >
+                      <Icon name="check" size={13} /> Завершить урок
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          }
 
-          <div style={{ width: 1, height: 30, background: 'var(--border)', margin: '0 6px' }} />
+          return (
+            <div style={{
+              position: 'absolute', bottom: 18, left: '50%',
+              transform: `translateX(-50%) translateY(${uiVisible ? 0 : 20}px)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              padding: '10px 14px', borderRadius: 18, zIndex: 6,
+              background: 'rgba(24,20,46,.72)', backdropFilter: 'blur(10px)', boxShadow: 'var(--shadow-pop)',
+              opacity: uiVisible ? 1 : 0, pointerEvents: uiVisible ? 'auto' : 'none',
+              transition: 'opacity .3s, transform .3s',
+            }}>
+              {iconButtons}
 
-          <button className="ps-btn" style={{ background: 'var(--danger)', color: '#fff', border: 'none' }} onClick={() => navigate('/conference')}>
-            <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} /> Выйти
-          </button>
-          {isTeacher && (
-            <button className="ps-btn ps-btn-primary" onClick={handleFinish}>
-              <Icon name="check" size={14} /> Завершить урок
-            </button>
-          )}
-        </div>
+              <div style={{ width: 1, height: 30, background: 'var(--border)', margin: '0 6px' }} />
+
+              <button className="ps-btn" style={{ background: 'var(--danger)', color: '#fff', border: 'none' }} onClick={() => navigate('/conference')}>
+                <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} /> Выйти
+              </button>
+              {isTeacher && (
+                <button className="ps-btn ps-btn-primary" onClick={handleFinish}>
+                  <Icon name="check" size={14} /> Завершить урок
+                </button>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Правая панель: чат / материалы / участники ── */}

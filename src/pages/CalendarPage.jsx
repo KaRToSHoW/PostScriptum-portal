@@ -654,14 +654,12 @@ function CalendarStudent() {
           <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={goToday}>Сегодня</button>
           <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth} title="Следующий месяц">›</button>
         </div>
-        {!isMobile && (
-          <SlideTabs
-            size="sm"
-            tabs={[{ id: 'day', label: 'День' }, { id: 'week', label: 'Неделя' }, { id: 'month', label: 'Месяц' }]}
-            value={view}
-            onChange={setView}
-          />
-        )}
+        <SlideTabs
+          size="sm"
+          tabs={[{ id: 'day', label: 'День' }, { id: 'week', label: 'Неделя' }, { id: 'month', label: 'Месяц' }]}
+          value={view}
+          onChange={setView}
+        />
         <div style={{ flex: 1 }} />
         {isTeacher && (
           <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => setShowSchedule(true)}>
@@ -689,12 +687,14 @@ function CalendarStudent() {
       <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
         {/* На мобильном — карусель недели + развёрнутая лента по дням, на десктопе — сетка месяца */}
-        {isMobile ? (
+        {isMobile && view === 'day' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             <WeekStrip ym={ym} selectedDay={selectedDay} events={events} langFilter={langFilter} onPick={pickDay} />
             <DayTimeline evs={selEvs} showNow={selectedDay != null && isToday(selectedDay)} buildActions={lessonActions} />
           </div>
         ) : view !== 'month' ? (
+          <div className={isMobile ? 'ps-tablewrap' : undefined} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ minWidth: isMobile && view === 'week' ? 640 : 0, display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
           <HourGrid
             headerDates={weekDates}
             bodyDates={view === 'day' ? [anchorDate] : weekDates}
@@ -704,6 +704,8 @@ function CalendarStudent() {
             onPickDay={d => pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })}
             onShiftWeek={dir => { const d = new Date(anchorDate); d.setDate(anchorDate.getDate() + dir * 7); pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }) }}
           />
+          </div>
+          </div>
         ) : (
         <div className="ps-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="ps-tablewrap" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -956,14 +958,12 @@ function CalendarAdmin({ canCreate = false }) {
           <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={goToday}>Сегодня</button>
           <button className="ps-btn ps-btn-outline ps-btn-sm" style={{ width: 32, padding: 8 }} onClick={nextMonth} title="Следующий месяц">›</button>
         </div>
-        {!isMobile && (
-          <SlideTabs
-            size="sm"
-            tabs={[{ id: 'day', label: 'День' }, { id: 'week', label: 'Неделя' }, { id: 'month', label: 'Месяц' }]}
-            value={view}
-            onChange={setView}
-          />
-        )}
+        <SlideTabs
+          size="sm"
+          tabs={[{ id: 'day', label: 'День' }, { id: 'week', label: 'Неделя' }, { id: 'month', label: 'Месяц' }]}
+          value={view}
+          onChange={setView}
+        />
         <div style={{ flex: 1 }} />
         {canCreate && teachers.length > 0 && (
           <select
@@ -993,12 +993,14 @@ function CalendarAdmin({ canCreate = false }) {
 
       <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 22, flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* На мобильном — карусель недели + развёрнутая лента по дням, на десктопе — сетка месяца */}
-        {isMobile ? (
+        {isMobile && view === 'day' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             <WeekStrip ym={ym} selectedDay={selectedDay} events={days} onPick={pickDay} />
             <DayTimeline evs={selEvs} showNow={selectedDay != null && isToday(selectedDay)} buildActions={lessonActions} />
           </div>
         ) : view !== 'month' ? (
+          <div className={isMobile ? 'ps-tablewrap' : undefined} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ minWidth: isMobile && view === 'week' ? 640 : 0, display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
           <HourGrid
             headerDates={weekDates}
             bodyDates={view === 'day' ? [anchorDate] : weekDates}
@@ -1008,6 +1010,8 @@ function CalendarAdmin({ canCreate = false }) {
             onPickDay={d => pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })}
             onShiftWeek={dir => { const d = new Date(anchorDate); d.setDate(anchorDate.getDate() + dir * 7); pickDay({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }) }}
           />
+          </div>
+          </div>
         ) : (
         <div className="ps-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="ps-tablewrap" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

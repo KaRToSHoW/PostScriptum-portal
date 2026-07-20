@@ -85,96 +85,44 @@ export default function AdminRolesPage() {
 
         <div className="ps-m-pad" style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-          {/* Матрица доступа + Список сотрудников */}
-          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 22 }}>
-
-            {/* Матрица ролей */}
-            <div className="ps-card" style={{ padding: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div>
-                  <span className="ps-eyebrow">матрица доступа</span>
-                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Роли и права</h3>
-                </div>
-              </div>
-              <div className="ps-tablewrap">
-              <table className="ps-table" style={{ fontSize: 12.5 }}>
-                <thead>
-                  <tr>
-                    <th>Раздел</th>
-                    {(accessMatrix?.roles ?? FALLBACK_MATRIX.roles).map(role => (
-                      <th key={role} style={{ textAlign: 'center' }}>{role}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {matrixRows.length === 0 && (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '16px 0' }}>
-                        Нет данных
-                      </td>
-                    </tr>
-                  )}
-                  {matrixRows.map((row, i) => (
-                    <tr key={i}>
-                      <td style={{ fontWeight: 700 }}>{row.r}</td>
-                      {row.v.map((v, vi) => (
-                        <td key={vi} style={{ textAlign: 'center' }}>
-                          <Access v={v} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Матрица ролей */}
+          <div className="ps-card" style={{ padding: 24, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <span className="ps-eyebrow">матрица доступа</span>
+                <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Роли и права</h3>
               </div>
             </div>
-
-            {/* Люди */}
-            <div className="ps-card" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div>
-                  <span className="ps-eyebrow">команда · {team.length} человек</span>
-                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Кто чем занимается</h3>
-                </div>
-              </div>
-
-              {/* Фильтры */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                {[
-                  { l: 'Все', n: team.length, a: true }, { l: 'Преподаватели', n: team.filter(t => (t.role || '').toLowerCase().includes('препод') || (t.chip || '') === 'purple').length },
-                  { l: 'Менеджеры', n: team.filter(t => (t.role || '').toLowerCase().includes('менедж') || (t.chip || '') === 'orange').length },
-                  { l: 'Админы', n: team.filter(t => (t.role || '').toLowerCase().includes('адм')).length },
-                  { l: 'Родители', n: team.filter(t => (t.role || '').toLowerCase().includes('родит')).length },
-                ].map(f => (
-                  <span key={f.l} style={{
-                    padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                    background: f.a ? 'var(--purple)' : 'var(--bg-cream-soft)',
-                    color:      f.a ? '#fff' : 'var(--ink-muted)',
-                  }}>{f.l} · {f.n}</span>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {team.length === 0 && (
-                  <div style={{ color: 'var(--ink-muted)', fontSize: 13, padding: '12px 0' }}>Нет данных</div>
+            <div className="ps-tablewrap">
+            <table className="ps-table" style={{ fontSize: 12.5 }}>
+              <thead>
+                <tr>
+                  <th>Раздел</th>
+                  {(accessMatrix?.roles ?? FALLBACK_MATRIX.roles).map(role => (
+                    <th key={role} style={{ textAlign: 'center' }}>{role}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {matrixRows.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '16px 0' }}>
+                      Нет данных
+                    </td>
+                  </tr>
                 )}
-                {team.map((p, i) => (
-                  <div key={p.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--purple-tint)', color: 'var(--purple-deep)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>
-                      {(p.name || '??').split(' ').map(s => s[0]).join('').slice(0, 2)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800 }}>{p.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{roleDescription(p)}</div>
-                    </div>
-                    {p.flag && <span className={`ps-flag ps-flag-${p.flag}`} style={{ width: 18, height: 18 }} />}
-                    <div style={{ fontSize: 11, color: 'var(--ink-2)', fontWeight: 700, width: 80, textAlign: 'right' }}>
-                      {p.weekHours !== undefined ? `${p.weekHours}ч / ${p.capacity}ч` : ''}
-                    </div>
-                    <span className={`ps-chip ps-chip-${p.chip || 'gray'}`}>{(p.role || '').split(' ')[0]}</span>
-                  </div>
+                {matrixRows.map((row, i) => (
+                  <tr key={i}>
+                    <td style={{ fontWeight: 700 }}>{row.r}</td>
+                    {row.v.map((v, vi) => (
+                      <td key={vi} style={{ textAlign: 'center' }}>
+                        <Access v={v} />
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </div>
+              </tbody>
+            </table>
             </div>
           </div>
 
@@ -196,7 +144,7 @@ export default function AdminRolesPage() {
 
               {/* Шапка дней */}
               <div className="ps-tablewrap">
-              <div style={{ display: 'grid', gridTemplateColumns: '160px repeat(7, 1fr) 70px', gap: 6, fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, paddingBottom: 8, borderBottom: '1px solid var(--border-soft)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '160px repeat(7, 1fr) 70px', gap: 6, minWidth: 520, fontSize: 11, color: 'var(--ink-muted)', fontWeight: 800, paddingBottom: 8, borderBottom: '1px solid var(--border-soft)' }}>
                 <div />
                 {['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'].map(d => (
                   <div key={d} style={{ textAlign: 'center' }}>{d}</div>
@@ -211,7 +159,7 @@ export default function AdminRolesPage() {
                 const heatmap = t.heatmap ?? [0,0,0,0,0,0,0]
                 const pct     = t.loadPct ?? 0
                 return (
-                  <div key={t.id ?? i} style={{ display: 'grid', gridTemplateColumns: '160px repeat(7, 1fr) 70px', gap: 6, padding: '8px 0', borderBottom: '1px solid var(--border-soft)', alignItems: 'center' }}>
+                  <div key={t.id ?? i} style={{ display: 'grid', gridTemplateColumns: '160px repeat(7, 1fr) 70px', gap: 6, minWidth: 520, padding: '8px 0', borderBottom: '1px solid var(--border-soft)', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {t.flag
                         ? <span className={`ps-flag ps-flag-${t.flag}`} style={{ width: 18, height: 18 }} />

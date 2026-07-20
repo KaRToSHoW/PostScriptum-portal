@@ -148,7 +148,7 @@ export default function NotificationsBell() {
       </button>
 
       {open && (
-        <div style={{
+        <div className="ps-notif-pop" style={{
           position: 'absolute', top: '100%', right: 0, marginTop: 8, width: 360,
           background: '#fff', borderRadius: 16, border: '1px solid var(--border)',
           boxShadow: '0 12px 40px rgba(70,62,137,.18)', zIndex: 300, overflow: 'hidden',

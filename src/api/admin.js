@@ -12,6 +12,7 @@ export const adminApi = {
   accessMatrix: ()           => api.get('/api/admin/access-matrix'),
   leadStatus:   (id, status) => api.post(`/api/admin/leads/${id}/status`, { status }),
   convertLead:  (id)         => api.post(`/api/admin/leads/${id}/convert`, {}),
+  assignLead:   (id, body)   => api.post(`/api/admin/leads/${id}/assign`, body),   // {teacherId, languageCode}
 
   // Ученики
   students: () => api.get('/api/admin/students'),
