@@ -149,21 +149,22 @@ const NAV = {
 
 function SideItem({ icon, label, active, badge, onClick }) {
   return (
-    <div
+    <button
+      type="button"
       className={`item${active ? ' active' : ''}`}
       onClick={onClick}
-      style={{ cursor: 'pointer' }}
+      aria-current={active ? 'page' : undefined}
     >
-      <span className="icon"><Icon name={icon} size={18} /></span>
+      <span className="icon" aria-hidden="true"><Icon name={icon} size={18} /></span>
       <span style={{ flex: 1 }}>{label}</span>
       {badge && (
-        <span style={{
+        <span aria-label={`непрочитанных: ${badge}`} style={{
           background: 'var(--orange)', color: '#fff',
           fontSize: 10, fontWeight: 800,
           padding: '2px 7px', borderRadius: 999,
         }}>{badge}</span>
       )}
-    </div>
+    </button>
   )
 }
 
@@ -206,12 +207,17 @@ export default function Sidebar({ role = 'student' }) {
     <>
     {sideOpen && <div className="ps-side-overlay" onClick={() => setSideOpen(false)} />}
     <aside className={`ps-side${sideOpen ? ' open' : ''}`}>
-      <div
+      <button
+        type="button"
+        className="ps-unbutton"
+        aria-label="На главную"
         style={{ padding: '0 8px 18px', cursor: 'pointer' }}
         onClick={() => navigate('/dashboard')}
       >
         <Logo />
-      </div>
+      </button>
+
+      <nav aria-label="Основное меню" style={{ display: 'contents' }}>
 
       {groups.map((g, i) => (
         <div key={i}>
@@ -228,22 +234,26 @@ export default function Sidebar({ role = 'student' }) {
           ))}
         </div>
       ))}
+      </nav>
 
-      <div
+      <button
+        type="button"
+        className="ps-unbutton"
         onClick={handleSupportClick}
         style={{
+          textAlign: 'left', width: '100%',
           marginTop: 'auto', padding: 12, borderRadius: 14,
           background: 'var(--purple-tint)',
           display: 'flex', gap: 10, alignItems: 'center',
           cursor: 'pointer',
         }}
       >
-        <span style={{ fontSize: 22 }}>🐧</span>
+        <span aria-hidden="true" style={{ fontSize: 22 }}>🐧</span>
         <div style={{ fontSize: 12, color: 'var(--purple-deep)', fontWeight: 700, lineHeight: 1.3 }}>
           {t('Нужна помощь?')}<br />
           <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>{t('Напишите менеджеру')}</span>
         </div>
-      </div>
+      </button>
     </aside>
     </>
   )

@@ -18,9 +18,8 @@ export default function ToastProvider() {
     return () => listeners.delete(fn)
   }, [])
 
-  if (!items.length) return null
   return (
-    <div style={{
+    <div role="status" aria-live="polite" style={{
       position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
       display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none',
     }}>

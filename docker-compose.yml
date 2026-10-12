@@ -15,15 +15,17 @@ services:
       timeout: 5s
       retries: 5
 
+  # Доступен только с самого сервера (через SSH-туннель: ssh -L 5050:127.0.0.1:5050 ...).
+  # Docker публикует порты в обход ufw, поэтому привязка к 127.0.0.1 обязательна.
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin_cont
     restart: always
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@admin.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:?Задайте PGADMIN_PASSWORD в .env}
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -53,9 +55,15 @@ services:
       APP_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
       APP_S3_SECRET_KEY: ${S3_SECRET_KEY:-}
       APP_S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
-      APP_TURN_URL: ${TURN_URL:-}
-      APP_TURN_USER: ${TURN_USER:-psportal}
-      APP_TURN_PASSWORD: ${TURN_PASSWORD:-}
+      # Медиасервер LiveKit (разворачивается на отдельном сервере, см. deploy/livekit)
+      APP_LIVEKIT_URL: ${LIVEKIT_URL:-}
+      APP_LIVEKIT_API_URL: ${LIVEKIT_API_URL:-}
+      APP_LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      APP_LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      # Ученик считается присутствовавшим, если пробыл на занятии не меньше этой доли длительности
+      APP_ATTENDANCE_THRESHOLD_PERCENT: ${ATTENDANCE_THRESHOLD_PERCENT:-50}
+      # Списывать ли занятие с отсутствовавшего ученика (неявка без отмены)
+      APP_BILLING_CHARGE_ABSENT: ${BILLING_CHARGE_ABSENT:-true}
       CORS_ALLOWED_ORIGINS: ${FRONTEND_URL:-http://localhost}
       # APP_-префикс обязателен: Spring маппит APP_OAUTH_* → app.oauth.* (на сервере нет application.yml)
       APP_OAUTH_FRONTEND_URL: ${OAUTH_FRONTEND_URL:-http://localhost:5173}
@@ -86,31 +94,16 @@ services:
     ports:
       - "80:80"
 
-  # TURN-сервер для видеоконференций (ретрансляция медиа при строгом NAT).
-  # Запускается только на сервере: docker compose up -d coturn
-  # Требует открытых портов: 3478/tcp+udp и 49160-49200/udp
-  coturn:
-    image: coturn/coturn:latest
-    restart: unless-stopped
-    network_mode: host
-    profiles: ["turn"]
-    command: >
-      -n --log-file=stdout
-      --listening-port=3478
-      --min-port=49160 --max-port=49200
-      --realm=psportal
-      --lt-cred-mech
-      --user=${TURN_USER:-psportal}:${TURN_PASSWORD:-}
-      --fingerprint
-      --no-tls --no-dtls
-      --no-cli
+  # Видеосвязь перенесена на медиасервер LiveKit со встроенным TURN (deploy/livekit),
+  # отдельный coturn больше не нужен.
 
+  # Просмотр логов — только с самого сервера (SSH-туннель), см. комментарий у pgadmin.
   dozzle:
     image: amir20/dozzle:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "8888:8080"
+      - "127.0.0.1:8888:8080"
 
 volumes:
   db_data:

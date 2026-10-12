@@ -135,6 +135,9 @@ export default function NotificationsBell() {
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(o => !o)}
+        aria-label={unread > 0 ? `Уведомления, непрочитанных: ${unread}` : 'Уведомления'}
+        aria-expanded={open}
+        aria-haspopup="true"
         style={{ padding: 8, borderRadius: 10, background: 'var(--bg-cream)', color: 'var(--ink-2)', border: 0, position: 'relative', cursor: 'pointer' }}
       >
         <Icon name="bell" size={16} />
@@ -199,10 +202,13 @@ export default function NotificationsBell() {
             {items.map(n => {
               const cfg = TYPE_ICON[n.type] || TYPE_ICON.SYSTEM
               return (
-                <div
+                <button
+                  type="button"
                   key={n.id}
+                  className="ps-unbutton"
                   onClick={() => openItem(n)}
                   style={{
+                    width: '100%', textAlign: 'left',
                     display: 'flex', gap: 12, padding: '12px 16px', cursor: 'pointer',
                     background: n.isRead ? '#fff' : 'var(--purple-tint)',
                     borderBottom: '1px solid var(--border-soft)',
@@ -217,7 +223,7 @@ export default function NotificationsBell() {
                     <div style={{ fontSize: 10, color: 'var(--ink-dim)', fontWeight: 700, marginTop: 3 }}>{timeAgo(n.createdAt)}</div>
                   </div>
                   {!n.isRead && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--orange)', flexShrink: 0, marginTop: 4 }} />}
-                </div>
+                </button>
               )
             })}
           </div>

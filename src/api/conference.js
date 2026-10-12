@@ -1,12 +1,9 @@
 import { api } from './client'
 
 export const conferenceApi = {
-  ice:     ()               => api.get('/api/conference/ice'),
-  lessons: ()               => api.get('/api/conference/lessons'),
-  info:    (lessonId)       => api.get(`/api/conference/${lessonId}/info`),
-  join:    (lessonId)       => api.post(`/api/conference/${lessonId}/join`, {}),
-  leave:   (lessonId)       => api.post(`/api/conference/${lessonId}/leave`, {}),
-  finish:  (lessonId)       => api.post(`/api/conference/${lessonId}/finish`, {}),
-  signal:  (lessonId, body) => api.post(`/api/conference/${lessonId}/signal`, body),
-  signals: (lessonId)       => api.get(`/api/conference/${lessonId}/signals`),
+  lessons: ()         => api.get('/api/conference/lessons'),
+  info:    (lessonId) => api.get(`/api/conference/${lessonId}/info`),
+  // проверка прав и токен доступа к комнате LiveKit: { userId, role, name, url, token }
+  join:    (lessonId) => api.post(`/api/conference/${lessonId}/join`, {}),
+  finish:  (lessonId) => api.post(`/api/conference/${lessonId}/finish`, {}),
 }

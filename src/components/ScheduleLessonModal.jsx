@@ -4,6 +4,8 @@ import { teachersApi } from '../api/teachers'
 import { calendarApi } from '../api/calendar'
 import { toast } from './Toast'
 import { api } from '../api/client'
+import { zonedNow } from '../lib/time'
+import SlotSuggestions from './SlotSuggestions'
 
 /* ── Константы ───────────────────────────────────────────────── */
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
@@ -44,7 +46,7 @@ function buildCells(year, month) {
 function computePreviewDates(daysOfWeek, weeksCount) {
   if (!daysOfWeek.size || weeksCount <= 0) return new Set()
   const result = new Set()
-  const today = new Date()
+  const today = zonedNow()
   today.setHours(0, 0, 0, 0)
   for (const dow of daysOfWeek) {
     let date = new Date(today)
@@ -403,7 +405,7 @@ function TimePicker({ value, onChange, duration, busySlots = [] }) {
    Основная модалка
    ================================================================ */
 export default function ScheduleLessonModal({ student, students: studentsProp, teachers, initialDate, onClose, onDone, defaultTeacherId }) {
-  const today    = new Date()
+  const today    = zonedNow()
   today.setHours(0, 0, 0, 0)
   const todayStr = toStr(today.getFullYear(), today.getMonth() + 1, today.getDate())
 
@@ -578,7 +580,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
     if (!time)      { toast('Выберите время занятия', 'warning'); return }
     // на сегодня можно назначить только время, которое ещё не прошло
     if (mode === 'dates' && selectedDates.has(todayStr)) {
-      const nowD = new Date()
+      const nowD = zonedNow()
       if (timeToMin(time) <= nowD.getHours() * 60 + nowD.getMinutes()) {
         toast('Это время сегодня уже прошло — выберите более позднее', 'warning')
         return
@@ -602,9 +604,11 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
           } else {
             toast(`Создано ${res.createdCount} занятий ✓`, 'success')
           }
+          warnOutsideAvailability(res?.warnings)
         } else {
           let totalCreated = 0
           const allSkipped = []
+          const allWarnings = []
           for (const dow of selectedDays) {
             const res = await recurringLessons({
               studentIds: studentIdsPayload, dayOfWeek: dow, time,
@@ -613,12 +617,14 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
             })
             totalCreated += res?.createdCount ?? 0
             if (res?.skipped?.length) allSkipped.push(...res.skipped)
+            if (res?.warnings?.length) allWarnings.push(...res.warnings)
           }
           if (allSkipped.length > 0) {
             toast(`Создано ${totalCreated} занятий, пропущено: ${allSkipped.join(', ')}`, 'warning')
           } else {
             toast(`Создано ${totalCreated} занятий ✓`, 'success')
           }
+          warnOutsideAvailability(allWarnings)
         }
         onDone(); onClose()
       } catch (e) {
@@ -638,6 +644,7 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
         } else {
           toast(`Создано ${res.createdCount} занятий ✓`, 'success')
         }
+        warnOutsideAvailability(res?.warnings)
         onDone(); onClose()
       } catch (e) {
         toast(e.message || 'Ошибка при создании занятий', 'error')
@@ -645,11 +652,18 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
     }
   }
 
+  /** Занятия созданы, но часть из них вне окон доступности преподавателя — предупреждаем. */
+  function warnOutsideAvailability(warnings) {
+    if (!warnings?.length) return
+    const shown = warnings.slice(0, 3).join('; ')
+    toast(`Вне окон доступности преподавателя: ${shown}${warnings.length > 3 ? ` и ещё ${warnings.length - 3}` : ''}`, 'warning')
+  }
+
   const cells        = buildCells(ym.y, ym.m)
   const totalPreview = previewDates.size
-  const submitLabel  = mode === 'regular'
-    ? (totalPreview > 0 ? `Назначить ${totalPreview} занятий` : 'Назначить')
-    : (selectedDates.size > 0 ? `Назначить ${selectedDates.size} занятий` : 'Назначить')
+  const lessonsWord = n => (n % 10 === 1 && n % 100 !== 11 ? 'занятие' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'занятия' : 'занятий')
+  const submitCount  = mode === 'regular' ? totalPreview : selectedDates.size
+  const submitLabel  = submitCount > 0 ? `Назначить ${submitCount} ${lessonsWord(submitCount)}` : 'Назначить'
 
   const timeConflict = time ? busySlots.some(b => {
     const sMin = timeToMin(time)
@@ -785,6 +799,29 @@ export default function ScheduleLessonModal({ student, students: studentsProp, t
                 }}>{label}</button>
               ))}
             </div>
+
+            {/* ── Автоподбор времени ── */}
+            <SlotSuggestions
+              request={{
+                teacherId: isManagerMode ? Number(selectedTeacherId) || undefined : undefined,
+                studentIds: [...studentIds].map(Number),
+                durationMin: Number(duration),
+                mode,
+                weeks: mode === 'regular' ? (effectiveWeeks || weeksCount) : undefined,
+              }}
+              disabledReason={isManagerMode && !selectedTeacherId ? 'Сначала выберите преподавателя'
+                : studentIds.size === 0 ? 'Сначала выберите ученика' : null}
+              onPick={it => {
+                if (it.date) {
+                  const [y, m] = it.date.split('-').map(Number)
+                  setYm({ y, m })
+                  setSelectedDates(new Set([it.date]))
+                } else {
+                  setSelectedDays(new Set(it.days))
+                }
+                setTime(it.time)
+              }}
+            />
 
             {/* ── ВСТРОЕННЫЙ КАЛЕНДАРЬ ── */}
             <div style={{ background: 'var(--bg-cream-soft)', borderRadius: 16, border: '1.5px solid var(--border)', padding: 16 }}>

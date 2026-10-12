@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import LessonMaterialsModal from '../components/LessonMaterialsModal'
 import Sidebar from '../components/Sidebar'
 import TopBar  from '../components/TopBar'
 import Icon    from '../components/Icon'
@@ -10,6 +12,9 @@ import { api } from '../api/client'
 import ScheduleLessonModal from '../components/ScheduleLessonModal'
 import LessonTile from '../components/LessonTile'
 import SlideTabs from '../components/SlideTabs'
+import { confirmDialog } from '../components/ConfirmDialog'
+import { parentApi } from '../api/parent'
+import { zonedNow } from '../lib/time'
 
 const LANG_COLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: '#9DC4A2', es: '#D7A87E', it: '#C9A0DC' }
 
@@ -64,7 +69,7 @@ function WeekStrip({ ym, selectedDay, events, langFilter, onPick }) {
     d.setDate(monday.getDate() + i)
     return d
   })
-  const now = new Date()
+  const now = zonedNow()
   const sameDate = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 
   function shift(dir) {
@@ -134,7 +139,7 @@ function DayTimeline({ evs, showNow, buildActions }) {
   const endH   = Math.max(21, ...sorted.map(e => Math.floor(parseMin(e.t) / 60) + 1))
   const hours  = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i)
 
-  const now = new Date()
+  const now = zonedNow()
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const nowLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
@@ -250,7 +255,7 @@ function HourGrid({ headerDates, bodyDates, ym, getEvs, selectedDay, onPickDay, 
     const [h, m] = String(t || '0:0').split(':').map(Number)
     return (h || 0) * 60 + (m || 0)
   }
-  const now = new Date()
+  const now = zonedNow()
   const sameDate = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 
   const makeCol = d => {
@@ -533,10 +538,12 @@ function AttendanceModal({ lesson, onClose, onDone, rosterUrl, attendanceUrl }) 
 /* ================================================================
    ВАРИАНТ УЧЕНИКА (и преподавателя — со своими действиями)
    ================================================================ */
-function CalendarStudent() {
+function CalendarStudent({ childId = null }) {
   const { role } = useApp()
   const isTeacher = role === 'teacher'
-  const now = new Date()
+  // родитель смотрит расписание выбранного ребёнка; ученик и преподаватель — своё
+  const fetchMonth = (y, m) => childId ? parentApi.childCalendar(childId, y, m) : calendarApi.getMonth(y, m)
+  const now = zonedNow()
   const TODAY = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() }
   const [ym, setYm]             = useState({ y: TODAY.y, m: TODAY.m })
   const [selectedDay, setSel]   = useState(TODAY.d)
@@ -544,8 +551,10 @@ function CalendarStudent() {
   const [events, setEvents]     = useState({})
   const [rescheduleFor, setRescheduleFor] = useState(null)
   const [attendanceFor, setAttendanceFor] = useState(null)
+  const [materialsFor, setMaterialsFor]   = useState(null)
   const [showSchedule, setShowSchedule]   = useState(false)
   const [myStudents, setMyStudents]       = useState([])
+  const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [view, setView] = useState('day')    // десктоп: 'day' | 'week' | 'month'
 
@@ -567,6 +576,12 @@ function CalendarStudent() {
   // Кнопки действий на плашке урока (для преподавателя)
   function lessonActions(it) {
     const actions = []
+    if (it.id && it.s === 'now' && !childId) {
+      actions.push({ icon: 'play', label: 'На урок', onClick: () => navigate(`/conference/${it.id}`) })
+    }
+    if (it.id) {
+      actions.push({ icon: 'file', label: 'Материалы', onClick: () => setMaterialsFor(it) })
+    }
     if (isTeacher && it.s === 'planned') {
       actions.push({ icon: 'calendar', label: 'Перенести', onClick: () => setRescheduleFor(it) })
       actions.push({ icon: 'plus', iconStyle: { transform: 'rotate(45deg)' }, label: 'Отменить', danger: true, onClick: () => handleCancel(it) })
@@ -583,26 +598,32 @@ function CalendarStudent() {
   }, [isTeacher])
 
   function loadEvents() {
-    return calendarApi.getMonth(ym.y, ym.m)
+    return fetchMonth(ym.y, ym.m)
       .then(d => { if (d?.events) setEvents(d.events) })
       .catch(() => {})
   }
 
   useEffect(() => {
     let alive = true
-    calendarApi.getMonth(ym.y, ym.m)
-      .then(d => { if (alive && d?.events) setEvents(d.events) })
+    fetchMonth(ym.y, ym.m)
+      .then(d => { if (alive) setEvents(d?.events ?? {}) })
       .catch(() => {})
     return () => { alive = false }
-  }, [ym.y, ym.m])
+  }, [ym.y, ym.m, childId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCancel(it) {
     const hoursUntil = it.scheduledAt ? (new Date(it.scheduledAt) - new Date()) / 36e5 : null
     const willCharge = hoursUntil !== null && hoursUntil < 4
-    const warning = willCharge
-      ? 'До урока меньше 4 часов — он будет списан у ученика как проведённый. Отменить?'
-      : 'Отменить урок? Это больше чем за 4 часа до начала — урок не будет списан.'
-    if (!window.confirm(warning)) return
+    const ok = await confirmDialog({
+      title: 'Отменить урок?',
+      text: willCharge
+        ? 'До урока меньше 4 часов — он будет списан у ученика как проведённый.'
+        : 'До урока больше 4 часов — занятие не будет списано с абонемента. Ученик получит уведомление.',
+      confirmLabel: willCharge ? 'Отменить со списанием' : 'Отменить урок',
+      cancelLabel: 'Не отменять',
+      danger: true,
+    })
+    if (!ok) return
     try {
       const res = await teachersApi.cancelLesson(it.id)
       toast(res?.lateCancel ? 'Урок отменён, списан ученику ✓' : 'Урок отменён ✓', 'success')
@@ -617,6 +638,19 @@ function CalendarStudent() {
 
   const cells   = buildCells(ym.y, ym.m)
   const selEvs  = (events[selectedDay] || []).filter(e => langFilter.has(e.l))
+
+  // Посещаемость за выбранный месяц — из тех же занятий, что и в календаре
+  const monthStats = (() => {
+    const list = Object.entries(events)
+      .flatMap(([day, evs]) => (evs || []).map(e => ({ ...e, day: Number(day) })))
+      .sort((a, b) => a.day - b.day || String(a.t).localeCompare(String(b.t)))
+    return {
+      list,
+      done:    list.filter(e => e.s === 'done').length,
+      missed:  list.filter(e => e.s === 'missed').length,
+      planned: list.filter(e => e.s === 'planned' || e.s === 'now').length,
+    }
+  })()
 
   function prevMonth() {
     setYm(p => p.m === 1 ? { y: p.y - 1, m: 12 } : { ...p, m: p.m - 1 })
@@ -668,18 +702,22 @@ function CalendarStudent() {
         )}
         <div style={{ display: 'flex', gap: 8 }}>
           {['fr','en','de','es','it'].map(l => (
-            <span
+            <button
+              type="button"
               key={l}
               onClick={() => toggleLang(l)}
+              aria-pressed={langFilter.has(l)}
+              aria-label={`Показывать ${LANG_NAME[l] ?? l}`}
               style={{
+                fontFamily: 'inherit',
                 display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999,
                 background: langFilter.has(l) ? LANG_COLOR[l] + '22' : '#fff',
                 border: `1px solid ${langFilter.has(l) ? LANG_COLOR[l] : 'var(--border-soft)'}`,
                 fontSize: 11, fontWeight: 800, color: langFilter.has(l) ? LANG_COLOR[l] : 'var(--ink-muted)', cursor: 'pointer',
               }}
             >
-              <span style={{ width: 9, height: 9, borderRadius: 3, background: LANG_COLOR[l] }} /> {l.toUpperCase()}
-            </span>
+              <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 3, background: LANG_COLOR[l] }} /> {l.toUpperCase()}
+            </button>
           ))}
         </div>
       </div>
@@ -786,16 +824,20 @@ function CalendarStudent() {
           </div>
           )}
 
-          {/* Посещаемость */}
+          {/* Посещаемость — по занятиям выбранного месяца */}
           <div className="ps-card" style={{ padding: 18, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span className="ps-eyebrow">история</span>
-              <span className="ps-chip ps-chip-gray">апр — май</span>
+              <span className="ps-chip ps-chip-gray">{MONTH_NAMES[ym.m - 1].toLowerCase()}</span>
             </div>
             <h3 className="ps-display" style={{ fontSize: 18, margin: '0 0 12px' }}>Посещаемость</h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-              {[{ v: '21', l: 'Проведено', c: 'var(--success)' }, { v: '1', l: 'Пропуск', c: 'var(--danger)' }, { v: '14', l: 'Впереди', c: 'var(--purple-deep)' }].map(s => (
+              {[
+                { v: monthStats.done,    l: 'Проведено', c: 'var(--success)' },
+                { v: monthStats.missed,  l: 'Пропуск',   c: 'var(--danger)' },
+                { v: monthStats.planned, l: 'Впереди',   c: 'var(--purple-deep)' },
+              ].map(s => (
                 <div key={s.l}>
                   <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, color: s.c }}>{s.v}</div>
                   <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{s.l}</div>
@@ -803,17 +845,22 @@ function CalendarStudent() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-              {Array.from({ length: 36 }).map((_, i) => {
-                const bg = i >= 25 ? 'var(--purple-soft)' : i === 19 ? 'var(--danger-soft)' : 'var(--success-soft)'
-                return <div key={i} style={{ width: 18, height: 18, borderRadius: 4, background: bg, border: i === 24 ? '2px solid var(--orange)' : 'none' }} />
-              })}
-            </div>
+            {monthStats.list.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>В этом месяце занятий нет</div>
+            ) : (
+              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }} aria-label="Занятия месяца по порядку">
+                {monthStats.list.map((e, i) => {
+                  const bg = e.s === 'done' ? 'var(--success-soft)' : e.s === 'missed' ? 'var(--danger-soft)' : 'var(--purple-soft)'
+                  return <div key={i} title={`${e.day} ${MONTH_NAMES[ym.m - 1].slice(0, 3).toLowerCase()}, ${e.t} — ${STATE_LABEL[e.s] ?? e.s}`}
+                    style={{ width: 18, height: 18, borderRadius: 4, background: bg, border: isToday(e.day) ? '2px solid var(--orange)' : 'none' }} />
+                })}
+              </div>
+            )}
 
             <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
               {[
                 { c: 'var(--success)',     l: 'Проведено' },
-                { c: 'var(--danger)',      l: 'Пропущено' },
+                { c: 'var(--danger)',      l: 'Пропущено или отменено' },
                 { c: 'var(--purple-deep)', l: 'Запланировано' },
                 { c: 'var(--orange)',      l: 'Сегодня' },
               ].map(L => (
@@ -834,6 +881,8 @@ function CalendarStudent() {
           onDone={loadEvents}
         />
       )}
+
+      {materialsFor && <LessonMaterialsModal lesson={materialsFor} onClose={() => setMaterialsFor(null)} />}
 
       {attendanceFor && (
         <AttendanceModal
@@ -859,7 +908,7 @@ function CalendarStudent() {
    ВАРИАНТ АДМИНИСТРАТОРА
    ================================================================ */
 function CalendarAdmin({ canCreate = false }) {
-  const now = new Date()
+  const now = zonedNow()
   const TODAY = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() }
   const [ym, setYm]           = useState({ y: TODAY.y, m: TODAY.m })
   const [selectedDay, setSel] = useState(TODAY.d)
@@ -870,6 +919,7 @@ function CalendarAdmin({ canCreate = false }) {
   const [filterTeacherId, setFilterTeacherId] = useState('')
   const [rescheduleFor,   setRescheduleFor]   = useState(null)
   const [attendanceFor,   setAttendanceFor]   = useState(null)
+  const [materialsFor,    setMaterialsFor]    = useState(null)
   const [showAllPanel,    setShowAllPanel]    = useState(false)
   const isMobile = useIsMobile()
   const [view, setView] = useState('day')    // десктоп: 'day' | 'week' | 'month'
@@ -892,13 +942,30 @@ function CalendarAdmin({ canCreate = false }) {
 
   // Кнопки действий на плашке урока (для админа/менеджера)
   function lessonActions(it) {
-    if (!(canCreate && it.s !== 'done' && it.s !== 'missed')) return []
+    const materials = { icon: 'file', label: 'Материалы', onClick: () => setMaterialsFor(it) }
+    if (!(canCreate && it.s !== 'done' && it.s !== 'missed')) return it.id ? [materials] : []
     return [
       { icon: 'calendar', label: 'Перенести', onClick: () => setRescheduleFor(it) },
       { icon: 'users', label: 'Посещение', onClick: () => setAttendanceFor(it) },
-      { icon: 'plus', iconStyle: { transform: 'rotate(45deg)' }, label: 'Отменить', danger: true,
-        onClick: async () => { try { await api.post(`/api/manager/lessons/${it.id}/cancel`, {}); toast('Урок отменён ✓', 'success'); loadEvents() } catch(e) { toast(e.message||'Ошибка', 'error') } } },
+      materials,
+      { icon: 'plus', iconStyle: { transform: 'rotate(45deg)' }, label: 'Отменить', danger: true, onClick: () => cancelAsStaff(it) },
     ]
+  }
+
+  async function cancelAsStaff(it) {
+    const ok = await confirmDialog({
+      title: 'Отменить урок?',
+      text: `${it.t} · ${it.who ?? ''}${it.students ? ` — ${it.students}` : ''}. Ученики и преподаватель получат уведомление.`,
+      confirmLabel: 'Отменить урок', cancelLabel: 'Не отменять', danger: true,
+    })
+    if (!ok) return
+    try {
+      await api.post(`/api/manager/lessons/${it.id}/cancel`, {})
+      toast('Урок отменён ✓', 'success')
+      loadEvents()
+    } catch (e) {
+      toast(e.message || 'Не удалось отменить урок', 'error')
+    }
   }
 
   function loadEvents() {
@@ -1166,6 +1233,8 @@ function CalendarAdmin({ canCreate = false }) {
         />
       )}
 
+      {materialsFor && <LessonMaterialsModal lesson={materialsFor} onClose={() => setMaterialsFor(null)} />}
+
       {attendanceFor && (
         <AttendanceModal
           lesson={attendanceFor}
@@ -1179,12 +1248,65 @@ function CalendarAdmin({ canCreate = false }) {
   )
 }
 
+/* ── Родитель: расписание детей ────────────────────────────────── */
+function CalendarParent() {
+  const { state } = useLocation()
+  const [children, setChildren] = useState(null)
+  const [childId, setChildId]   = useState(state?.childId ?? null)
+
+  useEffect(() => {
+    parentApi.children()
+      .then(list => {
+        setChildren(list || [])
+        setChildId(prev => (list || []).some(c => c.id === prev) ? prev : list?.[0]?.id ?? null)
+      })
+      .catch(() => setChildren([]))
+  }, [])
+
+  if (children === null) {
+    return <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)' }}>Загрузка...</div>
+  }
+  if (children.length === 0) {
+    return (
+      <div className="ps-m-pad" style={{ padding: 28 }}>
+        <div className="ps-card" style={{ padding: 48, textAlign: 'center', color: 'var(--ink-muted)' }}>
+          <Icon name="calendar" size={32} style={{ color: 'var(--ink-dim)' }} />
+          <div style={{ marginTop: 12, fontSize: 15, fontWeight: 700 }}>Пока нет привязанных детей</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Когда администратор привяжет аккаунт ученика, здесь появится его расписание</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {children.length > 1 && (
+        <div className="ps-m-pad" role="tablist" aria-label="Чьё расписание показать" style={{ padding: '20px 28px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {children.map(c => (
+            <button
+              key={c.id}
+              role="tab"
+              aria-selected={c.id === childId}
+              className={`ps-btn ps-btn-sm ${c.id === childId ? 'ps-btn-purple' : 'ps-btn-outline'}`}
+              onClick={() => setChildId(c.id)}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <CalendarStudent key={childId} childId={childId} />
+    </div>
+  )
+}
+
 export default function CalendarPage() {
   const { role, sideRole } = useApp()
 
   const isAdmin   = role === 'admin'
   const isManager = role === 'manager'
-  const title = (isAdmin || isManager) ? 'Расписание · все занятия' : 'Расписание'
+  const isParent  = role === 'parent'
+  const title = (isAdmin || isManager) ? 'Расписание · все занятия' : isParent ? 'Расписание детей' : 'Расписание'
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
@@ -1192,7 +1314,7 @@ export default function CalendarPage() {
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar title={title} />
-        {isAdmin || isManager ? <CalendarAdmin canCreate /> : <CalendarStudent />}
+        {isAdmin || isManager ? <CalendarAdmin canCreate /> : isParent ? <CalendarParent /> : <CalendarStudent />}
       </main>
     </div>
   )

@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext'
 import { messagesApi } from '../api/messages'
 import { supportApi } from '../api/support'
 import { currentEmail } from '../api/session'
+import { fmtTime } from '../lib/time'
 
 const LANG_COLORS = ['var(--purple)','var(--orange)','var(--success)','var(--info)','var(--warning)']
 
@@ -38,7 +39,7 @@ function Avatar({ initials, avatarUrl, color, online, size = 44 }) {
 function formatTime(sentAt) {
   if (!sentAt) return ''
   try {
-    return new Date(sentAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    return fmtTime(sentAt)
   } catch {
     return ''
   }

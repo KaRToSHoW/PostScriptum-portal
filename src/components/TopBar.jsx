@@ -26,7 +26,7 @@ export default function TopBar({ title }) {
     <>
       <div className="ps-top">
         {/* Гамбургер — только на мобильном, открывает выдвижной сайдбар */}
-        <button className="ps-burger" onClick={() => setSideOpen(true)} title={t('Меню')}>
+        <button className="ps-burger" onClick={() => setSideOpen(true)} title={t('Меню')} aria-label={t('Меню')}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
@@ -45,6 +45,7 @@ export default function TopBar({ title }) {
         <button
           className="ps-top-search"
           onClick={() => setShowSearch(true)}
+          aria-label={t('Поиск по порталу…')}
           style={{
             display: 'flex', alignItems: 'center', gap: 9,
             padding: '8px 14px', borderRadius: 'var(--r-pill)',
@@ -75,11 +76,11 @@ export default function TopBar({ title }) {
           </div>
           <div className="avatar" style={{ overflow: 'hidden', padding: 0 }}>
             {photo
-              ? <img src={photo} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+              ? <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
               : user?.initials
             }
           </div>
-          <button onClick={() => { logout(); navigate('/login') }} title={t('Выйти')} style={{ padding: 8, borderRadius: 10, background: 'var(--bg-cream)', color: 'var(--ink-muted)', border: 0, cursor: 'pointer', display: 'flex' }}>
+          <button onClick={() => { logout(); navigate('/login') }} title={t('Выйти')} aria-label={t('Выйти')} style={{ padding: 8, borderRadius: 10, background: 'var(--bg-cream)', color: 'var(--ink-muted)', border: 0, cursor: 'pointer', display: 'flex' }}>
             <Icon name="logout" size={16} />
           </button>
         </div>

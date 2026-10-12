@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { translate } from '../i18n'
 import { profileApi } from '../api/profile'
 import { fileUrl } from '../api/files'
+import { setUserTimeZone, getUserTimeZone } from '../lib/time'
 
 // Роль читаем из самого JWT (подписан сервером, в localStorage не лежит отдельным
 // редактируемым ключом) — раньше ps_role можно было поменять руками и увидеть чужие вкладки.
@@ -54,6 +55,19 @@ export function AppProvider({ children }) {
   })
   // Мобильный выдвижной сайдбар: кнопка-гамбургер в TopBar, панель в Sidebar
   const [sideOpen, setSideOpen] = useState(false)
+  // Часовой пояс из профиля: всё время на сайте показывается в нём, а не в поясе устройства
+  const [timeZone, setTimeZoneRaw] = useState(() => {
+    const saved = localStorage.getItem('ps_tz')
+    if (saved) setUserTimeZone(saved)
+    return getUserTimeZone()
+  })
+
+  const setTimeZone = useCallback((tz) => {
+    if (!tz) return
+    setUserTimeZone(tz)
+    localStorage.setItem('ps_tz', tz)
+    setTimeZoneRaw(getUserTimeZone())
+  }, [])
 
   // Re-fetch the real profile from the backend after reload so we don't show stale preset data.
   // Role is also re-confirmed here from the server response (belt-and-braces alongside the JWT decode).
@@ -65,6 +79,7 @@ export function AppProvider({ children }) {
       setApiUser(fresh)
       if (data.avatarUrl) setPhoto(data.avatarUrl)
       if (data.role) setRole(data.role.toLowerCase())
+      if (data.timezone) setTimeZone(data.timezone)
     }).catch(() => {/* token may be stale — leave preset/cached data as-is */})
   }, [isAuth])
 
@@ -103,6 +118,7 @@ export function AppProvider({ children }) {
     localStorage.removeItem('ps_role') // чистим хвост от старых версий, больше не пишем
     localStorage.removeItem('ps_user')
     localStorage.removeItem('ps_photo')
+    localStorage.removeItem('ps_tz')
     setIsAuth(false)
     setApiUser(null)
     setRole('student')
@@ -110,7 +126,7 @@ export function AppProvider({ children }) {
   }
 
   return (
-    <AppContext.Provider value={{ role, setRole, isAuth, login, logout, user, sideRole, locale, setLocale, t, photo, setPhoto, sideOpen, setSideOpen }}>
+    <AppContext.Provider value={{ role, setRole, isAuth, login, logout, user, sideRole, locale, setLocale, t, photo, setPhoto, sideOpen, setSideOpen, timeZone, setTimeZone }}>
       {children}
     </AppContext.Provider>
   )

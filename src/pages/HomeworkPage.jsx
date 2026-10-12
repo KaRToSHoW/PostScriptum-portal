@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Sidebar   from '../components/Sidebar'
 import TopBar    from '../components/TopBar'
 import Icon      from '../components/Icon'
@@ -7,8 +7,9 @@ import SlideTabs from '../components/SlideTabs'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 import { homeworkApi } from '../api/homework'
-import { teachersApi } from '../api/teachers'
 import { uploadFile, fileUrl } from '../api/files'
+import { fmtShortDateTime } from '../lib/time'
+import HomeworkForm from '../components/HomeworkForm'
 
 // ─── shared maps ─────────────────────────────────────────────────────────────
 
@@ -485,7 +486,7 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
     }
     setSaving(true)
     try {
-      await homeworkApi.review(item.id, { grade: Number(grade), feedback })
+      await homeworkApi.review(item.id, { studentId: item.studentId, grade: Number(grade), feedback })
       toast('Оценка выставлена ✓', 'success')
       onReviewed()
     } catch {
@@ -645,179 +646,37 @@ function TeacherRow({ item, expanded, onToggle, onReviewed }) {
   )
 }
 
-function CreateHomeworkModal({ onClose, onDone }) {
-  const [students, setStudents]   = useState([])
-  const [studentId, setStudentId] = useState('')
-  const [langCode,  setLangCode]  = useState('')
-  const [title, setTitle]         = useState('')
-  const [description, setDescription] = useState('')
-  const [dueAt, setDueAt]         = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [saving, setSaving]       = useState(false)
-  const [attachedFile, setAttachedFile] = useState(null)
-  const fileRef = useRef()
+/** Задание создаётся на урок и приходит всем его ученикам (в групповом занятии — каждому). */
+function CreateHomeworkModal({ onClose, onDone, initialLessonId }) {
+  const [lessons, setLessons] = useState(null)
 
-  useEffect(() => { teachersApi.myStudents().then(setStudents).catch(() => {}) }, [])
-
-  const selectedStudent = students.find(s => String(s.id) === String(studentId))
-  const studentLangCodes = selectedStudent?.langCodes ?? []
-
-  // Reset langCode when student changes
+  useEffect(() => { homeworkApi.lessons().then(d => setLessons(Array.isArray(d) ? d : [])).catch(() => setLessons([])) }, [])
   useEffect(() => {
-    setLangCode(studentLangCodes[0] ?? '')
-  }, [studentId])
-
-  async function handleFilePick(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    try {
-      const res = await uploadFile(file, 'HOMEWORK')
-      setAttachedFile({ url: res.url, name: res.name ?? file.name })
-      toast('Файл прикреплён ✓', 'success')
-    } catch {
-      toast('Не удалось загрузить файл', 'error')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  async function handleCreate() {
-    if (!studentId) { toast('Выберите ученика', 'warning'); return }
-    if (!title.trim()) { toast('Укажите название задания', 'warning'); return }
-    setSaving(true)
-    try {
-      await homeworkApi.create({
-        studentId: Number(studentId),
-        title: title.trim(),
-        description: description.trim() || null,
-        dueAt: dueAt || null,
-        attachmentUrl: attachedFile?.url ?? null,
-        languageCode: langCode || undefined,
-      })
-      toast('Задание создано ✓', 'success')
-      onDone()
-      onClose()
-    } catch {
-      toast('Ошибка при создании задания', 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
+    const onKey = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)', padding: 12 }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="ps-m-full" style={{ width: 520, background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
-        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="hw-create-title" className="ps-m-full"
+        style={{ width: 560, maxWidth: '100%', maxHeight: 'calc(100vh - 24px)', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
+        <div className="ps-card-purple" style={{ padding: '20px 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>новое задание</span>
-              <h3 className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Создать домашнее задание</h3>
+              <h3 id="hw-create-title" className="ps-display ps-display-purple" style={{ fontSize: 18, margin: '4px 0 0' }}>Задать домашнее задание</h3>
             </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
+            <button aria-label="Закрыть" onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
               <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} />
             </button>
           </div>
         </div>
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Ученик</label>
-            <select
-              className="ps-input"
-              value={studentId}
-              onChange={e => setStudentId(e.target.value)}
-              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14 }}
-            >
-              <option value="">Выберите ученика</option>
-              {students.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name}{s.langs?.length ? ' · ' + s.langs.join(', ') : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Язык — только если у ученика 2+ языка */}
-          {studentLangCodes.length > 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Язык задания</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {studentLangCodes.map((code, i) => {
-                  const name = (selectedStudent?.langs ?? [])[i] || code
-                  const LCOLOR = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--warning)', es: 'var(--success)', it: 'var(--info)' }
-                  const c = LCOLOR[code] || 'var(--purple)'
-                  const sel = langCode === code
-                  return (
-                    <button key={code} onClick={() => setLangCode(code)} style={{
-                      padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: 'pointer', border: 'none',
-                      background: sel ? c : c + '18', color: sel ? '#fff' : c,
-                      outline: sel ? `2px solid ${c}` : 'none', outlineOffset: 1,
-                    }}>{name}</button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Название задания</label>
-            <input
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Например: Эссе про путешествия"
-              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Описание</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Что нужно сделать..."
-              rows={3}
-              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', resize: 'none', outline: 'none', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Срок сдачи</label>
-            <input
-              type="date"
-              value={dueAt}
-              onChange={e => setDueAt(e.target.value)}
-              style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, color: 'var(--ink)', outline: 'none' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Прикрепить материал</label>
-            <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={handleFilePick} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                className="ps-btn ps-btn-ghost ps-btn-sm"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                style={{ flexShrink: 0 }}
-              >
-                <Icon name="upload" size={13} />
-                {uploading ? 'Загрузка...' : 'Выбрать файл'}
-              </button>
-              {attachedFile && (
-                <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  ✓ {attachedFile.name}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="ps-m-col" style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
-            <button className="ps-btn ps-btn-primary" onClick={handleCreate} disabled={saving} style={{ flex: 1, justifyContent: 'center' }}>
-              <Icon name="plus" size={14} /> {saving ? 'Создание...' : 'Создать задание'}
-            </button>
-            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
-          </div>
+        <div style={{ padding: 24, overflowY: 'auto' }}>
+          {lessons === null
+            ? <div style={{ color: 'var(--ink-muted)', fontSize: 13 }}>Загрузка уроков…</div>
+            : <HomeworkForm lessons={lessons} initialLessonId={initialLessonId} onDone={() => { onDone(); onClose() }} onCancel={onClose} />}
         </div>
       </div>
     </div>
@@ -838,16 +697,23 @@ function TeacherHomework() {
   const [openStudents, setOpenStudents] = useState(new Set())
   const [studentFilter, setStudentFilter] = useState('all')
   const [langFilter, setLangFilter]       = useState('all')
+  const [loadError, setLoadError]         = useState(null)
+
+  // ?lesson=ID из урока — сразу открыть создание задания к этому уроку
+  const [params, setParams] = useSearchParams()
+  const createFor = params.get('lesson')
 
   function loadList() {
     setLoading(true)
+    setLoadError(null)
     homeworkApi.teacherList()
-      .then(data => setList(data))
-      .catch(() => {})
+      .then(data => setList(Array.isArray(data) ? data : []))
+      .catch(e => setLoadError(e.message || 'Не удалось загрузить работы'))
       .finally(() => setLoading(false))
   }
 
   useEffect(() => { loadList() }, [])
+  useEffect(() => { if (createFor) setShowCreate(true) }, [createFor])
 
   const total    = list.length
   const pending  = list.filter(i => i.status === 'SUBMITTED').length
@@ -997,9 +863,14 @@ function TeacherHomework() {
               <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>Загрузка...</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {groups.length === 0 && (
+                {loadError && (
+                  <div role="alert" style={{ padding: '24px 0', textAlign: 'center', color: 'var(--danger)', fontSize: 14 }}>
+                    {loadError} · <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={loadList}>Повторить</button>
+                  </div>
+                )}
+                {!loadError && groups.length === 0 && (
                   <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 14 }}>
-                    Работ в этой категории нет
+                    {list.length === 0 ? 'Пока нет заданий. Задайте ДЗ к уроку — кнопка «Новое задание» или прямо на уроке.' : 'Работ в этой категории нет'}
                   </div>
                 )}
                 {groups.map(g => {
@@ -1031,10 +902,13 @@ function TeacherHomework() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, background: '#fff' }}>
                           {g.items.map(item => (
                             <TeacherRow
-                              key={item.id}
+                              key={`${item.id}-${item.studentId}`}
                               item={item}
-                              expanded={expanded === item.id}
-                              onToggle={() => setExpanded(expanded === item.id ? null : item.id)}
+                              expanded={expanded === `${item.id}-${item.studentId}`}
+                              onToggle={() => {
+                                const k = `${item.id}-${item.studentId}`
+                                setExpanded(expanded === k ? null : k)
+                              }}
                               onReviewed={loadList}
                             />
                           ))}
@@ -1052,7 +926,8 @@ function TeacherHomework() {
 
       {showCreate && (
         <CreateHomeworkModal
-          onClose={() => setShowCreate(false)}
+          initialLessonId={createFor}
+          onClose={() => { setShowCreate(false); if (createFor) setParams({}, { replace: true }) }}
           onDone={loadList}
         />
       )}

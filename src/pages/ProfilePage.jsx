@@ -5,13 +5,28 @@ import Icon     from '../components/Icon'
 import { useApp } from '../context/AppContext'
 import { toast } from '../components/Toast'
 import { profileApi } from '../api/profile'
+import AvailabilityEditor from '../components/AvailabilityEditor'
 import { settingsApi } from '../api/settings'
 import { uploadFile, fileUrl } from '../api/files'
 import { subscribeToPush, unsubscribeFromPush, pushSupported } from '../lib/webPush'
 
 const NOTIF_SUPPORTED = typeof window !== 'undefined' && 'Notification' in window
 
-const TIMEZONES = ['Europe/Moscow','Europe/Kaliningrad','Asia/Yekaterinburg','Asia/Novosibirsk','Asia/Krasnoyarsk','Asia/Irkutsk','Asia/Yakutsk','Asia/Vladivostok']
+const TIMEZONES = ['Europe/Kaliningrad','Europe/Moscow','Europe/Samara','Asia/Yekaterinburg','Asia/Omsk','Asia/Novosibirsk','Asia/Krasnoyarsk','Asia/Irkutsk','Asia/Yakutsk','Asia/Vladivostok','Asia/Magadan','Asia/Kamchatka']
+const TZ_LABEL = {
+  'Europe/Kaliningrad': 'Калининград (UTC+2)',
+  'Europe/Moscow':      'Москва (UTC+3)',
+  'Europe/Samara':      'Самара (UTC+4)',
+  'Asia/Yekaterinburg': 'Екатеринбург (UTC+5)',
+  'Asia/Omsk':          'Омск (UTC+6)',
+  'Asia/Novosibirsk':   'Новосибирск (UTC+7)',
+  'Asia/Krasnoyarsk':   'Красноярск (UTC+7)',
+  'Asia/Irkutsk':       'Иркутск (UTC+8)',
+  'Asia/Yakutsk':       'Якутск (UTC+9)',
+  'Asia/Vladivostok':   'Владивосток (UTC+10)',
+  'Asia/Magadan':       'Магадан (UTC+11)',
+  'Asia/Kamchatka':     'Камчатка (UTC+12)',
+}
 const LOCALES   = [{ v:'ru', l:'Русский' }, { v:'en', l:'English' }, { v:'fr', l:'Français' }]
 
 // Ползунок времени напоминания (минуты): от 5 минут до 48 часов
@@ -74,7 +89,7 @@ function Toggle({ checked, onChange, label }) {
 }
 
 export default function ProfilePage() {
-  const { user, sideRole, locale, setLocale, photo, setPhoto, t } = useApp()
+  const { user, sideRole, locale, setLocale, photo, setPhoto, t, setTimeZone } = useApp()
   const fileRef = useRef(null)
 
   const [name,     setName]     = useState(user?.name ?? '')
@@ -148,6 +163,8 @@ export default function ProfilePage() {
   const [repPwd, setRepPwd] = useState('')
 
   const [section, setSection] = useState('profile')
+  const [role, setRole]       = useState('')
+  const [birthDate, setBirthDate] = useState('')   // только у ученика: с 18 лет можно самому покупать абонементы
 
   // Load settings on mount and populate notification/reminder state
   useEffect(() => {
@@ -171,7 +188,8 @@ export default function ProfilePage() {
       if (data.email)    setEmail(data.email)
       if (data.phone)    setPhone(data.phone)
       if (data.timezone) setTz(data.timezone)
-      if (data.role)     setRoleLabel(ROLE_LABEL[data.role] ?? data.role)
+      if (data.role)     { setRoleLabel(ROLE_LABEL[data.role] ?? data.role); setRole(data.role) }
+      if (data.birthDate) setBirthDate(data.birthDate)
       if (data.avatarUrl) setPhoto(fileUrl(data.avatarUrl))
     }).catch(() => {/* backend may be down — keep local defaults */})
   }, [])
@@ -179,9 +197,12 @@ export default function ProfilePage() {
   async function handleSaveProfile() {
     try {
       await Promise.all([
-        profileApi.update({ name, phone, timezone: tz }),
+        profileApi.update(role === 'STUDENT'
+          ? { name, phone, timezone: tz, birthDate: birthDate || null }
+          : { name, phone, timezone: tz }),
         settingsApi.update({ interfaceLocale: locale }),
       ])
+      setTimeZone(tz)
       toast(t('Сохранено'))
     } catch (e) {
       toast(e.message, 'error')
@@ -218,6 +239,7 @@ export default function ProfilePage() {
 
   const SECTIONS = [
     { id: 'profile',  label: t('Личные данные'),  icon: 'user'     },
+    ...(role === 'TEACHER' ? [{ id: 'availability', label: t('Окна доступности'), icon: 'calendar' }] : []),
     { id: 'notif',    label: t('Уведомления'),     icon: 'warning'  },
     { id: 'security', label: t('Безопасность'),    icon: 'shield'   },
   ]
@@ -310,13 +332,21 @@ export default function ProfilePage() {
                   <Field label={t('Телефон')}>
                     <Input value={phone} onChange={setPhone} placeholder="+7 999 000-00-00" />
                   </Field>
+                  {role === 'STUDENT' && (
+                    <Field label={t('Дата рождения')}>
+                      <Input value={birthDate} onChange={setBirthDate} type="date" />
+                    </Field>
+                  )}
                   <Field label={t('Часовой пояс')}>
                     <select
                       value={tz} onChange={e => setTz(e.target.value)}
                       style={{ padding: '10px 14px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-cream-soft)', fontSize: 14, fontWeight: 600, color: 'var(--ink)', width: '100%' }}
                     >
-                      {TIMEZONES.map(z => <option key={z} value={z}>{z}</option>)}
+                      {(TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES]).map(z => <option key={z} value={z}>{TZ_LABEL[z] ?? z}</option>)}
                     </select>
+                    <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 4 }}>
+                      В этом поясе показывается расписание, время сообщений и сроки заданий
+                    </div>
                   </Field>
                   <Field label={t('Язык интерфейса')}>
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -343,6 +373,8 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+
+            {section === 'availability' && role === 'TEACHER' && <AvailabilityEditor />}
 
             {section === 'notif' && (
               <div className="ps-card ps-m-pad" style={{ padding: 28 }}>

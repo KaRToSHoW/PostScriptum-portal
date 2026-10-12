@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
@@ -11,21 +12,21 @@ const HW_CHIP   = { not_started: 'orange', submitted: 'blue', done: 'green', ove
 
 function ChildCard({ c, active, onClick }) {
   return (
-    <div onClick={onClick} className="ps-card ps-card-lift" style={{
-      padding: 16, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+    <button type="button" onClick={onClick} aria-pressed={active} className="ps-card ps-card-lift" style={{
+      padding: 16, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', width: '100%', textAlign: 'left', font: 'inherit',
       border: active ? '2px solid var(--purple)' : '1px solid var(--border-soft)',
       background: active ? 'var(--purple-tint)' : 'var(--bg-paper)',
     }}>
       <div className="ps-avatar" style={{
         width: 48, height: 48, fontSize: 16, flexShrink: 0,
         boxShadow: active ? '0 0 0 2px var(--purple)55, 0 4px 10px var(--purple)33' : 'none',
-      }}>{c.initials}</div>
+      }}>{c.initials || c.name?.split(' ').map(w => w[0]).join('').slice(0, 2)}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-        <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{c.courses} язык(ов) · стрик {c.streak} дн.</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>{c.courses} язык(ов)</div>
       </div>
       {active && <Icon name="check" size={16} style={{ color: 'var(--purple)', flexShrink: 0 }} />}
-    </div>
+    </button>
   )
 }
 
@@ -54,9 +55,13 @@ function ChildDashboard({ data }) {
           <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>уроков использовано</div>
         </div>
         <div className="ps-card" style={{ padding: 18 }}>
-          <div className="ps-eyebrow">серия</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: 'var(--orange-deep)', marginTop: 6 }}>{data.streak ?? 0} дней 🔥</div>
-          <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>без пропусков</div>
+          <div className="ps-eyebrow">осталось</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, color: (sub.total - sub.used) <= 1 ? 'var(--orange-deep)' : 'var(--ink)', marginTop: 6 }}>
+            {Math.max(0, sub.total - sub.used)} уроков
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>
+            {sub.total === 0 ? 'нет активного абонемента' : (sub.total - sub.used) <= 1 ? 'пора продлить абонемент' : 'по абонементу'}
+          </div>
         </div>
       </div>
 
@@ -116,6 +121,24 @@ function ChildDashboard({ data }) {
   )
 }
 
+/* Быстрые переходы для выбранного ребёнка: абонементы (покупка) и расписание */
+function ChildActions({ child }) {
+  const navigate = useNavigate()
+  if (!child) return null
+  return (
+    <div className="ps-card ps-m-wrap" style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <Icon name="wallet" size={18} style={{ color: 'var(--purple)' }} />
+      <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)', flex: 1, minWidth: 180 }}>{child.name}</div>
+      <button className="ps-btn ps-btn-outline ps-btn-sm" onClick={() => navigate('/calendar', { state: { childId: child.id } })}>
+        <Icon name="calendar" size={13} /> Расписание
+      </button>
+      <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={() => navigate('/billing', { state: { childId: child.id } })}>
+        <Icon name="plus" size={13} /> Купить абонемент
+      </button>
+    </div>
+  )
+}
+
 export default function ParentPage() {
   const { sideRole } = useApp()
   const [children, setChildren] = useState([])
@@ -160,6 +183,7 @@ export default function ParentPage() {
                   <ChildCard key={c.id} c={c} active={c.id === activeId} onClick={() => setActiveId(c.id)} />
                 ))}
               </div>
+              <ChildActions child={children.find(c => c.id === activeId)} />
               <ChildDashboard data={dash} />
             </>
           )}

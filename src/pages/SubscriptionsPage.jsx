@@ -1,107 +1,84 @@
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar  from '../components/Sidebar'
 import TopBar   from '../components/TopBar'
 import Icon     from '../components/Icon'
+import BuyModal from '../components/BuyModal'
 import { useApp } from '../context/AppContext'
-import { toast } from '../components/Toast'
 import { subscriptionsApi } from '../api/subscriptions'
+import { parentApi } from '../api/parent'
+import { profileApi } from '../api/profile'
 
 const LANG_COLORS = { fr: 'var(--purple)', en: 'var(--orange)', de: 'var(--info)', es: 'var(--success)' }
 const LANG_SOFT   = { fr: 'var(--purple-soft)', en: 'var(--orange-soft)', de: 'var(--info-soft)', es: 'var(--success-soft)' }
 
-const FALLBACK_PLANS = [
-  { id: 1, lang: 'fr', langName: 'Французский', lessons: 4,  price: '₽ 8 000',  perLesson: '₽ 2 000' },
-  { id: 2, lang: 'fr', langName: 'Французский', lessons: 8,  price: '₽ 14 400', perLesson: '₽ 1 800', popular: true },
-  { id: 3, lang: 'fr', langName: 'Французский', lessons: 16, price: '₽ 25 600', perLesson: '₽ 1 600' },
-  { id: 4, lang: 'en', langName: 'Английский',  lessons: 4,  price: '₽ 7 600',  perLesson: '₽ 1 900' },
-  { id: 5, lang: 'en', langName: 'Английский',  lessons: 8,  price: '₽ 13 600', perLesson: '₽ 1 700', popular: true },
-  { id: 6, lang: 'en', langName: 'Английский',  lessons: 16, price: '₽ 24 000', perLesson: '₽ 1 500' },
-  { id: 7, lang: 'de', langName: 'Немецкий',    lessons: 4,  price: '₽ 8 400',  perLesson: '₽ 2 100' },
-  { id: 8, lang: 'de', langName: 'Немецкий',    lessons: 8,  price: '₽ 15 200', perLesson: '₽ 1 900', popular: true },
-  { id: 9, lang: 'es', langName: 'Испанский',   lessons: 4,  price: '₽ 7 200',  perLesson: '₽ 1 800' },
-  { id: 10, lang: 'es', langName: 'Испанский',  lessons: 8,  price: '₽ 13 000', perLesson: '₽ 1 625', popular: true },
-]
+/** Ученик может сам покупать абонементы с этого возраста; младше — покупает родитель (как на бэкенде). */
+const SELF_PURCHASE_AGE = 18
 
-function BuyModal({ plan, onClose, onConfirm }) {
-  const [method, setMethod] = useState('card')
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,27,58,.45)', backdropFilter: 'blur(4px)' }}
-      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width: 460, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 20, boxShadow: 'var(--shadow-pop)', overflow: 'hidden' }}>
-        <div className="ps-card-purple" style={{ padding: '20px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>оформление абонемента</span>
-              <h3 className="ps-display ps-display-purple" style={{ fontSize: 20, margin: '4px 0 0' }}>
-                {plan.langName} · {plan.lessons} уроков
-              </h3>
-            </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.15)', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: '#fff', display: 'grid', placeItems: 'center' }}>
-              <Icon name="plus" size={14} style={{ transform: 'rotate(45deg)' }} />
-            </button>
-          </div>
-        </div>
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderRadius: 14, background: 'var(--bg-cream-soft)', border: '1px solid var(--border-soft)' }}>
-            <div>
-              <div style={{ fontSize: 13, color: 'var(--ink-muted)', fontWeight: 700 }}>{plan.perLesson} за урок</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28, color: 'var(--ink)', letterSpacing: '-0.02em' }}>{plan.price}</div>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--ink-muted)', display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center' }}>
-              <div>Действует 30 дней</div>
-              <div>{plan.lessons} уроков</div>
-            </div>
-          </div>
+const fmtRub = v => `₽ ${Number(v ?? 0).toLocaleString('ru-RU')}`
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink-muted)', letterSpacing: '.12em', textTransform: 'uppercase' }}>Способ оплаты</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {[{ id: 'card', label: '💳 Карта' }, { id: 'sbp', label: '⚡ СБП' }].map(m => (
-                <button key={m.id} onClick={() => setMethod(m.id)} style={{
-                  flex: 1, padding: '11px 0', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: 'pointer',
-                  background: method === m.id ? 'var(--purple)' : 'var(--bg-cream-soft)',
-                  color: method === m.id ? '#fff' : 'var(--ink-muted)',
-                  border: method === m.id ? '2px solid var(--purple)' : '2px solid var(--border)',
-                  transition: 'all .12s',
-                }}>{m.label}</button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="ps-btn ps-btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '13px 0' }} onClick={onConfirm}>
-              <Icon name="check" size={14} /> Оплатить {plan.price}
-            </button>
-            <button className="ps-btn ps-btn-ghost" onClick={onClose}>Отмена</button>
-          </div>
-          <p style={{ fontSize: 11, color: 'var(--ink-muted)', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
-            Нажимая «Оплатить», вы соглашаетесь с офертой. Возврат в течение 14 дней.
-          </p>
-        </div>
-      </div>
-    </div>
-  )
+function ageOf(birthDate) {
+  if (!birthDate) return null
+  const b = parseDay(birthDate)
+  if (!b) return null
+  const now = new Date()
+  let age = now.getFullYear() - b.getFullYear()
+  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) age--
+  return age
 }
 
-function ActiveCard({ sub, onRenew, onCalendar }) {
-  const pct   = Math.round(sub.used / sub.total * 100)
-  const color = LANG_COLORS[sub.lang]
-  const soft  = LANG_SOFT[sub.lang]
-  const urgent = sub.daysLeft <= 7
+// дата из API: 'yyyy-MM-dd' (без времени — берём середину/конец дня, чтобы не съехать на сутки) или метка времени
+function parseDay(v, time = 'T12:00:00') {
+  if (v === null || v === undefined || v === '') return null
+  if (typeof v === 'string' && v.length === 10) return new Date(v + time)
+  const d = new Date(v)
+  return isNaN(d) ? null : d
+}
+
+function mapSub(s) {
+  const end   = parseDay(s.endDate, 'T23:59:59')
+  const start = parseDay(s.startDate)
+  return {
+    id: s.id, lang: s.lang, langName: s.langName || 'Любой язык', planName: s.planName,
+    used: s.used ?? 0, total: s.total ?? 0, status: s.status,
+    expires: end ? end.toLocaleDateString('ru-RU') : '—',
+    daysLeft: end ? Math.max(0, Math.ceil((end - new Date()) / 864e5)) : null,
+    startDate: start ? start.toLocaleDateString('ru-RU') : '',
+    price: fmtRub(s.price), priceNum: Number(s.price ?? 0),
+    purchasedBy: s.purchasedBy,
+  }
+}
+
+function mapPlan(p) {
+  const lessons = p.lessonCount ?? p.lesson_count
+  return {
+    id: p.id, lang: p.lang || null, langName: p.langName || p.lang_name || 'Любой язык',
+    lessons, price: fmtRub(p.price),
+    perLesson: fmtRub(Math.round(p.price / (lessons || 1))),
+    popular: p.popular ?? false,
+  }
+}
+
+function ActiveCard({ sub, onRenew, onCalendar, canBuy }) {
+  const pct   = sub.total ? Math.round(sub.used / sub.total * 100) : 0
+  const color = LANG_COLORS[sub.lang] ?? 'var(--purple)'
+  const soft  = LANG_SOFT[sub.lang] ?? 'var(--purple-soft)'
+  const urgent = sub.daysLeft !== null && sub.daysLeft <= 7
 
   return (
     <div className="ps-m-pad" style={{ padding: 24, borderRadius: 20, border: `2px solid ${color}`, background: '#fff', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <div style={{ width: 46, height: 46, borderRadius: 14, background: soft, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
             <span className={`ps-flag ps-flag-${sub.lang}`} />
           </div>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--ink)', letterSpacing: '-0.02em' }}>
-              {sub.langName} · {sub.level}
+              {sub.langName} · {sub.total} уроков
             </div>
-            <div style={{ fontSize: 13, color: 'var(--ink-muted)', marginTop: 2 }}>с {sub.teacher} · {sub.plan}</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-muted)', marginTop: 2 }}>
+              {sub.planName}{sub.purchasedBy ? ` · оплатил(а): ${sub.purchasedBy}` : ''}
+            </div>
           </div>
         </div>
         <span className="ps-chip ps-chip-green">Активный</span>
@@ -113,34 +90,24 @@ function ActiveCard({ sub, onRenew, onCalendar }) {
           <span style={{ color: 'var(--ink-muted)' }}>Использовано уроков</span>
           <span style={{ color }}>{sub.used} / {sub.total}</span>
         </div>
-        <div style={{ height: 8, background: soft, borderRadius: 4 }}>
+        <div role="progressbar" aria-valuemin={0} aria-valuemax={sub.total} aria-valuenow={sub.used} aria-label="Использовано уроков"
+          style={{ height: 8, background: soft, borderRadius: 4 }}>
           <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 4 }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, gap: 8, flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--ink-muted)' }}>{sub.total - sub.used} уроков осталось</span>
           <span style={{ color: urgent ? 'var(--danger)' : 'var(--ink-muted)', fontWeight: urgent ? 800 : 600 }}>
-            {urgent ? '⚠ ' : ''}Истекает {sub.expires} · через {sub.daysLeft} дн.
+            {urgent ? '⚠ ' : ''}Действует до {sub.expires}{sub.daysLeft !== null ? ` · ещё ${sub.daysLeft} дн.` : ''}
           </span>
         </div>
       </div>
 
-      {/* Иконки уроков */}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {Array.from({ length: sub.total }).map((_, i) => (
-          <div key={i} style={{
-            flex: 1, height: 28, borderRadius: 8,
-            background: i < sub.used ? color : soft,
-            display: 'grid', placeItems: 'center',
-          }}>
-            {i < sub.used && <Icon name="check" size={11} style={{ color: '#fff' }} />}
-          </div>
-        ))}
-      </div>
-
       <div style={{ display: 'flex', gap: 10, paddingTop: 4, borderTop: '1px solid var(--border-soft)' }}>
-        <button className="ps-btn ps-btn-primary ps-btn-sm" style={{ background: color, borderColor: color }} onClick={onRenew}>
-          <Icon name="plus" size={13} /> Продлить
-        </button>
+        {canBuy && (
+          <button className="ps-btn ps-btn-primary ps-btn-sm" style={{ background: color, borderColor: color }} onClick={onRenew}>
+            <Icon name="plus" size={13} /> Продлить
+          </button>
+        )}
         <button className="ps-btn ps-btn-ghost ps-btn-sm" onClick={onCalendar}>
           <Icon name="calendar" size={13} /> Расписание
         </button>
@@ -149,189 +116,172 @@ function ActiveCard({ sub, onRenew, onCalendar }) {
   )
 }
 
-export default function SubscriptionsPage() {
-  const { sideRole } = useApp()
+/*
+  Абонементы одного ученика. Ученик видит свои; родитель — выбранного ребёнка (childId)
+  и может купить ему абонемент.
+*/
+function SubscriptionsContent({ childId = null, childName = null, canBuy, buyNote }) {
   const navigate = useNavigate()
-  const [buyLang, setBuyLang]   = useState('fr')
+  const [buyLang, setBuyLang]   = useState(null)
   const [buyModal, setBuyModal] = useState(null)
-  const [activeList, setActiveList] = useState([])
-  const [history, setHistory]   = useState([])
-  const [plans, setPlans]       = useState([])
+  const [subs, setSubs]         = useState(null)
+  const [plans, setPlans]       = useState(null)
   const buyRef = useRef(null)
 
+  const loadSubs = useCallback(() => {
+    const req = childId ? parentApi.childSubscriptions(childId) : subscriptionsApi.list()
+    return req.then(data => setSubs((data || []).map(mapSub))).catch(() => setSubs([]))
+  }, [childId])
+
+  useEffect(() => { loadSubs() }, [loadSubs])
+
   useEffect(() => {
-    subscriptionsApi.list()
-      .then(data => {
-        setActiveList(data.filter(s => s.status === 'ACTIVE').map(s => ({
-          id: s.id, lang: s.lang, langName: s.langName,
-          plan: `${s.total} уроков`, used: s.used, total: s.total,
-          expires: s.endDate ? new Date(s.endDate).toLocaleDateString('ru-RU') : '—',
-          price: `₽ ${Number(s.price ?? 0).toLocaleString('ru-RU')}`,
-        })))
-        setHistory(data.filter(s => s.status !== 'ACTIVE').map(s => ({
-          id: s.id, lang: s.lang, langName: s.langName,
-          plan: `${s.total} уроков`, date: s.startDate,
-          price: `₽ ${Number(s.price ?? 0).toLocaleString('ru-RU')}`,
-        })))
-      })
-      .catch(() => {})
     subscriptionsApi.plans()
-      .then(data => {
-        const mapped = data.map(p => ({
-          id: p.id, lang: p.lang, langName: p.langName ?? p.lang_name,
-          lessons: p.lessonCount ?? p.lesson_count,
-          price: `₽ ${Number(p.price).toLocaleString('ru-RU')}`,
-          perLesson: `₽ ${Math.round(p.price / (p.lessonCount ?? p.lesson_count)).toLocaleString('ru-RU')}`,
-          popular: p.popular ?? false,
-        }))
-        setPlans(mapped.length > 0 ? mapped : FALLBACK_PLANS)
-      })
-      .catch(() => setPlans(FALLBACK_PLANS))
+      .then(data => setPlans((data || []).map(mapPlan)))
+      .catch(() => setPlans([]))
   }, [])
 
-  const filteredPlans = plans.filter(p => !p.lang || p.lang === buyLang)
-  const totalSpent = history.reduce((s, h) => s + parseInt((h.price || '0').replace(/\D/g, '')), 0)
+  const activeList = (subs || []).filter(s => s.status === 'ACTIVE')
+  const history    = (subs || []).filter(s => s.status !== 'ACTIVE')
+  const totalSpent = (subs || []).reduce((s, h) => s + h.priceNum, 0)
 
-  function handleBuy(plan) {
-    setBuyModal(plan)
-  }
-
-  function confirmBuy() {
-    const plan = buyModal
-    setActiveList(prev => [...prev, {
-      id: Date.now(), lang: plan.lang, langName: plan.langName, level: '?',
-      teacher: 'Назначается', plan: `${plan.lessons} уроков`,
-      used: 0, total: plan.lessons,
-      price: plan.price, expires: '—', daysLeft: 30,
-    }])
-    setBuyModal(null)
-    toast(`Абонемент "${plan.langName} · ${plan.lessons} уроков" оформлен! ✓`)
-  }
+  const langs = [...new Map((plans || []).filter(p => p.lang).map(p => [p.lang, p.langName])).entries()]
+  const lang  = buyLang ?? langs[0]?.[0] ?? null
+  const filteredPlans = (plans || []).filter(p => !p.lang || !lang || p.lang === lang)
+  const nearest = [...activeList].sort((a, b) => (a.daysLeft ?? 1e9) - (b.daysLeft ?? 1e9))[0]
 
   function scrollToBuy() {
     buyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
-      <Sidebar role={sideRole} />
+    <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <TopBar title="Абонементы" />
-
-        <div className="ps-m-pad" style={{ flex: 1, padding: 28, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
-
-          {/* KPI */}
-          <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-            {[
-              { l: 'Активных абонементов', v: activeList.length,      d: 'сейчас',              icon: 'bookmark', color: 'var(--purple-deep)' },
-              { l: 'Уроков осталось',      v: activeList.reduce((s,a)=>s+((a.total||0)-(a.used||0)),0), d: 'по всем курсам', icon: 'calendar',  color: 'var(--success)'    },
-              { l: 'Ближайшее истечение',  v: activeList[0]?.expires ?? '—', d: activeList[0]?.langName ?? '', icon: 'warning',  color: 'var(--orange-deep)' },
-              { l: 'Потрачено всего',       v: `₽ ${totalSpent.toLocaleString('ru')}`, d: 'за всё время', icon: 'wallet', color: 'var(--ink-muted)' },
-            ].map((k, i) => (
-              <div key={i} className="ps-kpi">
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}>
-                  <Icon name={k.icon} size={16} />
-                  <div className="label">{k.l}</div>
-                </div>
-                <div className="val">{k.v}</div>
-                <div className="delta">{k.d}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 22, alignItems: 'start' }}>
-
-            {/* Левая колонка */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Активные */}
-              <div className="ps-card ps-m-pad" style={{ padding: 24 }}>
-                <div style={{ marginBottom: 18 }}>
-                  <span className="ps-eyebrow">текущие</span>
-                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Активные абонементы</h3>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {activeList.length === 0 && (
-                    <div style={{ padding: '28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--purple-soft)', display: 'grid', placeItems: 'center' }}>
-                        <Icon name="bookmark" size={24} style={{ color: 'var(--purple)' }} />
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)' }}>Нет активных абонементов</div>
-                      <div style={{ fontSize: 13, color: 'var(--ink-muted)', textAlign: 'center', maxWidth: 280, lineHeight: 1.5 }}>
-                        Выберите тариф и язык в разделе справа, чтобы начать обучение
-                      </div>
-                      <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={scrollToBuy}>
-                        <Icon name="plus" size={13} /> Купить абонемент
-                      </button>
-                    </div>
-                  )}
-                  {activeList.map(sub => (
-                    <ActiveCard
-                      key={sub.id}
-                      sub={sub}
-                      onRenew={scrollToBuy}
-                      onCalendar={() => navigate('/calendar')}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* История */}
-              <div className="ps-card ps-m-pad" style={{ padding: 24 }}>
-                <div style={{ marginBottom: 16 }}>
-                  <span className="ps-eyebrow">история</span>
-                  <h3 className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Прошлые платежи</h3>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {history.length === 0 && (
-                    <div style={{ color: 'var(--ink-muted)', fontSize: 13, padding: '12px 0' }}>Платежей пока нет</div>
-                  )}
-                  {history.map((h, i, arr) => (
-                    <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: i < arr.length-1 ? '1px solid var(--border-soft)' : 'none' }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: LANG_SOFT[h.lang] || 'var(--bg-cream)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                        <span className={`ps-flag ps-flag-${h.lang}`} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--ink)' }}>{h.langName} · {h.plan}</div>
-                        <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>{h.date}</div>
-                      </div>
-                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, color: 'var(--ink)', flexShrink: 0 }}>{h.price}</span>
-                      <button className="ps-btn ps-btn-ghost ps-btn-sm" style={{ flexShrink: 0 }}>
-                        <Icon name="file" size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      {/* KPI */}
+      <div className="ps-m-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        {[
+          { l: 'Активных абонементов', v: activeList.length, d: 'сейчас', icon: 'bookmark', color: 'var(--purple-deep)' },
+          { l: 'Уроков осталось', v: activeList.reduce((s, a) => s + (a.total - a.used), 0), d: 'по всем курсам', icon: 'calendar', color: 'var(--success)' },
+          { l: 'Ближайшее истечение', v: nearest?.expires ?? '—', d: nearest?.langName ?? '', icon: 'warning', color: 'var(--orange-deep)' },
+          { l: 'Потрачено всего', v: fmtRub(totalSpent), d: 'за всё время', icon: 'wallet', color: 'var(--ink-muted)' },
+        ].map((k, i) => (
+          <div key={i} className="ps-kpi">
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: k.color }}>
+              <Icon name={k.icon} size={16} />
+              <div className="label">{k.l}</div>
             </div>
+            <div className="val">{k.v}</div>
+            <div className="delta">{k.d}</div>
+          </div>
+        ))}
+      </div>
 
-            {/* Правая колонка — купить */}
-            <div ref={buyRef} className="ps-card-purple ps-m-pad" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
-              <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>покупка</span>
-              <h3 className="ps-display ps-display-purple" style={{ fontSize: 24, margin: '6px 0 20px' }}>Новый абонемент</h3>
+      <div className="ps-m-1col" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 22, alignItems: 'start' }}>
 
-              {/* Выбор языка */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,.7)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.12em' }}>Язык</div>
-                <div className="ps-m-wrap" style={{ display: 'flex', gap: 8 }}>
-                  {[{id:'fr',l:'Французский'},{id:'en',l:'Английский'},{id:'de',l:'Немецкий'},{id:'es',l:'Испанский'}].map(lg => (
-                    <button
-                      key={lg.id}
-                      onClick={() => setBuyLang(lg.id)}
-                      style={{
-                        padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', transition: 'all .12s',
-                        background: buyLang === lg.id ? '#fff' : 'rgba(255,255,255,.12)',
-                        color:      buyLang === lg.id ? 'var(--purple-deep)' : 'rgba(255,255,255,.8)',
-                        border:     buyLang === lg.id ? '2px solid #fff' : '2px solid transparent',
-                      }}
-                    >{lg.l}</button>
-                  ))}
+        {/* Левая колонка */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Активные */}
+          <section className="ps-card ps-m-pad" style={{ padding: 24 }} aria-labelledby="subs-active">
+            <div style={{ marginBottom: 18 }}>
+              <span className="ps-eyebrow">текущие</span>
+              <h3 id="subs-active" className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Активные абонементы</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {subs === null && <div style={{ color: 'var(--ink-muted)', fontSize: 13 }}>Загрузка...</div>}
+              {subs !== null && activeList.length === 0 && (
+                <div style={{ padding: '28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--purple-soft)', display: 'grid', placeItems: 'center' }}>
+                    <Icon name="bookmark" size={24} style={{ color: 'var(--purple)' }} />
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)' }}>Нет активных абонементов</div>
+                  <div style={{ fontSize: 13, color: 'var(--ink-muted)', textAlign: 'center', maxWidth: 280, lineHeight: 1.5 }}>
+                    {canBuy ? 'Выберите язык и тариф в разделе «Новый абонемент»' : buyNote}
+                  </div>
+                  {canBuy && (
+                    <button className="ps-btn ps-btn-primary ps-btn-sm" onClick={scrollToBuy}>
+                      <Icon name="plus" size={13} /> Купить абонемент
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
+              {activeList.map(sub => (
+                <ActiveCard key={sub.id} sub={sub} canBuy={canBuy} onRenew={scrollToBuy} onCalendar={() => navigate('/calendar')} />
+              ))}
+            </div>
+          </section>
 
-              {/* Планы */}
+          {/* История */}
+          <section className="ps-card ps-m-pad" style={{ padding: 24 }} aria-labelledby="subs-history">
+            <div style={{ marginBottom: 16 }}>
+              <span className="ps-eyebrow">история</span>
+              <h3 id="subs-history" className="ps-display" style={{ fontSize: 22, margin: '4px 0 0' }}>Прошлые абонементы</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {subs !== null && history.length === 0 && (
+                <div style={{ color: 'var(--ink-muted)', fontSize: 13, padding: '12px 0' }}>Завершённых абонементов пока нет</div>
+              )}
+              {history.map((h, i, arr) => (
+                <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: LANG_SOFT[h.lang] || 'var(--bg-cream)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <span className={`ps-flag ps-flag-${h.lang}`} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--ink)' }}>{h.langName} · {h.total} уроков</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>
+                      {h.startDate} — {h.expires} · использовано {h.used} из {h.total}
+                    </div>
+                  </div>
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14, color: 'var(--ink)', flexShrink: 0 }}>{h.price}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Правая колонка — купить */}
+        <section ref={buyRef} className="ps-card-purple ps-m-pad" style={{ padding: 24, position: 'relative', overflow: 'hidden' }} aria-labelledby="subs-buy">
+          <span className="ps-eyebrow" style={{ color: 'rgba(255,255,255,.7)' }}>{childName ? `покупка для: ${childName}` : 'покупка'}</span>
+          <h3 id="subs-buy" className="ps-display ps-display-purple" style={{ fontSize: 24, margin: '6px 0 20px' }}>Новый абонемент</h3>
+
+          {!canBuy ? (
+            <div style={{ display: 'flex', gap: 10, padding: 16, borderRadius: 14, background: 'rgba(255,255,255,.12)', color: '#fff', fontSize: 13, lineHeight: 1.5 }}>
+              <Icon name="lock" size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>{buyNote}</span>
+            </div>
+          ) : (
+            <>
+              {/* Выбор языка */}
+              {langs.length > 1 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div id="buy-lang-label" style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,.7)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.12em' }}>Язык</div>
+                  <div role="radiogroup" aria-labelledby="buy-lang-label" className="ps-m-wrap" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {langs.map(([id, name]) => (
+                      <button
+                        key={id}
+                        role="radio"
+                        aria-checked={lang === id}
+                        onClick={() => setBuyLang(id)}
+                        style={{
+                          padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: 'pointer', transition: 'all .12s',
+                          background: lang === id ? '#fff' : 'rgba(255,255,255,.12)',
+                          color:      lang === id ? 'var(--purple-deep)' : 'rgba(255,255,255,.8)',
+                          border:     lang === id ? '2px solid #fff' : '2px solid transparent',
+                        }}
+                      >{name}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Тарифы */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {plans === null && <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 13 }}>Загрузка тарифов...</div>}
+                {plans !== null && filteredPlans.length === 0 && (
+                  <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 13, lineHeight: 1.5 }}>
+                    Не удалось загрузить тарифы. Обновите страницу или напишите в поддержку.
+                  </div>
+                )}
                 {filteredPlans.map(p => (
                   <div key={p.id} style={{
                     padding: '16px 18px', borderRadius: 16,
@@ -346,45 +296,131 @@ export default function SubscriptionsPage() {
                       </div>
                     )}
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: p.popular ? 'var(--ink)' : '#fff' }}>
-                        {p.lessons} уроков
-                      </div>
-                      <div style={{ fontSize: 12, color: p.popular ? 'var(--ink-muted)' : 'rgba(255,255,255,.7)', marginTop: 2 }}>
-                        {p.perLesson} за урок
-                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: p.popular ? 'var(--ink)' : '#fff' }}>{p.lessons} уроков</div>
+                      <div style={{ fontSize: 12, color: p.popular ? 'var(--ink-muted)' : 'rgba(255,255,255,.7)', marginTop: 2 }}>{p.perLesson} за урок</div>
                     </div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: p.popular ? 'var(--ink)' : '#fff' }}>
-                      {p.price}
-                    </div>
-                    <button className="ps-btn ps-btn-sm" style={{
-                      background: p.popular ? 'var(--orange)' : 'rgba(255,255,255,.2)',
-                      color: '#fff', border: 'none', flexShrink: 0,
-                    }} onClick={() => handleBuy(p)}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: p.popular ? 'var(--ink)' : '#fff' }}>{p.price}</div>
+                    <button
+                      className="ps-btn ps-btn-sm"
+                      aria-label={`Купить ${p.langName}, ${p.lessons} уроков за ${p.price}`}
+                      style={{ background: p.popular ? 'var(--orange)' : 'rgba(255,255,255,.2)', color: '#fff', border: 'none', flexShrink: 0 }}
+                      onClick={() => setBuyModal(p)}
+                    >
                       Купить
                     </button>
                   </div>
                 ))}
               </div>
 
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 18, lineHeight: 1.5 }}>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', marginTop: 18, lineHeight: 1.5 }}>
                 Оплата картой или СБП. Абонемент действует 30 дней с момента покупки.
               </p>
+            </>
+          )}
 
-              <div style={{ position: 'absolute', right: -30, bottom: -20, fontFamily: 'var(--font-display)', fontSize: 180, color: 'rgba(255,255,255,.05)', fontWeight: 900, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
-                {buyLang.toUpperCase()}
-              </div>
+          {lang && (
+            <div aria-hidden="true" style={{ position: 'absolute', right: -30, bottom: -20, fontFamily: 'var(--font-display)', fontSize: 180, color: 'rgba(255,255,255,.05)', fontWeight: 900, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
+              {lang.toUpperCase()}
             </div>
-          </div>
-        </div>
-      </main>
+          )}
+        </section>
+      </div>
 
       {buyModal && (
         <BuyModal
           plan={buyModal}
+          studentId={childId}
+          forName={childName}
           onClose={() => setBuyModal(null)}
-          onConfirm={confirmBuy}
+          onDone={loadSubs}
         />
       )}
+    </div>
+  )
+}
+
+/* Ученик: покупает сам с 18 лет (дата рождения — в профиле), младше — через родителя. */
+function StudentSubscriptions() {
+  const [birthDate, setBirthDate] = useState(undefined)
+
+  useEffect(() => {
+    profileApi.get().then(d => setBirthDate(d?.birthDate ?? null)).catch(() => setBirthDate(null))
+  }, [])
+
+  const age = ageOf(birthDate)
+  const canBuy = age !== null && age >= SELF_PURCHASE_AGE
+  const buyNote = birthDate === undefined
+    ? 'Загрузка...'
+    : age === null
+      ? `Укажите дату рождения в профиле: самостоятельно покупать абонементы можно с ${SELF_PURCHASE_AGE} лет. До этого абонемент оформляет родитель.`
+      : `Ученикам младше ${SELF_PURCHASE_AGE} лет абонемент оформляет родитель в своём личном кабинете.`
+
+  return <SubscriptionsContent canBuy={canBuy} buyNote={buyNote} />
+}
+
+/* Родитель: абонементы детей и покупка для выбранного ребёнка. */
+function ParentSubscriptions() {
+  const { state } = useLocation()
+  const [children, setChildren] = useState(null)
+  const [childId, setChildId]   = useState(state?.childId ?? null)
+
+  useEffect(() => {
+    parentApi.children()
+      .then(list => {
+        setChildren(list || [])
+        setChildId(prev => (list || []).some(c => c.id === prev) ? prev : list?.[0]?.id ?? null)
+      })
+      .catch(() => setChildren([]))
+  }, [])
+
+  if (children === null) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)' }}>Загрузка...</div>
+  if (children.length === 0) {
+    return (
+      <div className="ps-m-pad" style={{ padding: 28 }}>
+        <div className="ps-card" style={{ padding: 48, textAlign: 'center', color: 'var(--ink-muted)' }}>
+          <Icon name="wallet" size={32} style={{ color: 'var(--ink-dim)' }} />
+          <div style={{ marginTop: 12, fontSize: 15, fontWeight: 700 }}>Пока нет привязанных детей</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Обратитесь к администратору, чтобы привязать аккаунт ученика</div>
+        </div>
+      </div>
+    )
+  }
+
+  const child = children.find(c => c.id === childId) ?? children[0]
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {children.length > 1 && (
+        <div className="ps-m-pad" role="tablist" aria-label="Чьи абонементы показать" style={{ padding: '20px 28px 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {children.map(c => (
+            <button
+              key={c.id}
+              role="tab"
+              aria-selected={c.id === child.id}
+              className={`ps-btn ps-btn-sm ${c.id === child.id ? 'ps-btn-purple' : 'ps-btn-outline'}`}
+              onClick={() => setChildId(c.id)}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <SubscriptionsContent key={child.id} childId={child.id} childName={child.name} canBuy buyNote="" />
+    </div>
+  )
+}
+
+export default function SubscriptionsPage() {
+  const { sideRole, role } = useApp()
+  const isParent = role === 'parent'
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-cream)' }}>
+      <Sidebar role={sideRole} />
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <TopBar title={isParent ? 'Абонементы детей' : 'Абонементы'} />
+        {isParent ? <ParentSubscriptions /> : <StudentSubscriptions />}
+      </main>
     </div>
   )
 }
